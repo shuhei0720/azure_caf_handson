@@ -180,7 +180,7 @@ echo "Billing Scope: $BILLING_SCOPE"
 
 #### Bicep ファイルの作成
 
-Bicep で Subscription を作成するファイルを作成します。
+Subscription 作成は時間がかかるため（10-15分/個）、**個別のファイルに分けて1つずつデプロイ**します。
 
 まず、ディレクトリを準備：
 
@@ -188,15 +188,9 @@ Bicep で Subscription を作成するファイルを作成します。
 mkdir -p infrastructure/bicep/subscriptions
 ```
 
-次に、`infrastructure/bicep/subscriptions/subscriptions.bicep` を以下の内容で作成します：
+**1. Management Subscription**
 
-**subscriptions.bicep の解説：**
-
-1. **targetScope = 'tenant'**: テナントレベルでのデプロイを指定
-2. **Microsoft.Subscription/aliases**: Subscription 作成用のリソースタイプ
-3. **billingScope**: 課金スコープ（どの請求先に紐付けるか）
-4. **workload**: Production または DevTest
-5. **displayName**: Azure ポータルで表示される名前
+ファイル `infrastructure/bicep/subscriptions/sub-management.bicep` を作成し、以下の内容を記述します：
 
 ```bicep
 targetScope = 'tenant'
@@ -204,8 +198,6 @@ targetScope = 'tenant'
 @description('Billing Scope')
 param billingScope string
 
-// Management Subscription
-// 管理・監視リソース用のサブスクリプション
 resource subManagement 'Microsoft.Subscription/aliases@2021-10-01' = {
   name: 'sub-platform-management-prod'
   properties: {
@@ -215,8 +207,19 @@ resource subManagement 'Microsoft.Subscription/aliases@2021-10-01' = {
   }
 }
 
-// Connectivity Subscription
-// ネットワーク接続リソース用のサブスクリプション
+output subscriptionId string = subManagement.properties.subscriptionId
+```
+
+**2. Connectivity Subscription**
+
+ファイル `infrastructure/bicep/subscriptions/sub-connectivity.bicep` を作成し、以下の内容を記述します：
+
+```bicep
+targetScope = 'tenant'
+
+@description('Billing Scope')
+param billingScope string
+
 resource subConnectivity 'Microsoft.Subscription/aliases@2021-10-01' = {
   name: 'sub-platform-connectivity-prod'
   properties: {
@@ -226,8 +229,19 @@ resource subConnectivity 'Microsoft.Subscription/aliases@2021-10-01' = {
   }
 }
 
-// Identity Subscription
-// ID管理リソース用のサブスクリプション
+output subscriptionId string = subConnectivity.properties.subscriptionId
+```
+
+**3. Identity Subscription**
+
+ファイル `infrastructure/bicep/subscriptions/sub-identity.bicep` を作成し、以下の内容を記述します：
+
+```bicep
+targetScope = 'tenant'
+
+@description('Billing Scope')
+param billingScope string
+
 resource subIdentity 'Microsoft.Subscription/aliases@2021-10-01' = {
   name: 'sub-platform-identity-prod'
   properties: {
@@ -237,8 +251,19 @@ resource subIdentity 'Microsoft.Subscription/aliases@2021-10-01' = {
   }
 }
 
-// Landing Zone Subscription
-// アプリケーションリソース用のサブスクリプション
+output subscriptionId string = subIdentity.properties.subscriptionId
+```
+
+**4. Landing Zone Subscription**
+
+ファイル `infrastructure/bicep/subscriptions/sub-landingzone.bicep` を作成し、以下の内容を記述します：
+
+```bicep
+targetScope = 'tenant'
+
+@description('Billing Scope')
+param billingScope string
+
 resource subLandingZone 'Microsoft.Subscription/aliases@2021-10-01' = {
   name: 'sub-landingzone-corp-prod'
   properties: {
@@ -248,39 +273,70 @@ resource subLandingZone 'Microsoft.Subscription/aliases@2021-10-01' = {
   }
 }
 
-// 出力: 作成されたサブスクリプションIDを返す
-output managementSubscriptionId string = subManagement.properties.subscriptionId
-output connectivitySubscriptionId string = subConnectivity.properties.subscriptionId
-output identitySubscriptionId string = subIdentity.properties.subscriptionId
-output landingZoneSubscriptionId string = subLandingZone.properties.subscriptionId
+output subscriptionId string = subLandingZone.properties.subscriptionId
 ```
 
-#### Bicep のデプロイ
+#### Bicep のデプロイ（1つずつ実行）
+
+**重要**: 各デプロイは10-15分かかります。1つずつ順番に実行してください。
 
 ```bash
-# デプロイ
+# 1. Management Subscription
+echo "Creating Management Subscription..."
 az deployment tenant create \
-  --name "deploy-subscriptions-$(date +%Y%m%d-%H%M%S)" \
+  --name "deploy-sub-management-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
-  --template-file infrastructure/bicep/subscriptions/subscriptions.bicep \
+  --template-file infrastructure/bicep/subscriptions/sub-management.bicep \
   --parameters billingScope="$BILLING_SCOPE"
 
-# 出力値を取得
 SUB_MANAGEMENT_ID=$(az deployment tenant show \
-  --name "deploy-subscriptions-$(date +%Y%m%d-%H%M%S)" \
-  --query properties.outputs.managementSubscriptionId.value -o tsv)
+  --name "deploy-sub-management-$(date +%Y%m%d-%H%M%S)" \
+  --query properties.outputs.subscriptionId.value -o tsv)
+
+echo "Management Subscription ID: $SUB_MANAGEMENT_ID"
+
+# 2. Connectivity Subscription
+echo "Creating Connectivity Subscription..."
+az deployment tenant create \
+  --name "deploy-sub-connectivity-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/subscriptions/sub-connectivity.bicep \
+  --parameters billingScope="$BILLING_SCOPE"
 
 SUB_CONNECTIVITY_ID=$(az deployment tenant show \
-  --name "deploy-subscriptions-$(date +%Y%m%d-%H%M%S)" \
-  --query properties.outputs.connectivitySubscriptionId.value -o tsv)
+  --name "deploy-sub-connectivity-$(date +%Y%m%d-%H%M%S)" \
+  --query properties.outputs.subscriptionId.value -o tsv)
+
+echo "Connectivity Subscription ID: $SUB_CONNECTIVITY_ID"
+
+# 3. Identity Subscription
+echo "Creating Identity Subscription..."
+az deployment tenant create \
+  --name "deploy-sub-identity-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/subscriptions/sub-identity.bicep \
+  --parameters billingScope="$BILLING_SCOPE"
 
 SUB_IDENTITY_ID=$(az deployment tenant show \
-  --name "deploy-subscriptions-$(date +%Y%m%d-%H%M%S)" \
-  --query properties.outputs.identitySubscriptionId.value -o tsv)
+  --name "deploy-sub-identity-$(date +%Y%m%d-%H%M%S)" \
+  --query properties.outputs.subscriptionId.value -o tsv)
+
+echo "Identity Subscription ID: $SUB_IDENTITY_ID"
+
+# 4. Landing Zone Subscription
+echo "Creating Landing Zone Subscription..."
+az deployment tenant create \
+  --name "deploy-sub-landingzone-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/subscriptions/sub-landingzone.bicep \
+  --parameters billingScope="$BILLING_SCOPE"
 
 SUB_LANDINGZONE_ID=$(az deployment tenant show \
-  --name "deploy-subscriptions-$(date +%Y%m%d-%H%M%S)" \
-  --query properties.outputs.landingZoneSubscriptionId.value -o tsv)
+  --name "deploy-sub-landingzone-$(date +%Y%m%d-%H%M%S)" \
+  --query properties.outputs.subscriptionId.value -o tsv)
+
+echo "Landing Zone Subscription ID: $SUB_LANDINGZONE_ID"
+```
 ```
 
 **注意**:
