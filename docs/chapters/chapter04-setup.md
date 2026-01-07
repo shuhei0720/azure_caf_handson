@@ -493,37 +493,13 @@ mkdir -p infrastructure/bicep/modules/common
 
 **naming.bicep の解説：**
 
-命名規則を標準化するモジュール。リソースタイプ、ワークロード、環境、リージョン、インスタンス番号から、一貫した命名パターン（{type}-{workload}-{env}-{region}-{instance}）を生成します。スコープ指定なしで、どのスコープからも呼び出し可能です。
+命名規則を標準化するモジュール。リソースタイプ、ワークロード、環境、リージョン、インスタンス番号から、一貫した命名パターン（{type}-{workload}-{env}-{region}-{instance}）を生成します。
 
 ```bicep
-// 命名規則モジュール
-// スコープ指定なし = 呼び出し元のスコープを継承
-
-@description('リソースタイプ（例: rg, vnet, afw）')
-param resourceType string
-
-@description('ワークロード名（例: platform, hub, app1）')
-param workload string
-
-@description('環境（dev, staging, prod）')
-@allowed([
-  'dev'
-  'staging'
-  'prod'
-])
-param environment string
-
-@description('リージョンの短縮形（例: jpe, jps）')
-param regionShort string = 'jpe'
-
-@description('インスタンス番号')
-param instance string = '001'
-
-// リソース名を生成
-var resourceName = '${resourceType}-${workload}-${environment}-${regionShort}-${instance}'
-
-// 出力
-output name string = resourceName
+// 命名規則関数（User-Defined Function）
+@export()
+func generateName(resourceType string, workload string, environment string, regionShort string, instance string) string =>
+  '${resourceType}-${workload}-${environment}-${regionShort}-${instance}'
 ```
 
 ### 4.7.3 命名規則のテスト
@@ -532,25 +508,16 @@ output name string = resourceName
 
 **test-naming.bicep の解説：**
 
-命名規則モジュールを実際に使用してリソースグループを作成するテスト。naming.bicep モジュールで生成された名前を使ってリソースを作成します。
+命名規則関数を実際に使用してリソースグループを作成するテスト。naming.bicep の関数をインポートして名前を生成します。
 
 ```bicep
 targetScope = 'subscription'
 
-// 命名規則モジュールを使用
-module rgNaming '../modules/common/naming.bicep' = {
-  name: 'rgNaming'
-  params: {
-    resourceType: 'rg'
-    workload: 'platform'
-    environment: 'prod'
-    regionShort: 'jpe'
-    instance: '001'
-  }
-}
+// 命名規則関数をインポート
+import { generateName } from '../modules/common/naming.bicep'
 
-// モジュールで生成した名前を変数に格納（リソース名はデプロイ開始時に確定する必要があるため）
-var resourceGroupName = 'rg-platform-prod-jpe-001'
+// 命名規則関数を使用してリソース名を生成
+var resourceGroupName = generateName('rg', 'platform', 'prod', 'jpe', '001')
 
 // リソースグループを作成
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
@@ -563,10 +530,10 @@ resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   }
 }
 
-// モジュールの出力と実際に作成されたリソース名を比較できるように出力
+// 出力
 output resourceGroupName string = resourceGroup.name
-output namingModuleOutput string = rgNaming.outputs.name
-output namesMatch bool = (resourceGroup.name == rgNaming.outputs.name)
+output expectedName string = 'rg-platform-prod-jpe-001'
+output namesMatch bool = (resourceGroup.name == 'rg-platform-prod-jpe-001')
 ```
 
 命名規則の動作を確認：
