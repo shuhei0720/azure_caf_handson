@@ -698,7 +698,8 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
 output storageAccountId string = storageAccount.id
 output storageAccountName string = storageAccount.name
 ```
-```
+
+````
 
 ---
 
@@ -732,7 +733,7 @@ AzureDiagnostics
 | where TimeGenerated > ago(1h)
 | project TimeGenerated, OperationName, ResultType, CallerIPAddress
 | order by TimeGenerated desc
-```
+````
 
 ---
 

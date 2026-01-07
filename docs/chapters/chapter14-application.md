@@ -11,9 +11,9 @@
 
 ## 14.0 事前準備：Landing Zone Subscription の確認
 
-本章では、Chapter 13で構築したLanding Zoneにアプリケーションをデプロイします。
+本章では、Chapter 13 で構築した Landing Zone にアプリケーションをデプロイします。
 
-作業を開始する前に、Landing Zone Subscriptionが選択されていることを確認してください：
+作業を開始する前に、Landing Zone Subscription が選択されていることを確認してください：
 
 ```bash
 # 現在のサブスクリプションを確認
@@ -23,7 +23,7 @@ az account show --query "{Name:name, SubscriptionId:id}" -o table
 az account set --subscription $SUB_LANDINGZONE_ID
 ```
 
-**注意**: Chapter 13と同じSubscriptionを使用することで、Container Apps Environmentやデータベースにアクセスできます。
+**注意**: Chapter 13 と同じ Subscription を使用することで、Container Apps Environment やデータベースにアクセスできます。
 
 ---
 

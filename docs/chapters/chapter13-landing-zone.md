@@ -11,7 +11,7 @@
 
 ## 13.0 事前準備：Landing Zone Subscription の選択
 
-本章では、アプリケーションリソース（Spoke VNet、Container Apps、PostgreSQL、Redis等）を **Landing Zone Subscription** にデプロイします。
+本章では、アプリケーションリソース（Spoke VNet、Container Apps、PostgreSQL、Redis 等）を **Landing Zone Subscription** にデプロイします。
 
 作業を開始する前に、必ず適切なサブスクリプションを選択してください：
 
@@ -23,7 +23,7 @@ az account set --subscription $SUB_LANDINGZONE_ID
 az account show --query "{Name:name, SubscriptionId:id}" -o table
 ```
 
-**重要**: アプリケーションリソースをPlatform Subscription（ManagementやConnectivity）と分離することで、セキュリティとコスト管理が明確になります。
+**重要**: アプリケーションリソースを Platform Subscription（Management や Connectivity）と分離することで、セキュリティとコスト管理が明確になります。
 
 ---
 
@@ -99,7 +99,7 @@ az group create \
 
 **spoke-vnet.bicep の解説：**
 
-Spoke VNet を作成し、AppSubnet、DataSubnet、PrivateEndpointSubnet を3つのサブネットを定義します。Hub VNet への Peering を設定し、各サブネットに NSG と Route Table を適用します。
+Spoke VNet を作成し、AppSubnet、DataSubnet、PrivateEndpointSubnet を 3 つのサブネットを定義します。Hub VNet への Peering を設定し、各サブネットに NSG と Route Table を適用します。
 
 ```bicep
 @description('Spoke VNetの名前')

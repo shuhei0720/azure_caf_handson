@@ -403,7 +403,7 @@ Management Groups デプロイ用のパラメータファイル。会社プレ�
 
 **main-mg.bicep の解説：**
 
-Management Groups デプロイのエントリポイント。テナントスコープでモジュールを呼び出し、すべてのManagement Groupsを一括作成します。
+Management Groups デプロイのエントリポイント。テナントスコープでモジュールを呼び出し、すべての Management Groups を一括作成します。
 
 ```bicep
 // Management Groupsデプロイのメインファイル

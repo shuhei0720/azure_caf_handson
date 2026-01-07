@@ -413,29 +413,29 @@ Azure subscription 1          xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx  yyyyyyyy-yyy
 
 ---
 
-## 2.10 初回の Git コミット・プッシュ
+## 2.8 初回の Git コミット・プッシュ
 
 環境設定が完了したら、変更を Git にコミット・プッシュします。
 
-### 2.10.1 現在の状態確認
+### 2.8.1 現在の状態確認
 
 ```bash
 git status
 ```
 
-### 2.10.2 変更をステージング
+### 2.8.2 変更をステージング
 
 ```bash
 git add .
 ```
 
-### 2.10.3 コミット
+### 2.8.3 コミット
 
 ```bash
 git commit -m "Initial setup: devcontainer and gitignore"
 ```
 
-### 2.10.4 プッシュ
+### 2.8.4 プッシュ
 
 ```bash
 git push origin main
@@ -443,13 +443,13 @@ git push origin main
 
 Codespaces では、GitHub との認証が自動的に行われるため、パスワード入力は不要です。
 
-### 2.10.5 GitHub で確認
+### 2.8.5 GitHub で確認
 
 ブラウザで GitHub リポジトリを開き、コミットが反映されていることを確認します。
 
 ---
 
-## 2.10 章のまとめ
+## 2.9 章のまとめ
 
 本章で行ったこと：
 
