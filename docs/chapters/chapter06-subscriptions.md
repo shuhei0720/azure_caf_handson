@@ -1,11 +1,12 @@
-# 第 6 章：Subscriptions 設計・構築
+# 第 6 章：Subscriptions 設計・構築（1日目）
 
 ## 本章の目的
 
-本章では、Subscription の設計戦略を学び、ランディングゾーンに必要な Subscriptions を作成します。Subscription は課金とアクセス制御の境界であり、適切な設計が重要です。
+本章では、Subscription の設計戦略を学び、ランディングゾーンに必要な Subscriptions の全体像を理解します。そして、**1日目の作業として Management Subscription を作成**します。Subscription は課金とアクセス制御の境界であり、適切な設計が重要です。
 
-**所要時間**: 約 2-3 時間  
-**難易度**: ⭐⭐
+**所要時間**: 約 1-2 時間  
+**難易度**: ⭐⭐  
+**実施タイミング**: **1日目**
 
 ---
 
@@ -125,27 +126,31 @@ graph TB
 
 **本ハンズオンでは、CAF のベストプラクティスに従い、役割ごとに専用のサブスクリプションを作成します**：
 
-- **sub-platform-management-prod**: 管理・監視用（Log Analytics、Automation 等）
-- **sub-platform-connectivity-prod**: ネットワーク接続用（Hub VNet、Firewall、Bastion 等）
-- **sub-platform-identity-prod**: ID 管理用（将来の拡張用）
-- **sub-landingzone-corp-prod**: 内部アプリケーション用（Spoke VNet、Container Apps 等）
+- **sub-platform-management-prod**: 管理・監視用（Log Analytics、Automation 等）← **1日目に作成**
+- **sub-platform-identity-prod**: ID 管理用（将来の拡張用）← **2日目に作成**
+- **sub-platform-connectivity-prod**: ネットワーク接続用（Hub VNet、Firewall、Bastion 等）← **3日目に作成**
+- **sub-landingzone-corp-prod**: 内部アプリケーション用（Spoke VNet、Container Apps 等）← **4日目以降に作成**
 
 これにより、本番環境と同じ構成で学習できます。
 
+> **⚠️ 重要：個人契約アカウントの制約事項**
+>
+> 個人契約の Azure アカウント（Pay-As-You-Go、Free Trial など）では、セキュリティとリソース乱用防止のため、**24 時間に 1 つのサブスクリプションしか作成できない制限**があります。
+>
+> このため、個人アカウントで 4 つのサブスクリプションを作成する場合、**最大 4 日間**かかります。各日で1つずつサブスクリプションを作成していきます。
+>
+> Enterprise Agreement（EA）などのエンタープライズプランでは、この制限は緩和されています。
+
 ---
 
-## 6.3 Subscription の作成
+## 6.3 Management Subscription の作成（1日目）
 
-### 6.3.1 Bicep での Subscription 作成
-
-Bicep を使ってインフラストラクチャをコードで管理します。
-
-#### 前提条件
+### 6.3.1 前提条件
 
 - Billing Scope（請求スコープ）へのアクセスが必要
 - Microsoft.Subscription/aliases リソースタイプを使用
 
-#### Billing Scope の取得
+### 6.3.2 Billing Scope の取得
 
 ```bash
 # Billing Accountを取得
@@ -176,19 +181,18 @@ INVOICE_SECTION_NAME=$(az billing invoice section list \
 BILLING_SCOPE="/providers/Microsoft.Billing/billingAccounts/$BILLING_ACCOUNT_NAME/billingProfiles/$BILLING_PROFILE_NAME/invoiceSections/$INVOICE_SECTION_NAME"
 
 echo "Billing Scope: $BILLING_SCOPE"
+
+# .envファイルに保存（後続の章で再利用）
+echo "BILLING_SCOPE=$BILLING_SCOPE" >> .env
 ```
 
-#### Bicep ファイルの作成
-
-Subscription 作成は時間がかかるため（10-15 分/個）、**個別のファイルに分けて 1 つずつデプロイ**します。
+### 6.3.3 Bicep ファイルの作成
 
 まず、ディレクトリを準備：
 
 ```bash
 mkdir -p infrastructure/bicep/subscriptions
 ```
-
-**1. Management Subscription**
 
 ファイル `infrastructure/bicep/subscriptions/sub-management.bicep` を作成し、以下の内容を記述します：
 
@@ -210,213 +214,47 @@ resource subManagement 'Microsoft.Subscription/aliases@2021-10-01' = {
 output subscriptionId string = subManagement.properties.subscriptionId
 ```
 
-**2. Connectivity Subscription**
-
-ファイル `infrastructure/bicep/subscriptions/sub-connectivity.bicep` を作成し、以下の内容を記述します：
-
-```bicep
-targetScope = 'tenant'
-
-@description('Billing Scope')
-param billingScope string
-
-resource subConnectivity 'Microsoft.Subscription/aliases@2021-10-01' = {
-  name: 'sub-platform-connectivity-prod'
-  properties: {
-    workload: 'Production'
-    displayName: 'sub-platform-connectivity-prod'
-    billingScope: billingScope
-  }
-}
-
-output subscriptionId string = subConnectivity.properties.subscriptionId
-```
-
-**3. Identity Subscription**
-
-ファイル `infrastructure/bicep/subscriptions/sub-identity.bicep` を作成し、以下の内容を記述します：
-
-```bicep
-targetScope = 'tenant'
-
-@description('Billing Scope')
-param billingScope string
-
-resource subIdentity 'Microsoft.Subscription/aliases@2021-10-01' = {
-  name: 'sub-platform-identity-prod'
-  properties: {
-    workload: 'Production'
-    displayName: 'sub-platform-identity-prod'
-    billingScope: billingScope
-  }
-}
-
-output subscriptionId string = subIdentity.properties.subscriptionId
-```
-
-**4. Landing Zone Subscription**
-
-ファイル `infrastructure/bicep/subscriptions/sub-landingzone.bicep` を作成し、以下の内容を記述します：
-
-```bicep
-targetScope = 'tenant'
-
-@description('Billing Scope')
-param billingScope string
-
-resource subLandingZone 'Microsoft.Subscription/aliases@2021-10-01' = {
-  name: 'sub-landingzone-corp-prod'
-  properties: {
-    workload: 'Production'
-    displayName: 'sub-landingzone-corp-prod'
-    billingScope: billingScope
-  }
-}
-
-output subscriptionId string = subLandingZone.properties.subscriptionId
-```
-
-#### Bicep のデプロイ（1 つずつ実行）
-
-**重要**: 各デプロイは 10-15 分かかります。1 つずつ順番に実行してください。
+### 6.3.4 Bicep のデプロイ（10-15 分）
 
 ```bash
-# 1. Management Subscription
 echo "Creating Management Subscription..."
 az deployment tenant create \
   --name "deploy-sub-management-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/subscriptions/sub-management.bicep \
   --parameters billingScope="$BILLING_SCOPE"
-
-SUB_MANAGEMENT_ID=$(az deployment tenant show \
-  --name "deploy-sub-management-$(date +%Y%m%d-%H%M%S)" \
-  --query properties.outputs.subscriptionId.value -o tsv)
-
-echo "Management Subscription ID: $SUB_MANAGEMENT_ID"
-
-# 2. Connectivity Subscription
-echo "Creating Connectivity Subscription..."
-az deployment tenant create \
-  --name "deploy-sub-connectivity-$(date +%Y%m%d-%H%M%S)" \
-  --location japaneast \
-  --template-file infrastructure/bicep/subscriptions/sub-connectivity.bicep \
-  --parameters billingScope="$BILLING_SCOPE"
-
-SUB_CONNECTIVITY_ID=$(az deployment tenant show \
-  --name "deploy-sub-connectivity-$(date +%Y%m%d-%H%M%S)" \
-  --query properties.outputs.subscriptionId.value -o tsv)
-
-echo "Connectivity Subscription ID: $SUB_CONNECTIVITY_ID"
-
-# 3. Identity Subscription
-echo "Creating Identity Subscription..."
-az deployment tenant create \
-  --name "deploy-sub-identity-$(date +%Y%m%d-%H%M%S)" \
-  --location japaneast \
-  --template-file infrastructure/bicep/subscriptions/sub-identity.bicep \
-  --parameters billingScope="$BILLING_SCOPE"
-
-SUB_IDENTITY_ID=$(az deployment tenant show \
-  --name "deploy-sub-identity-$(date +%Y%m%d-%H%M%S)" \
-  --query properties.outputs.subscriptionId.value -o tsv)
-
-echo "Identity Subscription ID: $SUB_IDENTITY_ID"
-
-# 4. Landing Zone Subscription
-echo "Creating Landing Zone Subscription..."
-az deployment tenant create \
-  --name "deploy-sub-landingzone-$(date +%Y%m%d-%H%M%S)" \
-  --location japaneast \
-  --template-file infrastructure/bicep/subscriptions/sub-landingzone.bicep \
-  --parameters billingScope="$BILLING_SCOPE"
-
-SUB_LANDINGZONE_ID=$(az deployment tenant show \
-  --name "deploy-sub-landingzone-$(date +%Y%m%d-%H%M%S)" \
-  --query properties.outputs.subscriptionId.value -o tsv)
-
-echo "Landing Zone Subscription ID: $SUB_LANDINGZONE_ID"
 ```
 
-### 6.3.2 Azure ポータルでの確認
+### 6.3.5 Subscription ID の記録
 
-デプロイ後、Azure ポータルでサブスクリプションが正しく作成されたことを確認します。
+```bash
+SUB_MANAGEMENT_ID=$(az account list --query "[?name=='sub-platform-management-prod'].id" -o tsv)
+echo "Management Subscription ID: $SUB_MANAGEMENT_ID"
+
+# .envファイルに追記
+echo "SUB_MANAGEMENT_ID=$SUB_MANAGEMENT_ID" >> .env
+```
+
+### 6.3.6 Azure ポータルでの確認
 
 1. [Azure ポータル](https://portal.azure.com)にアクセス
 
 2. 検索バーで「Subscriptions」を検索
 
-3. 以下の 4 つのサブスクリプションが表示されることを確認：
-
-   - **sub-platform-management-prod**
-   - **sub-platform-connectivity-prod**
-   - **sub-platform-identity-prod**
-   - **sub-landingzone-corp-prod**
+3. **sub-platform-management-prod** が表示されることを確認
 
 または CLI で確認：
 
 ```bash
-# すべてのサブスクリプションを表示
-az account list --output table
-```
-
-出力例：
-
-```
-Name                              CloudName    SubscriptionId                        State
---------------------------------  -----------  ------------------------------------  -------
-sub-platform-management-prod      AzureCloud   xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx  Enabled
-sub-platform-connectivity-prod    AzureCloud   yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy  Enabled
-sub-platform-identity-prod        AzureCloud   zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz  Enabled
-sub-landingzone-corp-prod         AzureCloud   wwwwwwww-wwww-wwww-wwww-wwwwwwwwwwww  Enabled
-```
-
-### 6.3.3 Subscription ID の記録
-
-後で使用するため、各サブスクリプションの ID を環境変数として記録します。
-
-```bash
-# 各サブスクリプションIDを変数に格納
-SUB_MANAGEMENT_ID=$(az account list --query "[?name=='sub-platform-management-prod'].id" -o tsv)
-SUB_CONNECTIVITY_ID=$(az account list --query "[?name=='sub-platform-connectivity-prod'].id" -o tsv)
-SUB_IDENTITY_ID=$(az account list --query "[?name=='sub-platform-identity-prod'].id" -o tsv)
-SUB_LANDINGZONE_ID=$(az account list --query "[?name=='sub-landingzone-corp-prod'].id" -o tsv)
-
-# 確認
-echo "Management Subscription: $SUB_MANAGEMENT_ID"
-echo "Connectivity Subscription: $SUB_CONNECTIVITY_ID"
-echo "Identity Subscription: $SUB_IDENTITY_ID"
-echo "Landing Zone Subscription: $SUB_LANDINGZONE_ID"
-```
-
-### 6.3.4 .env ファイルへの追記
-
-環境変数ファイルに追記して保存します。
-
-```bash
-# .envファイルに追記
-cat << EOF >> .env
-
-# Subscription IDs
-SUB_MANAGEMENT_ID=$SUB_MANAGEMENT_ID
-SUB_CONNECTIVITY_ID=$SUB_CONNECTIVITY_ID
-SUB_IDENTITY_ID=$SUB_IDENTITY_ID
-SUB_LANDINGZONE_ID=$SUB_LANDINGZONE_ID
-EOF
-
-# 確認
-cat .env
+# Management Subscriptionを表示
+az account show --subscription $SUB_MANAGEMENT_ID --output table
 ```
 
 ---
 
-## 6.4 Subscriptions と Management Groups の関連付け
+## 6.4 Management Subscription と Management Group の関連付け
 
-### 6.4.1 各 Subscription を適切な Management Group に移動
-
-作成した各サブスクリプションを、第 5 章で作成した Management Groups に割り当てます。
-
-#### Management Subscription → Platform - Management
+作成した Management Subscription を、第 5 章で作成した Management Group「contoso-platform-management」に割り当てます。
 
 ```bash
 az account management-group subscription add \
@@ -429,392 +267,19 @@ az account management-group subscription show \
   --subscription $SUB_MANAGEMENT_ID
 ```
 
-#### Connectivity Subscription → Platform - Connectivity
-
-```bash
-az account management-group subscription add \
-  --name contoso-platform-connectivity \
-  --subscription $SUB_CONNECTIVITY_ID
-
-# 確認
-az account management-group subscription show \
-  --name contoso-platform-connectivity \
-  --subscription $SUB_CONNECTIVITY_ID
-```
-
-#### Identity Subscription → Platform - Identity
-
-```bash
-az account management-group subscription add \
-  --name contoso-platform-identity \
-  --subscription $SUB_IDENTITY_ID
-
-# 確認
-az account management-group subscription show \
-  --name contoso-platform-identity \
-  --subscription $SUB_IDENTITY_ID
-```
-
-#### Landing Zone Subscription → Landing Zones - Corp
-
-```bash
-az account management-group subscription add \
-  --name contoso-landingzones-corp \
-  --subscription $SUB_LANDINGZONE_ID
-
-# 確認
-az account management-group subscription show \
-  --name contoso-landingzones-corp \
-  --subscription $SUB_LANDINGZONE_ID
-```
-
-### 6.4.2 Azure ポータルでの確認
+### Azure ポータルでの確認
 
 1. Azure ポータルで「Management groups」を開く
 
-2. 「contoso-landingzones-corp」をクリック
+2. 「contoso-platform-management」をクリック
 
 3. 「Subscriptions」タブを選択
 
-4. 自分の Subscription が表示されていることを確認
+4. **sub-platform-management-prod** が表示されていることを確認
 
 ---
 
-## 6.5 Subscription レベルのタグ付け
-
-### 6.5.1 タグ付け戦略
-
-Subscription レベルでタグを設定することで、コスト管理やレポート作成が容易になります。
-
-**推奨される必須タグ**:
-
-| タグ名             | 説明             | 例                               |
-| ------------------ | ---------------- | -------------------------------- |
-| Environment        | 環境             | Production, Development, Staging |
-| CostCenter         | コストセンター   | IT-001, Sales-002                |
-| Owner              | 所有者           | john.doe@contoso.com             |
-| BusinessUnit       | 事業部           | IT, Sales, Marketing             |
-| Application        | アプリケーション | CustomerPortal, InternalApp      |
-| Criticality        | 重要度           | High, Medium, Low                |
-| DataClassification | データ分類       | Confidential, Internal, Public   |
-
-### 6.5.2 Subscription へのタグ適用
-
-```bash
-# Subscriptionにタグを設定
-az tag create \
-  --resource-id "/subscriptions/$SUBSCRIPTION_ID" \
-  --tags \
-    Environment=Production \
-    CostCenter=IT-001 \
-    Owner=$(az account show --query user.name -o tsv) \
-    BusinessUnit=IT \
-    Application=LandingZone \
-    Criticality=High \
-    DataClassification=Internal \
-    ManagedBy=Bicep \
-    Project=CAF-Landing-Zone
-
-# 確認
-az tag list --resource-id "/subscriptions/$SUBSCRIPTION_ID"
-```
-
-### 6.5.3 Bicep でのタグ設定
-
-Subscription レベルのタグは、Bicep でも設定できます：
-
-ファイル `infrastructure/bicep/modules/subscriptions/tags.bicep` を作成し、以下の内容を記述します：
-
-**tags.bicep の解説：**
-
-Subscription レベルでタグを設定する Bicep モジュール。タグは Resource Groups に継承され、コスト管理やレポート作成に利用されます。
-
-```bicep
-targetScope = 'subscription'
-
-@description('Subscriptionに適用するタグ')
-param tags object
-
-// Subscriptionレベルのタグは、個別のリソースではなく、
-// Resource Groupsに継承される形で実装
-resource tagResource 'Microsoft.Resources/tags@2022-09-01' = {
-  name: 'default'
-  properties: {
-    tags: tags
-  }
-}
-
-output appliedTags object = tagResource.properties.tags
-```
-
-{
-"$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
-"contentVersion": "1.0.0.0",
-"parameters": {
-"tags": {
-"value": {
-"Environment": "Production",
-"CostCenter": "IT-001",
-"BusinessUnit": "IT",
-"Application": "LandingZone",
-"Criticality": "High",
-"DataClassification": "Internal",
-"ManagedBy": "Bicep",
-"Project": "CAF-Landing-Zone"
-}
-}
-}
-}
-EOF
-
-````
-
----
-
-## 6.6 Subscription レベルのリソースプロバイダー登録
-
-### 6.6.1 リソースプロバイダーとは
-
-Azure の各サービスは、リソースプロバイダーとして提供されます。使用する前に、Subscription で登録する必要があります。
-
-### 6.6.2 必要なリソースプロバイダーの確認
-
-```bash
-# 登録済みのリソースプロバイダーを確認
-az provider list --query "[?registrationState=='Registered'].{Namespace:namespace}" -o table
-
-# すべてのリソースプロバイダーと状態を確認
-az provider list --query "[].{Namespace:namespace, State:registrationState}" -o table
-````
-
-### 6.6.3 必要なリソースプロバイダーの登録
-
-本ハンズオンで使用するリソースプロバイダーを登録します：
-
-```bash
-# 必要なリソースプロバイダーのリスト
-PROVIDERS=(
-  "Microsoft.Network"
-  "Microsoft.Compute"
-  "Microsoft.Storage"
-  "Microsoft.KeyVault"
-  "Microsoft.OperationalInsights"
-  "Microsoft.Insights"
-  "Microsoft.Security"
-  "Microsoft.Authorization"
-  "Microsoft.Resources"
-  "Microsoft.ManagedIdentity"
-  "Microsoft.ContainerRegistry"
-  "Microsoft.App"
-  "Microsoft.DBforPostgreSQL"
-  "Microsoft.Cache"
-  "Microsoft.Sql"
-  "Microsoft.Web"
-  "Microsoft.OperationsManagement"
-)
-
-# すべてを登録
-for provider in "${PROVIDERS[@]}"; do
-  echo "Registering $provider..."
-  az provider register --namespace $provider --wait
-done
-
-# 登録状態の確認
-for provider in "${PROVIDERS[@]}"; do
-  az provider show --namespace $provider --query "{Namespace:namespace, State:registrationState}" -o table
-done
-```
-
-### 6.6.4 Bicep でのリソースプロバイダー登録
-
-ファイル `infrastructure/bicep/modules/subscriptions/resource-providers.bicep` を作成し、以下の内容を記述します：
-
-**resource-providers.bicep の解説：**
-
-リソースプロバイダー登録用の Bicep ファイル。注記：Bicep ではリソースプロバイダーを直接登録できないため、Azure CLI または PowerShell を使用してください。このファイルは必要なプロバイダーのリストをドキュメントとして保持します。
-
-```bicep
-targetScope = 'subscription'
-
-@description('登録するリソースプロバイダーのリスト')
-param resourceProviders array = [
-  'Microsoft.Network'
-  'Microsoft.Compute'
-  'Microsoft.Storage'
-  'Microsoft.KeyVault'
-  'Microsoft.OperationalInsights'
-  'Microsoft.Insights'
-  'Microsoft.Security'
-  'Microsoft.ManagedIdentity'
-  'Microsoft.ContainerRegistry'
-  'Microsoft.App'
-  'Microsoft.DBforPostgreSQL'
-  'Microsoft.Cache'
-]
-
-// 注: BicepでのリソースプロバイダーRegistration Scope: subscription
-
-// 現時点では、Bicepでリソースプロバイダーを登録するリソースタイプは存在しません。
-// Azure CLIまたはAzure PowerShellを使用してください。
-
-// この情報を出力として記録
-output requiredProviders array = resourceProviders
-```
-
----
-
-## 6.7 Subscription 設計のドキュメント化
-
-### 6.7.1 Subscription 設計書の作成
-
-```bash
-# Subscription設計書を作成
-cat << 'EOF' > docs/diagrams/subscription-design.md
-# Subscription設計
-
-## 概要
-
-本ハンズオンでは、コスト最適化のため、1つのSubscriptionを使用します。
-本番環境では、役割ごとにSubscriptionを分離することを強く推奨します。
-
-## Subscription構成（本ハンズオン）
-
-\`\`\`mermaid
-graph TB
-    Sub[Subscription: Azure subscription 1]
-
-    Sub --> MgmtRG[rg-platform-management-prod-jpe-001<br/>監視・ログ]
-    Sub --> ConnRG[rg-platform-connectivity-prod-jpe-001<br/>Hub Network]
-    Sub --> CorpRG[rg-landingzone-corp-prod-jpe-001<br/>アプリケーション]
-
-    MgmtRG --> LAW[Log Analytics Workspace]
-    MgmtRG --> Automation[Azure Automation]
-
-    ConnRG --> HubVNet[Hub VNet]
-    ConnRG --> Firewall[Azure Firewall]
-    ConnRG --> Bastion[Azure Bastion]
-
-    CorpRG --> SpokeVNet[Spoke VNet]
-    CorpRG --> App[Container Apps]
-    CorpRG --> DB[PostgreSQL]
-
-    style Sub fill:#e1f5ff
-    style MgmtRG fill:#fff4e1
-    style ConnRG fill:#fff4e1
-    style CorpRG fill:#e8f5e9
-\`\`\`
-
-## 推奨されるSubscription構成（本番環境）
-
-\`\`\`mermaid
-graph TB
-    subgraph "Platform Subscriptions"
-        MgmtSub[Management Subscription<br/>監視・ログ・自動化]
-        ConnSub[Connectivity Subscription<br/>Hub Network]
-        IdSub[Identity Subscription<br/>ID管理]
-    end
-
-    subgraph "Landing Zone Subscriptions - Corp"
-        CorpProdSub[Corp Production<br/>本番内部アプリ]
-        CorpStagingSub[Corp Staging<br/>ステージング内部アプリ]
-        CorpDevSub[Corp Development<br/>開発内部アプリ]
-    end
-
-    subgraph "Landing Zone Subscriptions - Online"
-        OnlineProdSub[Online Production<br/>本番外部アプリ]
-        OnlineStagingSub[Online Staging<br/>ステージング外部アプリ]
-        OnlineDevSub[Online Development<br/>開発外部アプリ]
-    end
-
-    subgraph "Other Subscriptions"
-        SandboxSub[Sandbox<br/>検証・実験]
-    end
-
-    style MgmtSub fill:#fff4e1
-    style ConnSub fill:#fff4e1
-    style IdSub fill:#fff4e1
-    style CorpProdSub fill:#d4edda
-    style CorpStagingSub fill:#e8f5e9
-    style CorpDevSub fill:#f0f9f4
-    style OnlineProdSub fill:#d4edda
-    style OnlineStagingSub fill:#e8f5e9
-    style OnlineDevSub fill:#f0f9f4
-\`\`\`
-
-## Subscription命名規則
-
-\`\`\`
-sub-{platform/landingzone}-{function}-{environment}
-
-例:
-sub-platform-management-prod
-sub-platform-connectivity-prod
-sub-landingzone-corp-prod
-sub-landingzone-corp-dev
-sub-landingzone-online-prod
-sub-sandbox
-\`\`\`
-
-## Subscriptionタグ戦略
-
-各Subscriptionには、以下のタグを必須とします：
-
-| タグ名 | 説明 | 例 |
-|---|---|---|
-| Environment | 環境 | Production, Development, Staging |
-| CostCenter | コストセンター | IT-001, Sales-002 |
-| Owner | 所有者 | john.doe@contoso.com |
-| BusinessUnit | 事業部 | IT, Sales, Marketing |
-| Application | アプリケーション | Platform, CustomerPortal |
-| Criticality | 重要度 | High, Medium, Low |
-| DataClassification | データ分類 | Confidential, Internal, Public |
-| ManagedBy | 管理方法 | Bicep, Terraform |
-| Project | プロジェクト | CAF-Landing-Zone |
-
-## Subscription制限
-
-各Subscriptionには制限があるため、大規模環境ではSubscriptionを分離します：
-
-| リソース | 制限 | 対策 |
-|---|---|---|
-| VNet | 1,000個 | Subscription分割 |
-| VNet Peering | 500個/VNet | Hub-Spoke設計 |
-| Public IP | 1,000個 | NAT Gateway使用 |
-| NSG | 5,000個 | 適切な設計 |
-
-詳細: [Azureサブスクリプションとサービスの制限](https://docs.microsoft.com/azure/azure-resource-manager/management/azure-subscription-service-limits)
-
-## Subscriptionのライフサイクル
-
-### 作成
-- EA Portal または Azure Portal から作成
-- 適切なManagement Groupに配置
-- タグを設定
-- リソースプロバイダーを登録
-
-### 運用
-- 定期的なコストレビュー
-- リソース使用状況の監視
-- ポリシーコンプライアンスの確認
-
-### 廃止
-1. すべてのリソースを削除
-2. Decommissioned Management Groupに移動
-3. 一定期間（30-90日）保持
-4. Subscription削除（またはキャンセル）
-
----
-
-**作成日**: 2026年1月7日
-EOF
-
-# 確認
-cat docs/diagrams/subscription-design.md
-```
-
----
-
-## 6.8 Git へのコミット
+## 6.5 Git へのコミット
 
 ```bash
 # 変更の確認
@@ -823,14 +288,11 @@ git status
 # ステージングとコミット
 git add .
 
-git commit -m "Chapter 6: Subscription design and configuration
+git commit -m "Day 1: Create Management Subscription and associate with Management Group
 
-- Moved subscription to Landing Zones - Corp Management Group
-- Applied subscription-level tags for cost management
-- Registered required resource providers
-- Created subscription design documentation
-- Created Bicep modules for subscription management
-- Documented recommended subscription structure for production"
+- Created sub-platform-management-prod subscription
+- Associated with contoso-platform-management management group
+- Saved BILLING_SCOPE and SUB_MANAGEMENT_ID to .env"
 
 # プッシュ
 git push origin main
@@ -838,52 +300,47 @@ git push origin main
 
 ---
 
-## 6.8 章のまとめ
+## 6.6 章のまとめ
 
 本章で行ったこと：
 
-1. ✅ Subscription の理解
-2. ✅ Subscription 設計戦略の学習
-3. ✅ Subscription と Management Groups の関連付け
-4. ✅ Subscription レベルのタグ付け
-5. ✅ リソースプロバイダーの登録
-6. ✅ Subscription 設計のドキュメント化
-7. ✅ Git へのコミット・プッシュ
+1. ✅ Subscription の理解と設計戦略の学習
+2. ✅ Management Subscription の作成
+3. ✅ Management Subscription と Management Group の関連付け
+4. ✅ Billing Scope と Subscription ID の記録
+5. ✅ Git へのコミット・プッシュ
 
 ### 重要なポイント
 
 - **Subscription は課金の境界**: コスト管理の基本単位
 - **アクセス制御の境界**: RBAC 適用の単位
 - **本番環境では分離**: 役割ごとに独立した Subscription
-- **タグ付けが重要**: コスト配分とレポート作成に必須
+- **24時間に1つの制約**: 個人アカウントではサブスクリプション作成に時間がかかる
 
-### 本ハンズオンの構成
+### 次のステップ
 
-```
-Single Subscription (contoso-landingzones-corp)
-├── Platform Management (Resource Group)
-├── Platform Connectivity (Resource Group)
-└── Landing Zone Corp (Resource Group)
-```
+1日目の作業として、Management Subscription の作成が完了しました。次は、このサブスクリプションに監視・ログ基盤を構築します。
 
 ---
 
 ## チェックリスト
 
 - [ ] Subscription の役割を理解した
-- [ ] Subscription を Management Group に関連付けた
-- [ ] Subscription レベルのタグを設定した
-- [ ] 必要なリソースプロバイダーを登録した
-- [ ] Subscription 設計書を作成した
+- [ ] Billing Scope を取得し、.env に保存した
+- [ ] Management Subscription を作成した
+- [ ] Management Subscription を Management Group に関連付けた
+- [ ] SUB_MANAGEMENT_ID を .env に保存した
 - [ ] Git にコミット・プッシュした
 
 ---
 
 ## 次のステップ
 
-Subscription の設計が完了したら、次は Identity とアクセス管理に進みます。
+Management Subscription の準備が完了したら、次は監視・ログ基盤の構築に進みます。
 
-👉 [第 7 章：Identity & Access Management](chapter07-identity.md)
+👉 [第 7 章：Monitoring（監視・ログ基盤）](chapter07-monitoring.md)
+
+**注意**: 次の章では、今作成した Management Subscription にリソースをデプロイします。
 
 ---
 
@@ -892,7 +349,8 @@ Subscription の設計が完了したら、次は Identity とアクセス管理
 - [Azure サブスクリプション](https://docs.microsoft.com/azure/cost-management-billing/manage/create-subscription)
 - [サブスクリプション設計](https://docs.microsoft.com/azure/cloud-adoption-framework/ready/landing-zone/design-area/resource-org-subscriptions)
 - [サブスクリプションの制限](https://docs.microsoft.com/azure/azure-resource-manager/management/azure-subscription-service-limits)
-- [リソースプロバイダー](https://docs.microsoft.com/azure/azure-resource-manager/management/resource-providers-and-types)
+
+---
 
 ---
 
