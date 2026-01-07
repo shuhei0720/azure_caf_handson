@@ -487,63 +487,24 @@ az network vnet update \
 - Storage Account（長期保管）
 - Event Hubs（SIEM 統合）
 
-### 12.5.2 Log Analytics Workspace の作成
+### 12.5.2 Log Analytics Workspace ID の取得
 
-ファイル `infrastructure/bicep/modules/monitoring/log-analytics.bicep` を作成し、以下の内容を記述します：
-
-**log-analytics.bicep の解説：**
-
-Log Analytics Workspace を作成し、データ保持期間を設定します。すべての診断ログとメトリクスが集約される中央ログストアとして機能します。
-
-```bicep
-@description('Log Analytics Workspaceの名前')
-param workspaceName string
-
-@description('デプロイ先のリージョン')
-param location string
-
-@description('データ保持期間（日数）')
-@minValue(30)
-@maxValue(730)
-param retentionInDays int = 90
-
-@description('タグ')
-param tags object = {}
-
-// Log Analytics Workspace
-resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
-  name: workspaceName
-  location: location
-  tags: tags
-  properties: {
-    sku: {
-      name: 'PerGB2018'
-    }
-    retentionInDays: retentionInDays
-    features: {
-      enableLogAccessUsingOnlyResourcePermissions: true
-    }
-    publicNetworkAccessForIngestion: 'Enabled'
-    publicNetworkAccessForQuery: 'Enabled'
-  }
-}
-
-// 出力
-output workspaceId string = logAnalyticsWorkspace.id
-output workspaceName string = logAnalyticsWorkspace.name
-output customerId string = logAnalyticsWorkspace.properties.customerId
-```
+Log Analytics Workspace は第 7 章で既に作成済みです。ここでは Workspace ID を取得して環境変数に保存します：
 
 ```bash
-# デプロイ
-az deployment group create \
-  --name "log-analytics-deployment-$(date +%Y%m%d-%H%M%S)" \
+# Management Subscriptionに切り替え
+az account set --subscription $SUB_MANAGEMENT_ID
+
+# Workspace IDを取得
+WORKSPACE_ID=$(az monitor log-analytics workspace show \
   --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/monitoring/log-analytics.bicep \
-  --parameters \
-    workspaceName=log-platform-prod-jpe-001 \
-    location=japaneast \
-    retentionInDays=90
+  --workspace-name log-platform-prod-jpe-001 \
+  --query id -o tsv)
+
+echo "WORKSPACE_ID=$WORKSPACE_ID"
+
+# .envファイルに保存（既に保存済みの場合はスキップ）
+grep -q "WORKSPACE_ID=" .env || echo "WORKSPACE_ID=$WORKSPACE_ID" >> .env
 ```
 
 ### 12.5.3 リソースへの診断設定適用

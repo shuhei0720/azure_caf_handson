@@ -1,4 +1,4 @@
-# 第 7 章：監視・ログ基盤構築（1 日目）
+﻿# 第 7 章：監視・ログ基盤構築（1 日目）
 
 ## 本章の目的
 
@@ -131,9 +131,343 @@ graph LR
 
 ---
 
-## 7.3 Log Analytics クエリの基礎
+## 7.3 Log Analytics Workspace と DCR の構築
 
-### 7.3.1 KQL の基本
+### 7.3.1 Resource Group の作成
+
+監視リソース用の Resource Group を作成します：
+
+```bash
+# Management Subscriptionに切り替え（念のため確認）
+az account set --subscription $SUB_MANAGEMENT_ID
+
+# Resource Group作成
+az group create \
+  --name rg-platform-management-prod-jpe-001 \
+  --location japaneast \
+  --tags \
+    Environment=Production \
+    ManagedBy=Bicep \
+    Component=Management
+```
+
+### 7.3.2 Log Analytics Workspace の作成
+
+すべてのログとメトリクスを集約する中央ログストアとして、Log Analytics Workspace を作成します。
+
+ディレクトリを作成：
+
+```bash
+mkdir -p infrastructure/bicep/modules/monitoring
+```
+
+ファイル `infrastructure/bicep/modules/monitoring/log-analytics.bicep` を作成：
+
+```bicep
+@description('Log Analytics Workspaceの名前')
+param workspaceName string
+
+@description('デプロイ先のリージョン')
+param location string
+
+@description('データ保持期間（日数）')
+@minValue(30)
+@maxValue(730)
+param retentionInDays int = 90
+
+@description('タグ')
+param tags object = {}
+
+// Log Analytics Workspace
+resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
+  name: workspaceName
+  location: location
+  tags: tags
+  properties: {
+    sku: {
+      name: 'PerGB2018'
+    }
+    retentionInDays: retentionInDays
+    features: {
+      enableLogAccessUsingOnlyResourcePermissions: true
+    }
+    publicNetworkAccessForIngestion: 'Enabled'
+    publicNetworkAccessForQuery: 'Enabled'
+  }
+}
+
+// 出力
+output workspaceId string = logAnalyticsWorkspace.id
+output workspaceName string = logAnalyticsWorkspace.name
+output customerId string = logAnalyticsWorkspace.properties.customerId
+```
+
+デプロイ：
+
+```bash
+az deployment group create \
+  --name "log-analytics-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/monitoring/log-analytics.bicep \
+  --parameters \
+    workspaceName=log-platform-prod-jpe-001 \
+    location=japaneast \
+    retentionInDays=90
+
+# Workspace IDを取得して環境変数に保存
+WORKSPACE_ID=$(az monitor log-analytics workspace show \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --workspace-name log-platform-prod-jpe-001 \
+  --query id -o tsv)
+
+echo "WORKSPACE_ID=$WORKSPACE_ID" >> .env
+echo "Log Analytics Workspace ID: $WORKSPACE_ID"
+```
+
+### 7.3.3 Data Collection Rule (DCR) for VM Insights
+
+VM Insights 用の DCR を作成します。これにより、VM のパフォーマンスメトリクスとプロセス情報を収集できます。
+
+ファイル `infrastructure/bicep/modules/monitoring/dcr-vm-insights.bicep` を作成：
+
+```bicep
+@description('DCRの名前')
+param dcrName string
+
+@description('デプロイ先のリージョン')
+param location string
+
+@description('Log Analytics Workspace ID')
+param workspaceId string
+
+@description('タグ')
+param tags object = {}
+
+// Data Collection Rule for VM Insights
+resource dcrVMInsights 'Microsoft.Insights/dataCollectionRules@2022-06-01' = {
+  name: dcrName
+  location: location
+  tags: tags
+  kind: 'Linux'
+  properties: {
+    description: 'Data Collection Rule for VM Insights (Performance and Processes)'
+    dataSources: {
+      performanceCounters: [
+        {
+          name: 'VMInsightsPerfCounters'
+          streams: [
+            'Microsoft-InsightsMetrics'
+          ]
+          samplingFrequencyInSeconds: 60
+          counterSpecifiers: [
+            '\\VmInsights\\DetailedMetrics'
+          ]
+        }
+      ]
+      extensions: [
+        {
+          name: 'DependencyAgentDataSource'
+          streams: [
+            'Microsoft-ServiceMap'
+          ]
+          extensionName: 'DependencyAgent'
+          extensionSettings: {}
+        }
+      ]
+    }
+    destinations: {
+      logAnalytics: [
+        {
+          name: 'VMInsightsPerf-Logs-Dest'
+          workspaceResourceId: workspaceId
+        }
+      ]
+    }
+    dataFlows: [
+      {
+        streams: [
+          'Microsoft-InsightsMetrics'
+        ]
+        destinations: [
+          'VMInsightsPerf-Logs-Dest'
+        ]
+      }
+      {
+        streams: [
+          'Microsoft-ServiceMap'
+        ]
+        destinations: [
+          'VMInsightsPerf-Logs-Dest'
+        ]
+      }
+    ]
+  }
+}
+
+output dcrId string = dcrVMInsights.id
+output dcrName string = dcrVMInsights.name
+```
+
+デプロイ：
+
+```bash
+az deployment group create \
+  --name "dcr-vm-insights-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/monitoring/dcr-vm-insights.bicep \
+  --parameters \
+    dcrName=dcr-vm-insights-prod-jpe-001 \
+    location=japaneast \
+    workspaceId="$WORKSPACE_ID"
+
+# DCR IDを取得して保存
+DCR_VM_INSIGHTS_ID=$(az monitor data-collection rule show \
+  --name dcr-vm-insights-prod-jpe-001 \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --query id -o tsv)
+
+echo "DCR_VM_INSIGHTS_ID=$DCR_VM_INSIGHTS_ID" >> .env
+echo "VM Insights DCR ID: $DCR_VM_INSIGHTS_ID"
+```
+
+### 7.3.4 Data Collection Rule (DCR) for Windows Event Logs and Syslog
+
+Windows Event ログと Linux Syslog を収集する DCR を作成します。
+
+ファイル `infrastructure/bicep/modules/monitoring/dcr-os-logs.bicep` を作成：
+
+```bicep
+@description('DCRの名前')
+param dcrName string
+
+@description('デプロイ先のリージョン')
+param location string
+
+@description('Log Analytics Workspace ID')
+param workspaceId string
+
+@description('タグ')
+param tags object = {}
+
+// Data Collection Rule for OS Logs (Windows Events + Syslog)
+resource dcrOSLogs 'Microsoft.Insights/dataCollectionRules@2022-06-01' = {
+  name: dcrName
+  location: location
+  tags: tags
+  properties: {
+    description: 'Data Collection Rule for Windows Event Logs and Linux Syslog'
+    dataSources: {
+      windowsEventLogs: [
+        {
+          name: 'WindowsEventLogsDataSource'
+          streams: [
+            'Microsoft-Event'
+          ]
+          xPathQueries: [
+            'System!*[System[(Level=1 or Level=2 or Level=3 or Level=4 or Level=0)]]'
+            'Application!*[System[(Level=1 or Level=2 or Level=3 or Level=4 or Level=0)]]'
+            'Security!*'
+          ]
+        }
+      ]
+      syslog: [
+        {
+          name: 'SyslogDataSource'
+          streams: [
+            'Microsoft-Syslog'
+          ]
+          facilityNames: [
+            'auth'
+            'authpriv'
+            'cron'
+            'daemon'
+            'kern'
+            'syslog'
+            'user'
+          ]
+          logLevels: [
+            'Alert'
+            'Critical'
+            'Debug'
+            'Emergency'
+            'Error'
+            'Info'
+            'Notice'
+            'Warning'
+          ]
+        }
+      ]
+    }
+    destinations: {
+      logAnalytics: [
+        {
+          name: 'OSLogs-Dest'
+          workspaceResourceId: workspaceId
+        }
+      ]
+    }
+    dataFlows: [
+      {
+        streams: [
+          'Microsoft-Event'
+        ]
+        destinations: [
+          'OSLogs-Dest'
+        ]
+      }
+      {
+        streams: [
+          'Microsoft-Syslog'
+        ]
+        destinations: [
+          'OSLogs-Dest'
+        ]
+      }
+    ]
+  }
+}
+
+output dcrId string = dcrOSLogs.id
+output dcrName string = dcrOSLogs.name
+```
+
+デプロイ：
+
+```bash
+az deployment group create \
+  --name "dcr-os-logs-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/monitoring/dcr-os-logs.bicep \
+  --parameters \
+    dcrName=dcr-os-logs-prod-jpe-001 \
+    location=japaneast \
+    workspaceId="$WORKSPACE_ID"
+
+# DCR IDを取得して保存
+DCR_OS_LOGS_ID=$(az monitor data-collection rule show \
+  --name dcr-os-logs-prod-jpe-001 \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --query id -o tsv)
+
+echo "DCR_OS_LOGS_ID=$DCR_OS_LOGS_ID" >> .env
+echo "OS Logs DCR ID: $DCR_OS_LOGS_ID"
+```
+
+### 7.3.5 DCR の役割と今後の活用
+
+作成した DCR は、後の章で **Azure Policy** と組み合わせることで、環境全体の VM に自動的に適用されます。
+
+**組み込みポリシー例：**
+- `Configure Windows machines to run Azure Monitor Agent and associate them to a Data Collection Rule`
+- `Configure Linux machines to run Azure Monitor Agent and associate them to a Data Collection Rule`
+
+これにより、新しく作成される VM にも自動的に Azure Monitor Agent がインストールされ、ログ収集が開始されます。
+
+---
+
+## 7.4 Log Analytics クエリの基礎
+
+### 7.4.1 KQL の基本
 
 **KQL（Kusto Query Language）**は、Log Analytics でデータをクエリする言語です。
 
@@ -159,7 +493,7 @@ AzureDiagnostics
 | limit 100
 ```
 
-### 7.3.2 よく使うクエリ例
+### 7.4.2 よく使うクエリ例
 
 ```bash
 # クエリ集ファイルを作成
@@ -232,9 +566,9 @@ EOF
 
 ---
 
-## 7.4 アラートルールの作成
+## 7.5 アラートルールの作成
 
-### 7.4.1 アクショングループの作成
+### 7.5.1 アクショングループの作成
 
 **アクショングループ**は、アラート発火時の通知先を定義します。
 
@@ -289,7 +623,7 @@ az deployment group create \
     emailAddresses='["admin@example.com","ops@example.com"]'
 ```
 
-### 7.4.2 メトリクスベースのアラート
+### 7.5.2 メトリクスベースのアラート
 
 ファイル `infrastructure/bicep/modules/monitoring/metric-alert.bicep` を作成し、以下の内容を記述します：
 
@@ -378,7 +712,7 @@ resource metricAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
 output alertRuleId string = metricAlert.id
 ```
 
-### 7.4.3 Azure Firewall の監視アラート
+### 7.5.3 Azure Firewall の監視アラート
 
 ```bash
 # Azure FirewallのリソースIDを取得
@@ -410,7 +744,7 @@ az deployment group create \
     severity=2
 ```
 
-### 7.4.4 ログベースのアラート
+### 7.5.4 ログベースのアラート
 
 ファイル `infrastructure/bicep/modules/monitoring/log-alert.bicep` を作成し、以下の内容を記述します：
 
@@ -521,9 +855,9 @@ az deployment group create \
 
 ---
 
-## 7.5 ダッシュボードの作成
+## 7.6 ダッシュボードの作成
 
-### 7.5.1 Azure ポータルでのダッシュボード作成
+### 7.6.1 Azure ポータルでのダッシュボード作成
 
 1. Azure ポータルで「Dashboard」をクリック
 2. 「+ New dashboard」→「Blank dashboard」
@@ -533,7 +867,7 @@ az deployment group create \
    - Markdown（説明）
 4. 「Done customizing」→「Save」
 
-### 7.5.2 Bicep でのダッシュボード作成
+### 7.6.2 Bicep でのダッシュボード作成
 
 ファイル `infrastructure/bicep/modules/monitoring/dashboard.bicep` を作成し、以下の内容を記述します：
 
@@ -593,9 +927,9 @@ output dashboardId string = dashboard.id
 
 ---
 
-## 7.6 Azure Automation の構築
+## 7.7 Azure Automation の構築
 
-### 7.6.1 Azure Automation とは
+### 7.7.1 Azure Automation とは
 
 **Azure Automation**は、定期的なタスクを自動化するサービスです。
 
@@ -606,7 +940,7 @@ output dashboardId string = dashboard.id
 - コンプライアンスレポートの生成
 - パッチ管理
 
-### 7.6.2 Automation Account の作成
+### 7.7.2 Automation Account の作成
 
 ファイル `infrastructure/bicep/modules/automation/automation-account.bicep` を作成し、以下の内容を記述します：
 
@@ -668,7 +1002,7 @@ az deployment group create \
     location=japaneast
 ```
 
-### 7.6.3 Runbook の例（VM の自動起動・停止）
+### 7.7.3 Runbook の例（VM の自動起動・停止）
 
 ```bash
 cat << 'EOF' > infrastructure/automation/runbooks/Start-AzureVMs.ps1
@@ -717,7 +1051,7 @@ az automation runbook publish \
   --name "Start-AzureVMs"
 ```
 
-### 7.6.4 スケジュールの作成
+### 7.7.4 スケジュールの作成
 
 ```bash
 # 平日の朝8時にVMを起動するスケジュール
@@ -741,9 +1075,9 @@ az automation job-schedule create \
 
 ---
 
-## 7.7 Application Insights の構築
+## 7.8 Application Insights の構築
 
-### 7.7.1 Application Insights とは
+### 7.8.1 Application Insights とは
 
 **Application Insights**は、アプリケーションのパフォーマンスとユーザー行動を監視する APM サービスです。
 
@@ -754,7 +1088,7 @@ az automation job-schedule create \
 - 依存関係の可視化
 - ユーザー行動の分析
 
-### 7.7.2 Application Insights Bicep モジュール
+### 7.8.2 Application Insights Bicep モジュール
 
 ファイル `infrastructure/bicep/modules/monitoring/application-insights.bicep` を作成し、以下の内容を記述します：
 
@@ -810,16 +1144,16 @@ az deployment group create \
 
 ---
 
-## 7.8 Azure Portal での確認
+## 7.9 Azure Portal での確認
 
-### 7.8.1 Azure Monitor の確認
+### 7.9.1 Azure Monitor の確認
 
 1. Azure ポータルで「Monitor」を検索
 2. 「Metrics」でリソースのメトリクスをグラフ化
 3. 「Logs」で Log Analytics クエリを実行
 4. 「Alerts」でアラートルールを確認
 
-### 7.8.2 アラートのテスト
+### 7.9.2 アラートのテスト
 
 ```bash
 # Key Vaultに意図的に失敗したアクセスを実行（アラート発火テスト）
@@ -832,13 +1166,13 @@ az keyvault secret show \
 
 ---
 
-## 7.9 Workbooks の作成
+## 7.10 Workbooks の作成
 
-### 7.9.1 Workbooks とは
+### 7.10.1 Workbooks とは
 
 **Workbooks**は、Azure Monitor データをインタラクティブなレポートとしてカスタマイズできるツールです。
 
-### 7.9.2 Workbook の作成（ポータル）
+### 7.10.2 Workbook の作成（ポータル）
 
 1. Azure ポータルで「Monitor」→「Workbooks」
 2. 「+ New」で新しい Workbook を作成
@@ -848,9 +1182,9 @@ az keyvault secret show \
 
 ---
 
-## 7.10 コスト管理
+## 7.11 コスト管理
 
-### 7.10.1 リソース別のコスト
+### 7.11.1 リソース別のコスト
 
 | リソース             | 概算月額コスト（東日本）                |
 | -------------------- | --------------------------------------- |
@@ -859,7 +1193,7 @@ az keyvault secret show \
 | Automation Account   | 実行時間により変動（500 分/月まで無料） |
 | アラート             | アラート数により変動                    |
 
-### 7.10.2 コスト削減のヒント
+### 7.11.2 コスト削減のヒント
 
 - Log Analytics の保持期間を適切に設定
 - 不要なログの収集を停止
@@ -868,7 +1202,7 @@ az keyvault secret show \
 
 ---
 
-## 7.11 Git へのコミット
+## 7.12 Git へのコミット
 
 ```bash
 git add .
@@ -887,35 +1221,43 @@ git push origin main
 
 ---
 
-## 7.12 章のまとめ
+## 7.13 章のまとめ
 
 本章で構築したもの：
 
 1. ✅ Log Analytics 基盤
 
    - Management Subscription に Log Analytics Workspace を構築
-   - Firewall、Key Vault、Bastion のログ分析
-   - KQL クエリ集の作成
+   - **VM Insights 用 Data Collection Rule (DCR)**
+   - **Windows Event Logs と Syslog 収集用 DCR**
+   - 後続の章でポリシーによる自動適用の準備完了
 
-2. ✅ アラートルール
+2. ✅ Log Analytics クエリ
+
+   - KQL クエリの基礎
+   - よく使うクエリ集の作成
+
+3. ✅ アラートルール
 
    - アクショングループ（メール通知）
    - メトリクスベースアラート（Firewall CPU）
    - ログベースアラート（Key Vault 失敗）
 
-3. ✅ Azure Automation
+4. ✅ Azure Automation
 
    - Automation Account
    - VM 自動起動 Runbook
    - スケジュール設定
 
-4. ✅ Application Insights
+5. ✅ Application Insights
    - アプリケーション監視基盤
    - Log Analytics と統合
 
 ### 重要なポイント
 
 - **可観測性の確保**: メトリクス、ログ、トレースの 3 つの柱
+- **DCR による統一的なログ収集**: VM Insights と OS ログを自動収集
+- **ポリシーとの連携準備**: 後の章で組み込みポリシーを使って VM 全体に自動適用
 - **プロアクティブな監視**: 問題が起きる前にアラート
 - **自動化**: 定期的なタスクは Automation
 - **コストの最適化**: ログの保持期間とサンプリング率
