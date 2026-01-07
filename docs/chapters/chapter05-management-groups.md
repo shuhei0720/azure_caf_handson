@@ -430,7 +430,69 @@ output sandboxMGId string = managementGroups.outputs.sandboxMGId
 
 ## 5.4 Management Groups のデプロイ
 
-### 5.4.1 Bicep ファイルの検証
+### 5.4.1 Tenant ルートレベルの権限設定
+
+Management Groups を Tenant ルートレベルで作成するには、特別な権限が必要です。
+
+#### 現在の権限を確認
+
+```bash
+# 自分のアカウント情報を確認
+az ad signed-in-user show --query '{Name:displayName, UPN:userPrincipalName, ObjectId:id}'
+```
+
+#### ステップ 1: Azure CLI で Tenant ルートアクセスを有効化
+
+**全て Azure CLI で完結します。Portal は不要です。**
+
+まず、自分のアカウントに Tenant ルートスコープ（`/`）での **User Access Administrator** ロールを付与します（`elevateAccess` 操作）。
+
+```bash
+# Tenant ルートへのアクセスを有効化（elevateAccess）
+az rest --method post --url "/providers/Microsoft.Authorization/elevateAccess?api-version=2016-07-01"
+```
+
+**出力例**:
+```json
+{}
+```
+
+空の JSON が返れば成功です。これにより、自分のアカウントに Tenant ルートスコープでの **User Access Administrator** ロールが一時的に付与されます。
+
+#### ステップ 2: Azure CLI で Owner ロールを付与
+
+次に、Tenant ルート（`/`）スコープに **Owner** ロールを付与します。
+
+```bash
+# 自分のオブジェクトIDを取得
+USER_OBJECT_ID=$(az ad signed-in-user show --query id -o tsv)
+
+# Tenant ルートスコープにOwnerロールを付与
+az role assignment create \
+  --assignee $USER_OBJECT_ID \
+  --role "Owner" \
+  --scope "/"
+```
+
+**注意事項**:
+- この操作には、前のステップで有効化した "Access management for Azure resources" が必要
+- このコマンドは Global Administrator でも、User Access Administrator ロールがないと実行できない
+- Tenant ルート（`/`）への Owner ロール付与は非常に強力な権限
+
+#### ステップ 3: 権限を確認
+
+```bash
+# ロール割り当てを確認
+az role assignment list --assignee $USER_OBJECT_ID --scope "/" --output table
+```
+
+以下の 2 つのロールが表示されれば OK です：
+- `User Access Administrator` (Portal で設定)
+- `Owner` (CLI で設定)
+
+これで Management Groups を Tenant ルートレベルでデプロイできます。
+
+### 5.4.2 Bicep ファイルの検証
 
 ```bash
 # Bicepファイルのビルド
@@ -439,7 +501,7 @@ az bicep build --file infrastructure/bicep/main-mg.bicep
 # エラーがなければJSON形式のARMテンプレートが生成される
 ```
 
-### 5.4.2 What-If 実行
+### 5.4.3 What-If 実行
 
 **重要**: Management Groups は削除が難しいため、What-If で必ず確認します。
 
@@ -478,7 +540,7 @@ Scope: /
 
 すべての Management Groups が正しく表示されることを確認します。
 
-### 5.4.3 実際のデプロイ
+### 5.4.4 実際のデプロイ
 
 ```bash
 # テナントレベルでデプロイ
@@ -493,7 +555,7 @@ az deployment tenant create \
 
 **注意**: Management Groups の作成には時間がかかる場合があります（5-10 分程度）。
 
-### 5.4.4 デプロイ結果の確認
+### 5.4.5 デプロイ結果の確認
 
 ```bash
 # デプロイの状態を確認
