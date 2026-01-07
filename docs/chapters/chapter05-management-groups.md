@@ -759,108 +759,7 @@ git push origin main
 
 ---
 
-## 5.10 Management Groups の可視化
-
-### 5.10.1 Azure Resource Graph でのクエリ
-
-Management Groups の構造をクエリで確認できます。
-
-```bash
-# Management Groups一覧を取得
-az graph query -q "ResourceContainers | where type == 'microsoft.management/managementgroups' | project name, properties.displayName, properties.details.parent.name"
-```
-
-### 5.10.2 ダイアグラムの作成
-
-Mermaid を使って、構築した Management Groups 階層を図示します。
-
-```bash
-# diagrams作成
-cat << 'EOF' > docs/diagrams/management-groups-hierarchy.md
-# Management Groups階層図
-
-本ハンズオンで構築したManagement Groups階層：
-
-\`\`\`mermaid
-graph TB
-    Root["Tenant Root Group<br/>(contoso.onmicrosoft.com)"]
-
-    Root --> Platform["contoso-platform<br/>Platform"]
-    Root --> LandingZones["contoso-landingzones<br/>Landing Zones"]
-    Root --> Sandbox["contoso-sandbox<br/>Sandbox"]
-    Root --> Decommissioned["contoso-decommissioned<br/>Decommissioned"]
-
-    Platform --> PlatformMgmt["contoso-platform-management<br/>Management"]
-    Platform --> PlatformConn["contoso-platform-connectivity<br/>Connectivity"]
-    Platform --> PlatformId["contoso-platform-identity<br/>Identity"]
-
-    LandingZones --> LZCorp["contoso-landingzones-corp<br/>Corp"]
-    LandingZones --> LZOnline["contoso-landingzones-online<br/>Online"]
-
-    Sandbox -.->|含む| CurrentSub[現在のSubscription]
-
-    style Root fill:#e1f5ff,stroke:#333,stroke-width:3px
-    style Platform fill:#fff4e1
-    style LandingZones fill:#e8f5e9
-    style Sandbox fill:#ffe8e8
-    style Decommissioned fill:#e0e0e0
-\`\`\`
-
-## 各Management Groupの役割
-
-### Root Tenant Group
-- すべてのManagement Groupsとサブスクリプションの親
-- 組織全体に適用するポリシーを設定
-
-### Platform
-- プラットフォーム基盤全体を管理
-- 集中管理されたサービスを提供
-
-#### Platform-Management
-- 監視、ログ、自動化のためのリソース
-- Log Analytics Workspace、Azure Automation等
-
-#### Platform-Connectivity
-- ネットワークHub
-- Azure Firewall、VPN Gateway、Azure Bastion等
-
-#### Platform-Identity
-- ID管理
-- Domain Controller、Azure AD Domain Services等
-
-### Landing Zones
-- アプリケーションワークロード全体
-
-#### Landing Zones-Corp
-- 内部アプリケーション
-- オンプレミスとの接続が必要
-
-#### Landing Zones-Online
-- インターネット向けアプリケーション
-- Webサイト、API等
-
-### Sandbox
-- 検証・実験環境
-- 開発者の自由な環境
-- コスト制限あり
-
-### Decommissioned
-- 廃止予定のリソース
-- 読み取り専用
-- 一定期間後に削除
-
----
-
-**作成日**: 2026年1月7日
-EOF
-
-# 確認
-cat docs/diagrams/management-groups-hierarchy.md
-```
-
----
-
-## 5.11 トラブルシューティング
+## 5.10 トラブルシューティング
 
 ### Q1: Management Groups の作成に失敗する
 
@@ -963,23 +862,24 @@ Tenant Root Group
 
 - **階層構造**: ポリシーと RBAC が上から下に継承
 - **命名規則**: ID は変更不可、Display Name は変更可能
-- **テナントスコープ**: Management Groups はテナントレベルでデプロイ Management Groups は、ランディングゾーンのガバナンスの基盤です
+- **テナントスコープ**: Management Groups はテナントレベルでデプロイ
+- Management Groups は、ランディングゾーンのガバナンスの基盤です
 
 ---
 
-## チェックリスト
+## 5.11 チェックリスト
 
 - [ ] Management Groups Bicep モジュールを作成した
 - [ ] What-If でデプロイ内容を確認した
 - [ ] Management Groups をデプロイした
 - [ ] Azure ポータルで階層構造を確認した
 - [ ] サブスクリプションを適切な Management Group に移動した
-- [ ] 階層図（Mermaid）を作成した
 - [ ] Git にコミット・プッシュした
 
 ---
 
-## 次のステップ
+## 5.12 次のステップ
+5.12 次のステップ
 
 Management Groups 階層が構築できたら、次は Subscriptions の設計と構築に進みます。
 
@@ -987,8 +887,7 @@ Management Groups 階層が構築できたら、次は Subscriptions の設計�
 
 ---
 
-## 参考リンク
-
+## 5.13
 - [Management Groups](https://docs.microsoft.com/azure/governance/management-groups/)
 - [Management Groups Bicep](https://docs.microsoft.com/azure/azure-resource-manager/bicep/deploy-to-tenant)
 - [CAF Management Groups 設計](https://docs.microsoft.com/azure/cloud-adoption-framework/ready/landing-zone/design-area/resource-org-management-groups)
