@@ -493,10 +493,11 @@ mkdir -p infrastructure/bicep/modules/common
 
 **naming.bicep の解説：**
 
-命名規則を標準化するモジュール。リソースタイプ、ワークロード、環境、リージョン、インスタンス番号から、一貫した命名パターン（{type}-{workload}-{env}-{region}-{instance}）を生成します。
+命名規則を標準化するモジュール。リソースタイプ、ワークロード、環境、リージョン、インスタンス番号から、一貫した命名パターン（{type}-{workload}-{env}-{region}-{instance}）を生成します。スコープ指定なしで、どのスコープからも呼び出し可能です。
 
 ```bicep
 // 命名規則モジュール
+// スコープ指定なし = 呼び出し元のスコープを継承
 
 @description('リソースタイプ（例: rg, vnet, afw）')
 param resourceType string
