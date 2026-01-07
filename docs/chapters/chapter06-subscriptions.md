@@ -13,7 +13,7 @@
 
 ### 6.1.1 Subscription とは
 
-**Subscription（サブスクリプション）**は：
+**Subscription（サブスクリプション）** は：
 
 - Azure リソースの論理的なコンテナ
 - **課金の単位**: 各 Subscription に独立した請求
@@ -136,65 +136,9 @@ graph TB
 
 ## 6.3 Subscription の作成
 
-### 6.3.1 Azure ポータルでの Subscription 作成
+### 6.3.1 Bicep での Subscription 作成
 
-Azure ポータルから追加のサブスクリプションを作成します。
-
-#### 手順
-
-1. [Azure ポータル](https://portal.azure.com)にアクセス
-
-2. 検索バーで「Subscriptions」を検索
-
-3. 「+ Add」（追加）をクリック
-
-4. サブスクリプションオファーを選択
-
-   - 個人アカウント: 「従量課金」（Pay-As-You-Go）
-   - 無料試用版をお持ちの場合: 従量課金への変換が求められる場合があります
-
-5. サブスクリプション名を入力
-
-以下の 4 つのサブスクリプションを作成します：
-
-**作成するサブスクリプション：**
-
-1. **sub-platform-management-prod**
-
-   - 用途: 管理・監視（Log Analytics、Azure Automation 等）
-
-2. **sub-platform-connectivity-prod**
-
-   - 用途: ネットワーク接続（Hub VNet、Azure Firewall、Bastion 等）
-
-3. **sub-platform-identity-prod**
-
-   - 用途: ID 管理（将来の Active Directory 等）
-
-4. **sub-landingzone-corp-prod**
-   - 用途: 内部アプリケーション（Spoke VNet、Container Apps 等）
-
-#### 作成後の確認
-
-```bash
-# すべてのサブスクリプションを表示
-az account list --output table
-```
-
-出力例：
-
-```
-Name                              CloudName    SubscriptionId                        State
---------------------------------  -----------  ------------------------------------  -------
-sub-platform-management-prod      AzureCloud   xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx  Enabled
-sub-platform-connectivity-prod    AzureCloud   yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy  Enabled
-sub-platform-identity-prod        AzureCloud   zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz  Enabled
-sub-landingzone-corp-prod         AzureCloud   wwwwwwww-wwww-wwww-wwww-wwwwwwwwwwww  Enabled
-```
-
-### 6.3.2 Bicep での Subscription 作成（代替手段）
-
-**IaC で管理したい場合、Bicep でサブスクリプションを作成できます。**
+Bicep を使ってインフラストラクチャをコードで管理します。
 
 #### 前提条件
 
@@ -266,7 +210,7 @@ resource subManagement 'Microsoft.Subscription/aliases@2021-10-01' = {
   name: 'sub-platform-management-prod'
   properties: {
     workload: 'Production'
-    displayName: 'Platform - Management - Production'
+    displayName: 'sub-platform-management-prod'
     billingScope: billingScope
   }
 }
@@ -277,7 +221,7 @@ resource subConnectivity 'Microsoft.Subscription/aliases@2021-10-01' = {
   name: 'sub-platform-connectivity-prod'
   properties: {
     workload: 'Production'
-    displayName: 'Platform - Connectivity - Production'
+    displayName: 'sub-platform-connectivity-prod'
     billingScope: billingScope
   }
 }
@@ -288,7 +232,7 @@ resource subIdentity 'Microsoft.Subscription/aliases@2021-10-01' = {
   name: 'sub-platform-identity-prod'
   properties: {
     workload: 'Production'
-    displayName: 'Platform - Identity - Production'
+    displayName: 'sub-platform-identity-prod'
     billingScope: billingScope
   }
 }
@@ -299,7 +243,7 @@ resource subLandingZone 'Microsoft.Subscription/aliases@2021-10-01' = {
   name: 'sub-landingzone-corp-prod'
   properties: {
     workload: 'Production'
-    displayName: 'Landing Zone - Corp - Production'
+    displayName: 'sub-landingzone-corp-prod'
     billingScope: billingScope
   }
 }
@@ -343,6 +287,39 @@ SUB_LANDINGZONE_ID=$(az deployment tenant show \
 
 - 個人アカウントでは Billing Scope の取得に制約がある場合があります
 - その場合は、ポータルから手動で作成し、ID を記録する方法を推奨します
+
+### 6.3.2 Azure ポータルでの確認
+
+デプロイ後、Azure ポータルでサブスクリプションが正しく作成されたことを確認します。
+
+1. [Azure ポータル](https://portal.azure.com)にアクセス
+
+2. 検索バーで「Subscriptions」を検索
+
+3. 以下の 4 つのサブスクリプションが表示されることを確認：
+
+   - **sub-platform-management-prod**
+   - **sub-platform-connectivity-prod**
+   - **sub-platform-identity-prod**
+   - **sub-landingzone-corp-prod**
+
+または CLI で確認：
+
+```bash
+# すべてのサブスクリプションを表示
+az account list --output table
+```
+
+出力例：
+
+```
+Name                              CloudName    SubscriptionId                        State
+--------------------------------  -----------  ------------------------------------  -------
+sub-platform-management-prod      AzureCloud   xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx  Enabled
+sub-platform-connectivity-prod    AzureCloud   yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy  Enabled
+sub-platform-identity-prod        AzureCloud   zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz  Enabled
+sub-landingzone-corp-prod         AzureCloud   wwwwwwww-wwww-wwww-wwww-wwwwwwwwwwww  Enabled
+```
 
 ### 6.3.3 Subscription ID の記録
 
