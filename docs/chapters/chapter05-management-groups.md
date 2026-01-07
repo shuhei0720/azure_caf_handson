@@ -616,10 +616,6 @@ Tenant Root Group
    - **Access control (IAM)**: ロール割り当て
    - **Settings**: 設定
 
-### 5.5.3 階層のビジュアライゼーション
-
-Management Groups のページで「Hierarchy settings」をクリックすると、階層のビジュアル表示が見られます。
-
 ---
 
 ## 5.6 Management Groups へのサブスクリプションの関連付け
