@@ -180,7 +180,7 @@ echo "Billing Scope: $BILLING_SCOPE"
 
 #### Bicep ファイルの作成
 
-Subscription 作成は時間がかかるため（10-15分/個）、**個別のファイルに分けて1つずつデプロイ**します。
+Subscription 作成は時間がかかるため（10-15 分/個）、**個別のファイルに分けて 1 つずつデプロイ**します。
 
 まず、ディレクトリを準備：
 
@@ -276,9 +276,9 @@ resource subLandingZone 'Microsoft.Subscription/aliases@2021-10-01' = {
 output subscriptionId string = subLandingZone.properties.subscriptionId
 ```
 
-#### Bicep のデプロイ（1つずつ実行）
+#### Bicep のデプロイ（1 つずつ実行）
 
-**重要**: 各デプロイは10-15分かかります。1つずつ順番に実行してください。
+**重要**: 各デプロイは 10-15 分かかります。1 つずつ順番に実行してください。
 
 ```bash
 # 1. Management Subscription
@@ -337,12 +337,9 @@ SUB_LANDINGZONE_ID=$(az deployment tenant show \
 
 echo "Landing Zone Subscription ID: $SUB_LANDINGZONE_ID"
 ```
-```
 
-**注意**:
+````
 
-- 個人アカウントでは Billing Scope の取得に制約がある場合があります
-- その場合は、ポータルから手動で作成し、ID を記録する方法を推奨します
 
 ### 6.3.2 Azure ポータルでの確認
 
@@ -364,7 +361,7 @@ echo "Landing Zone Subscription ID: $SUB_LANDINGZONE_ID"
 ```bash
 # すべてのサブスクリプションを表示
 az account list --output table
-```
+````
 
 出力例：
 
@@ -630,8 +627,6 @@ for provider in "${PROVIDERS[@]}"; do
   az provider show --namespace $provider --query "{Namespace:namespace, State:registrationState}" -o table
 done
 ```
-
-**注意**: リソースプロバイダーの登録には数分かかる場合があります。
 
 ### 6.6.4 Bicep でのリソースプロバイダー登録
 
