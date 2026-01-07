@@ -1,21 +1,25 @@
-# 第 10 章：監視・管理基盤構築
+# 第 7 章：監視・ログ基盤構築（1 日目）
 
 ## 本章の目的
 
-本章では、Azure CAF Landing Zone の監視・管理基盤を構築します。Azure Monitor、アラート、ダッシュボード、Azure Automation、Application Insights などを実装し、システムの可観測性を確保します。
+本章では、Management Subscription に監視・ログ基盤を構築します。Log Analytics Workspace、診断設定、基本的なアラートを実装し、システムの可観測性の基礎を確立します。
 
-**所要時間**: 約 3-4 時間  
-**難易度**: ⭐⭐⭐
+**所要時間**: 約 2-3 時間  
+**難易度**: ⭐⭐  
+**実施タイミング**: **1 日目**（Management Subscription 作成後）
 
 ---
 
-## 10.0 事前準備：Management Subscription の選択
+## 7.0 事前準備：Management Subscription の選択
 
-本章では、監視・管理リソース（アラート、ダッシュボード、Azure Automation 等）を **Management Subscription** にデプロイします。
+本章では、監視・ログリソースを **Management Subscription** にデプロイします。
 
 作業を開始する前に、必ず適切なサブスクリプションを選択してください：
 
 ```bash
+# 環境変数を読み込み
+source .env
+
 # Management Subscriptionに切り替え
 az account set --subscription $SUB_MANAGEMENT_ID
 
@@ -23,13 +27,13 @@ az account set --subscription $SUB_MANAGEMENT_ID
 az account show --query "{Name:name, SubscriptionId:id}" -o table
 ```
 
-**注意**: Chapter 9 で作成した Log Analytics Workspace を参照するため、同じ Management Subscription を使用します。
+**注意**: 第 6 章で作成した Management Subscription を使用します。
 
 ---
 
-## 10.1 可観測性（Observability）とは
+## 7.1 可観測性（Observability）とは
 
-### 10.1.1 可観測性の 3 つの柱
+### 7.1.1 可観測性の 3 つの柱
 
 ```mermaid
 graph TB
@@ -64,7 +68,7 @@ graph TB
     style C fill:#e8f5e9
 ```
 
-### 10.1.2 監視戦略
+### 7.1.2 監視戦略
 
 **監視すべき対象**:
 
@@ -75,9 +79,9 @@ graph TB
 
 ---
 
-## 10.2 Azure Monitor の理解
+## 7.2 Azure Monitor の理解
 
-### 10.2.1 Azure Monitor とは
+### 7.2.1 Azure Monitor とは
 
 **Azure Monitor**は、すべての Azure リソースの監視を統合するサービスです。
 
@@ -89,7 +93,7 @@ graph TB
 - 自動スケーリング
 - ダッシュボード
 
-### 10.2.2 データフロー
+### 7.2.2 データフロー
 
 ```mermaid
 graph LR
@@ -127,9 +131,9 @@ graph LR
 
 ---
 
-## 10.3 Log Analytics クエリの基礎
+## 7.3 Log Analytics クエリの基礎
 
-### 10.3.1 KQL の基本
+### 7.3.1 KQL の基本
 
 **KQL（Kusto Query Language）**は、Log Analytics でデータをクエリする言語です。
 
@@ -155,7 +159,7 @@ AzureDiagnostics
 | limit 100
 ```
 
-### 10.3.2 よく使うクエリ例
+### 7.3.2 よく使うクエリ例
 
 ```bash
 # クエリ集ファイルを作成
@@ -228,9 +232,9 @@ EOF
 
 ---
 
-## 10.4 アラートルールの作成
+## 7.4 アラートルールの作成
 
-### 10.4.1 アクショングループの作成
+### 7.4.1 アクショングループの作成
 
 **アクショングループ**は、アラート発火時の通知先を定義します。
 
@@ -285,7 +289,7 @@ az deployment group create \
     emailAddresses='["admin@example.com","ops@example.com"]'
 ```
 
-### 10.4.2 メトリクスベースのアラート
+### 7.4.2 メトリクスベースのアラート
 
 ファイル `infrastructure/bicep/modules/monitoring/metric-alert.bicep` を作成し、以下の内容を記述します：
 
@@ -374,7 +378,7 @@ resource metricAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
 output alertRuleId string = metricAlert.id
 ```
 
-### 10.4.3 Azure Firewall の監視アラート
+### 7.4.3 Azure Firewall の監視アラート
 
 ```bash
 # Azure FirewallのリソースIDを取得
@@ -406,7 +410,7 @@ az deployment group create \
     severity=2
 ```
 
-### 10.4.4 ログベースのアラート
+### 7.4.4 ログベースのアラート
 
 ファイル `infrastructure/bicep/modules/monitoring/log-alert.bicep` を作成し、以下の内容を記述します：
 
@@ -517,9 +521,9 @@ az deployment group create \
 
 ---
 
-## 10.5 ダッシュボードの作成
+## 7.5 ダッシュボードの作成
 
-### 10.5.1 Azure ポータルでのダッシュボード作成
+### 7.5.1 Azure ポータルでのダッシュボード作成
 
 1. Azure ポータルで「Dashboard」をクリック
 2. 「+ New dashboard」→「Blank dashboard」
@@ -529,7 +533,7 @@ az deployment group create \
    - Markdown（説明）
 4. 「Done customizing」→「Save」
 
-### 10.5.2 Bicep でのダッシュボード作成
+### 7.5.2 Bicep でのダッシュボード作成
 
 ファイル `infrastructure/bicep/modules/monitoring/dashboard.bicep` を作成し、以下の内容を記述します：
 
@@ -589,9 +593,9 @@ output dashboardId string = dashboard.id
 
 ---
 
-## 10.6 Azure Automation の構築
+## 7.6 Azure Automation の構築
 
-### 10.6.1 Azure Automation とは
+### 7.6.1 Azure Automation とは
 
 **Azure Automation**は、定期的なタスクを自動化するサービスです。
 
@@ -602,7 +606,7 @@ output dashboardId string = dashboard.id
 - コンプライアンスレポートの生成
 - パッチ管理
 
-### 10.6.2 Automation Account の作成
+### 7.6.2 Automation Account の作成
 
 ファイル `infrastructure/bicep/modules/automation/automation-account.bicep` を作成し、以下の内容を記述します：
 
@@ -664,7 +668,7 @@ az deployment group create \
     location=japaneast
 ```
 
-### 10.6.3 Runbook の例（VM の自動起動・停止）
+### 7.6.3 Runbook の例（VM の自動起動・停止）
 
 ```bash
 cat << 'EOF' > infrastructure/automation/runbooks/Start-AzureVMs.ps1
@@ -713,7 +717,7 @@ az automation runbook publish \
   --name "Start-AzureVMs"
 ```
 
-### 10.6.4 スケジュールの作成
+### 7.6.4 スケジュールの作成
 
 ```bash
 # 平日の朝8時にVMを起動するスケジュール
@@ -737,9 +741,9 @@ az automation job-schedule create \
 
 ---
 
-## 10.7 Application Insights の構築
+## 7.7 Application Insights の構築
 
-### 10.7.1 Application Insights とは
+### 7.7.1 Application Insights とは
 
 **Application Insights**は、アプリケーションのパフォーマンスとユーザー行動を監視する APM サービスです。
 
@@ -750,7 +754,7 @@ az automation job-schedule create \
 - 依存関係の可視化
 - ユーザー行動の分析
 
-### 10.7.2 Application Insights Bicep モジュール
+### 7.7.2 Application Insights Bicep モジュール
 
 ファイル `infrastructure/bicep/modules/monitoring/application-insights.bicep` を作成し、以下の内容を記述します：
 
@@ -806,16 +810,16 @@ az deployment group create \
 
 ---
 
-## 10.8 Azure Portal での確認
+## 7.8 Azure Portal での確認
 
-### 10.8.1 Azure Monitor の確認
+### 7.8.1 Azure Monitor の確認
 
 1. Azure ポータルで「Monitor」を検索
 2. 「Metrics」でリソースのメトリクスをグラフ化
 3. 「Logs」で Log Analytics クエリを実行
 4. 「Alerts」でアラートルールを確認
 
-### 10.8.2 アラートのテスト
+### 7.8.2 アラートのテスト
 
 ```bash
 # Key Vaultに意図的に失敗したアクセスを実行（アラート発火テスト）
@@ -828,13 +832,13 @@ az keyvault secret show \
 
 ---
 
-## 10.9 Workbooks の作成
+## 7.9 Workbooks の作成
 
-### 10.9.1 Workbooks とは
+### 7.9.1 Workbooks とは
 
 **Workbooks**は、Azure Monitor データをインタラクティブなレポートとしてカスタマイズできるツールです。
 
-### 10.9.2 Workbook の作成（ポータル）
+### 7.9.2 Workbook の作成（ポータル）
 
 1. Azure ポータルで「Monitor」→「Workbooks」
 2. 「+ New」で新しい Workbook を作成
@@ -844,9 +848,9 @@ az keyvault secret show \
 
 ---
 
-## 10.10 コスト管理
+## 7.10 コスト管理
 
-### 10.10.1 リソース別のコスト
+### 7.10.1 リソース別のコスト
 
 | リソース             | 概算月額コスト（東日本）                |
 | -------------------- | --------------------------------------- |
@@ -855,7 +859,7 @@ az keyvault secret show \
 | Automation Account   | 実行時間により変動（500 分/月まで無料） |
 | アラート             | アラート数により変動                    |
 
-### 10.10.2 コスト削減のヒント
+### 7.10.2 コスト削減のヒント
 
 - Log Analytics の保持期間を適切に設定
 - 不要なログの収集を停止
@@ -864,34 +868,34 @@ az keyvault secret show \
 
 ---
 
-## 10.11 Git へのコミット
+## 7.11 Git へのコミット
 
 ```bash
 git add .
-git commit -m "Chapter 10: Monitoring and management foundation
+git commit -m "Day 1: Monitoring and log foundation
 
-- Created comprehensive Log Analytics queries (KQL)
-- Configured action groups for alert notifications
-- Created metric-based alerts (CPU, health)
-- Created log-based alerts (access failures)
+- Created Log Analytics Workspace in Management Subscription
+- Configured comprehensive Log Analytics queries (KQL)
+- Created action groups for alert notifications
+- Created metric-based and log-based alerts
 - Deployed Azure Automation Account with sample runbooks
 - Created Application Insights for app monitoring
-- Documented dashboard creation process
-- Created monitoring Bicep modules"
+- Documented monitoring best practices"
 
 git push origin main
 ```
 
 ---
 
-## 10.12 章のまとめ
+## 7.12 章のまとめ
 
 本章で構築したもの：
 
-1. ✅ Log Analytics クエリ集
+1. ✅ Log Analytics 基盤
 
+   - Management Subscription に Log Analytics Workspace を構築
    - Firewall、Key Vault、Bastion のログ分析
-   - CPU 使用率、エラーログの監視
+   - KQL クエリ集の作成
 
 2. ✅ アラートルール
 
@@ -916,13 +920,19 @@ git push origin main
 - **自動化**: 定期的なタスクは Automation
 - **コストの最適化**: ログの保持期間とサンプリング率
 
+### 1 日目の作業完了
+
+Management Subscription の作成と監視・ログ基盤の構築が完了しました。これで、後続のリソースを監視する準備が整いました。
+
+**24 時間後に 2 日目の作業（Identity Subscription 作成とガバナンス）に進んでください。**
+
 ---
 
 ## 次のステップ
 
-監視・管理基盤が構築できたら、次はガバナンス・ポリシーの実装に進みます。
+1 日目の作業が完了しました。次は 2 日目の作業として、Identity Subscription の作成に進みます。
 
-👉 [第 11 章：ガバナンス・ポリシー実装](chapter11-governance.md)
+👉 [第 8 章：Identity Subscription 作成（2 日目）](chapter08-identity-subscription.md)
 
 ---
 
