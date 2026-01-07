@@ -444,13 +444,32 @@ az rest --method post --url "/providers/Microsoft.Authorization/elevateAccess?ap
 ```
 
 **出力**:
+
 ```json
 {}
 ```
 
 空の JSON が返れば成功です。
 
-#### ステップ 2: Tenant スコープに Owner ロールを付与
+#### ステップ 2: トークンを更新（重要）
+
+`elevateAccess` で付与された権限を反映させるため、**必ずログアウト・ログインしてトークンを更新**してください。
+
+```bash
+# ログアウト
+az logout
+
+# 再ログイン
+az login
+```
+
+ログイン後、正しいサブスクリプションが選択されていることを確認：
+
+```bash
+az account show
+```
+
+#### ステップ 3: Tenant スコープに Owner ロールを付与
 
 次に、Tenant スコープ (`/`) に Owner ロールを自分に割り当てます。
 
@@ -465,9 +484,12 @@ az role assignment create \
   --scope "/"
 ```
 
-#### ステップ 3: 権限を確認
+#### ステップ 4: 権限を確認
 
 ```bash
+# 自分のオブジェクトIDを再取得（ログインし直したため）
+USER_OBJECT_ID=$(az ad signed-in-user show --query id -o tsv)
+
 # ロール割り当てを確認
 az role assignment list \
   --assignee $USER_OBJECT_ID \
