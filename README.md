@@ -1,0 +1,185 @@
+# Azure CAF ランディングゾーン 完全ハンズオン
+
+## 概要
+
+このリポジトリは、Microsoft Cloud Adoption Framework (CAF) に基づいた、Azure ランディングゾーンアーキテクチャの完全なハンズオン教材です。Azure 初心者が、実際の企業環境で使用される本格的なランディングゾーンを、ゼロから構築できるように設計されています。
+
+## 学習目標
+
+本ハンズオンを完了することで、以下のスキルと知識を習得できます：
+
+- Microsoft CAF のランディングゾーンアーキテクチャの完全な理解
+- エンタープライズグレードの Azure 環境の設計と構築
+- Infrastructure as Code (IaC) を使用したインフラ管理
+- CI/CD パイプラインによる自動デプロイ
+- Azure のガバナンス、セキュリティ、コンプライアンスの実装
+- Hub-Spoke ネットワークトポロジーの構築
+- Azure Policy を使用した組織ルールの適用
+- 実際のアプリケーション（Next.js）のデプロイと運用
+
+## 前提条件
+
+### 必要なもの
+
+- 新規作成した Azure アカウント（無料試用版でも可）
+- GitHub アカウント
+- GitHub Codespaces（このリポジトリで使用）
+- 学習意欲と時間（目安：40-60 時間）
+
+### 事前知識
+
+必須ではありませんが、以下の知識があると理解が深まります：
+
+- クラウドコンピューティングの基本概念
+- ネットワークの基礎知識
+- Git/GitHub の基本操作
+
+## ハンズオンの進め方
+
+1. このリポジトリをフォークまたはクローン
+2. GitHub Codespaces で開発環境を起動
+3. [ハンズオン本編](docs/handson-main.md) に従って順番に作業
+4. 各章を完了したら、Git でコミット・プッシュ
+5. Azure ポータルで動作確認
+
+## 構成内容
+
+### ドキュメント構成
+
+```
+docs/
+├── handson-main.md                    # メインハンズオン文書（全体の目次）
+└── chapters/                          # 各章の詳細ハンズオン
+    ├── chapter01-introduction.md      # 第1章：イントロダクションとCAF概要
+    ├── chapter02-prerequisites.md     # 第2章：前提条件と環境準備
+    ├── chapter03-caf-overview.md      # 第3章：CAFランディングゾーン詳細
+    ├── chapter04-setup.md             # 第4章：Azure環境のセットアップ
+    ├── chapter05-management-groups.md # 第5章：Management Groups設計・構築
+    ├── chapter06-subscriptions.md     # 第6章：Subscriptions設計・構築
+    ├── chapter07-identity.md          # 第7章：Identity & Access Management
+    ├── chapter08-networking-hub.md    # 第8章：Hub Network構築
+    ├── chapter09-security.md          # 第9章：セキュリティ基盤構築
+    ├── chapter10-monitoring.md        # 第10章：監視・管理基盤構築
+    ├── chapter11-governance.md        # 第11章：ガバナンス・ポリシー実装
+    ├── chapter12-cicd.md              # 第12章：CI/CDパイプライン構築
+    ├── chapter13-landing-zone.md      # 第13章：Landing Zone（Spoke）構築
+    ├── chapter14-application.md       # 第14章：アプリケーション開発・デプロイ
+    └── chapter15-conclusion.md        # 第15章：まとめと次のステップ
+```
+
+### インフラストラクチャ構成
+
+```
+infrastructure/
+├── bicep/                    # Bicep IaCテンプレート
+│   ├── main.bicep           # メインデプロイメント
+│   ├── parameters/          # パラメータファイル
+│   └── modules/             # 再利用可能なモジュール
+│       ├── management-groups/
+│       ├── networking/
+│       ├── security/
+│       ├── monitoring/
+│       └── landing-zone/
+└── policies/                # Azure Policyの定義
+    ├── definitions/
+    ├── initiatives/
+    └── assignments/
+```
+
+### アプリケーション
+
+```
+app/                         # サンプルNext.jsアプリケーション
+├── src/
+├── public/
+└── package.json
+```
+
+## アーキテクチャ概要
+
+本ハンズオンで構築するランディングゾーンアーキテクチャ：
+
+```
+Root Management Group
+├── Platform
+│   ├── Management (監視・ログ)
+│   ├── Connectivity (Hub Network)
+│   └── Identity (ID管理)
+├── Landing Zones
+│   ├── Corp (内部アプリケーション用)
+│   └── Online (インターネット向けアプリ用)
+├── Sandbox (検証環境)
+└── Decommissioned (廃止予定)
+```
+
+詳細なアーキテクチャ図は各章で提示します。
+
+## 学習の流れ
+
+### Phase 1: 基礎理解（第 1-4 章）
+
+- CAF とランディングゾーンの概念理解
+- Azure 環境の準備
+- 開発環境のセットアップ
+
+### Phase 2: プラットフォーム構築（第 5-10 章）
+
+- Management Groups の階層構造作成
+- ネットワーク Hub の構築
+- セキュリティと監視基盤の実装
+
+### Phase 3: ガバナンスと自動化（第 11-12 章）
+
+- Azure Policy の実装
+- CI/CD パイプラインの構築
+- Infrastructure as Code の完成
+
+### Phase 4: アプリケーション実装（第 13-15 章）
+
+- Landing Zone（Spoke）の構築
+- Next.js アプリケーションの開発
+- デプロイと運用
+
+## 重要な注意事項
+
+### コスト管理
+
+本ハンズオンで作成するリソースには、Azure の利用料金が発生します：
+
+- **推定月額コスト**: $50-150（使用状況により変動）
+- 各章の終わりでリソースを削除する手順も記載しています
+- 不要なリソースは速やかに削除してください
+
+### セキュリティ
+
+- **機密情報（パスワード、キー、トークンなど）は絶対に Git にコミットしないこと**
+- `.gitignore` ファイルを適切に設定
+- Azure Key Vault を使用した機密情報管理を実践
+
+### トラブルシューティング
+
+各章にトラブルシューティングセクションがあります。問題が発生した場合は、該当箇所を参照してください。
+
+## サポート
+
+質問や問題が発生した場合：
+
+1. 各章の「よくある質問」セクションを確認
+2. GitHub の Issues で質問
+3. Azure の公式ドキュメントを参照
+
+## ライセンス
+
+このプロジェクトは MIT ライセンスの下で公開されています。
+
+## 貢献
+
+改善提案やバグ報告は、Pull Request または Issues でお願いします。
+
+## はじめましょう
+
+準備ができたら、[ハンズオン本編](docs/handson-main.md)から開始してください。
+
+---
+
+**最終更新**: 2026 年 1 月 7 日
