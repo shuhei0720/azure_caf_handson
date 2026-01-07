@@ -203,24 +203,7 @@ Bicep CLI version 0.24.24
 az bicep upgrade
 ```
 
-### 2.3.3 PowerShell（オプション）
-
-Linux ベースの codespaces では、bash をデフォルトで使用しますが、PowerShell も利用可能です。
-
-```bash
-pwsh --version
-```
-
-PowerShell を使用する場合は、Az PowerShell モジュールをインストール：
-
-```powershell
-pwsh
-Install-Module -Name Az -Repository PSGallery -Force -AllowClobber
-```
-
-本ハンズオンでは、主に bash と Azure CLI を使用します。
-
-### 2.3.4 Git
+### 2.3.3 Git
 
 Git は既にインストールされています。
 
@@ -245,7 +228,7 @@ git remote -v
 
 リポジトリの URL が表示されることを確認します。
 
-### 2.3.5 Node.js と npm
+### 2.3.4 Node.js と npm
 
 アプリケーション開発に必要です。
 
