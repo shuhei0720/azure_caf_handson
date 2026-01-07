@@ -237,7 +237,7 @@ mkdir -p infrastructure/bicep/modules/rbac
 
 **role-assignments.bicep の解説：**
 
-Management GroupレベルでRBACロールを割り当てるモジュール。ロール定義ID、プリンシパルID（ユーザー、グループ、サービスプリンシパル）を指定して使用します。
+Management Group レベルで RBAC ロールを割り当てるモジュール。ロール定義 ID、プリンシパル ID（ユーザー、グループ、サービスプリンシパル）を指定して使用します。
 
 ```bicep
 targetScope = 'managementGroup'

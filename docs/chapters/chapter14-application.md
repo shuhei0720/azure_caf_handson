@@ -9,6 +9,24 @@
 
 ---
 
+## 14.0 事前準備：Landing Zone Subscription の確認
+
+本章では、Chapter 13で構築したLanding Zoneにアプリケーションをデプロイします。
+
+作業を開始する前に、Landing Zone Subscriptionが選択されていることを確認してください：
+
+```bash
+# 現在のサブスクリプションを確認
+az account show --query "{Name:name, SubscriptionId:id}" -o table
+
+# 異なる場合は切り替え
+az account set --subscription $SUB_LANDINGZONE_ID
+```
+
+**注意**: Chapter 13と同じSubscriptionを使用することで、Container Apps Environmentやデータベースにアクセスできます。
+
+---
+
 ## 14.1 アプリケーションアーキテクチャ
 
 ### 14.1.1 3 層アーキテクチャ
@@ -758,8 +776,13 @@ docker push acrcafapp1prodjpe001.azurecr.io/task-manager:v1.0.0
 
 ### 14.7.2 Container App Bicep モジュール
 
-```bash
-cat << 'EOF' > infrastructure/bicep/modules/compute/container-app.bicep
+ファイル `infrastructure/bicep/modules/compute/container-app.bicep` を作成し、以下の内容を記述します：
+
+**container-app.bicep の解説：**
+
+Container App を作成し、Container Apps Environment にデプロイします。Ingress を設定し、Container Registry からイメージを取得、環境変数を設定してアプリケーションを実行します。System-assigned Managed Identity を使用します。
+
+```bicep
 @description('Container Appの名前')
 param appName string
 
@@ -828,7 +851,6 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
 output appId string = containerApp.id
 output appName string = containerApp.name
 output appUrl string = containerApp.properties.configuration.ingress.fqdn
-EOF
 ```
 
 ### 14.7.3 Container App のデプロイ

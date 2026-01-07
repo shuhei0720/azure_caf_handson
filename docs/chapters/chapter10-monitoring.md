@@ -9,6 +9,24 @@
 
 ---
 
+## 10.0 事前準備：Management Subscription の選択
+
+本章では、監視・管理リソース（アラート、ダッシュボード、Azure Automation 等）を **Management Subscription** にデプロイします。
+
+作業を開始する前に、必ず適切なサブスクリプションを選択してください：
+
+```bash
+# Management Subscriptionに切り替え
+az account set --subscription $SUB_MANAGEMENT_ID
+
+# 現在のサブスクリプションを確認
+az account show --query "{Name:name, SubscriptionId:id}" -o table
+```
+
+**注意**: Chapter 9 で作成した Log Analytics Workspace を参照するため、同じ Management Subscription を使用します。
+
+---
+
 ## 10.1 可観測性（Observability）とは
 
 ### 10.1.1 可観測性の 3 つの柱
@@ -254,8 +272,9 @@ resource actionGroup 'Microsoft.Insights/actionGroups@2023-01-01' = {
 // 出力
 output actionGroupId string = actionGroup.id
 output actionGroupName string = actionGroup.name
-EOF
+```
 
+```bash
 # デプロイ
 az deployment group create \
   --name "action-group-deployment-$(date +%Y%m%d-%H%M%S)" \
@@ -353,7 +372,6 @@ resource metricAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
 }
 
 output alertRuleId string = metricAlert.id
-EOF
 ```
 
 ### 10.4.3 Azure Firewall の監視アラート
@@ -394,7 +412,7 @@ az deployment group create \
 
 **log-alert.bicep の解説：**
 
-KQLクエリベースのアラートルールを作成します。Log Analytics Workspaceのログデータを分析し、特定の条件（例：アクセス失敗が5回以上）でアラートを発火します。
+KQL クエリベースのアラートルールを作成します。Log Analytics Workspace のログデータを分析し、特定の条件（例：アクセス失敗が 5 回以上）でアラートを発火します。
 
 ```bicep
 @description('アラートルールの名前')
@@ -465,8 +483,9 @@ resource logAlert 'Microsoft.Insights/scheduledQueryRules@2023-03-15-preview' = 
 }
 
 output logAlertId string = logAlert.id
-EOF
+```
 
+```bash
 # Key Vaultのアクセス失敗を監視するアラート
 LOG_WORKSPACE_ID=$(az monitor log-analytics workspace show \
   --resource-group rg-platform-management-prod-jpe-001 \
@@ -516,7 +535,7 @@ az deployment group create \
 
 **dashboard.bicep の解説：**
 
-Azure PortalダッシュボードをBicepで作成します。Markdownパーツを含むダッシュボードを定義し、CAF Landing Zoneの主要なメトリクスを監視できるようにします。
+Azure Portal ダッシュボードを Bicep で作成します。Markdown パーツを含むダッシュボードを定義し、CAF Landing Zone の主要なメトリクスを監視できるようにします。
 
 ```bicep
 @description('ダッシュボードの名前')
@@ -566,7 +585,6 @@ resource dashboard 'Microsoft.Portal/dashboards@2020-09-01-preview' = {
 }
 
 output dashboardId string = dashboard.id
-EOF
 ```
 
 ---
@@ -590,7 +608,7 @@ EOF
 
 **automation-account.bicep の解説：**
 
-Azure Automation Accountを作成し、System-assigned Managed Identityを有効化します。定期的なタスク（VMの起動・停止等）を自動化するための基盤として機能します。
+Azure Automation Account を作成し、System-assigned Managed Identity を有効化します。定期的なタスク（VM の起動・停止等）を自動化するための基盤として機能します。
 
 ```bicep
 @description('Automation Accountの名前')
@@ -633,8 +651,9 @@ resource managedIdentity 'Microsoft.Automation/automationAccounts@2023-11-01' = 
 output automationAccountId string = automationAccount.id
 output automationAccountName string = automationAccount.name
 output principalId string = managedIdentity.identity.principalId
-EOF
+```
 
+```bash
 # デプロイ
 az deployment group create \
   --name "automation-account-deployment-$(date +%Y%m%d-%H%M%S)" \
@@ -737,7 +756,7 @@ az automation job-schedule create \
 
 **application-insights.bicep の解説：**
 
-Application Insightsを作成し、Log Analytics Workspaceと統合します。アプリケーションのパフォーマンスとユーザー行動を監視するAPMサービスです。
+Application Insights を作成し、Log Analytics Workspace と統合します。アプリケーションのパフォーマンスとユーザー行動を監視する APM サービスです。
 
 ```bicep
 @description('Application Insightsの名前')
@@ -771,8 +790,9 @@ output appInsightsId string = appInsights.id
 output appInsightsName string = appInsights.name
 output instrumentationKey string = appInsights.properties.InstrumentationKey
 output connectionString string = appInsights.properties.ConnectionString
-EOF
+```
 
+```bash
 # デプロイ
 az deployment group create \
   --name "app-insights-deployment-$(date +%Y%m%d-%H%M%S)" \

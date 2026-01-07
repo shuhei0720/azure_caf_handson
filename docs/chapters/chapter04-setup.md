@@ -161,7 +161,7 @@ az role assignment list \
 
 機密情報を環境変数で管理します。
 
-※ この時点では、現在 Azure アカウントで使用できるサブスクリプション（無料トライアルまたは既存のサブスクリプション）を使用します。専用のサブスクリプション（management、connectivityなど）は第6章で作成します。
+※ この時点では、現在 Azure アカウントで使用できるサブスクリプション（無料トライアルまたは既存のサブスクリプション）を使用します。専用のサブスクリプション（management、connectivity など）は第 6 章で作成します。
 
 ```bash
 # .envファイルを作成（このファイルはGitにコミットしません）
@@ -234,7 +234,7 @@ mkdir -p infrastructure/bicep/test
 
 **test-rg.bicep の解説：**
 
-サブスクリプションレベルでリソースグループを作成するテンプレート。タグ付けのベストプラクティスとして、Environment、Project、ManagedBy、CreatedDateを設定しています。
+サブスクリプションレベルでリソースグループを作成するテンプレート。タグ付けのベストプラクティスとして、Environment、Project、ManagedBy、CreatedDate を設定しています。
 
 ```bicep
 // テスト用リソースグループ作成
@@ -417,7 +417,7 @@ mkdir -p infrastructure/bicep/parameters
 
 **common.parameters.json の解説：**
 
-共通パラメータファイル。会社プレフィックス、デフォルトリージョン、共通タグを定義しており、すべてのBicepデプロイで再利用されます。
+共通パラメータファイル。会社プレフィックス、デフォルトリージョン、共通タグを定義しており、すべての Bicep デプロイで再利用されます。
 
 ```json
 {
@@ -516,7 +516,7 @@ output name string = resourceName
 
 **test-naming.bicep の解説：**
 
-命名規則モジュールを実際に使用してリソースグループを作成するテスト。モジュールから生成された名前が正しいかWhat-Ifで確認できます。
+命名規則モジュールを実際に使用してリソースグループを作成するテスト。モジュールから生成された名前が正しいか What-If で確認できます。
 
 ```bicep
 targetScope = 'subscription'

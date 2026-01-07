@@ -125,10 +125,10 @@ graph TB
 
 **本ハンズオンでは、CAF のベストプラクティスに従い、役割ごとに専用のサブスクリプションを作成します**：
 
-- **sub-platform-management-prod**: 管理・監視用（Log Analytics、Automation等）
-- **sub-platform-connectivity-prod**: ネットワーク接続用（Hub VNet、Firewall、Bastion等）
-- **sub-platform-identity-prod**: ID管理用（将来の拡張用）
-- **sub-landingzone-corp-prod**: 内部アプリケーション用（Spoke VNet、Container Apps等）
+- **sub-platform-management-prod**: 管理・監視用（Log Analytics、Automation 等）
+- **sub-platform-connectivity-prod**: ネットワーク接続用（Hub VNet、Firewall、Bastion 等）
+- **sub-platform-identity-prod**: ID 管理用（将来の拡張用）
+- **sub-landingzone-corp-prod**: 内部アプリケーション用（Spoke VNet、Container Apps 等）
 
 これにより、本番環境と同じ構成で学習できます。
 
@@ -149,6 +149,7 @@ Azure ポータルから追加のサブスクリプションを作成します�
 3. 「+ Add」（追加）をクリック
 
 4. サブスクリプションオファーを選択
+
    - 個人アカウント: 「従量課金」（Pay-As-You-Go）
    - 無料試用版をお持ちの場合: 従量課金への変換が求められる場合があります
 
@@ -159,16 +160,19 @@ Azure ポータルから追加のサブスクリプションを作成します�
 **作成するサブスクリプション：**
 
 1. **sub-platform-management-prod**
-   - 用途: 管理・監視（Log Analytics、Azure Automation等）
+
+   - 用途: 管理・監視（Log Analytics、Azure Automation 等）
 
 2. **sub-platform-connectivity-prod**
-   - 用途: ネットワーク接続（Hub VNet、Azure Firewall、Bastion等）
+
+   - 用途: ネットワーク接続（Hub VNet、Azure Firewall、Bastion 等）
 
 3. **sub-platform-identity-prod**
-   - 用途: ID管理（将来の Active Directory 等）
+
+   - 用途: ID 管理（将来の Active Directory 等）
 
 4. **sub-landingzone-corp-prod**
-   - 用途: 内部アプリケーション（Spoke VNet、Container Apps等）
+   - 用途: 内部アプリケーション（Spoke VNet、Container Apps 等）
 
 #### 作成後の確認
 
@@ -335,9 +339,10 @@ SUB_LANDINGZONE_ID=$(az deployment tenant show \
   --query properties.outputs.landingZoneSubscriptionId.value -o tsv)
 ```
 
-**注意**: 
+**注意**:
+
 - 個人アカウントでは Billing Scope の取得に制約がある場合があります
-- その場合は、ポータルから手動で作成し、IDを記録する方法を推奨します
+- その場合は、ポータルから手動で作成し、ID を記録する方法を推奨します
 
 ### 6.3.3 Subscription ID の記録
 
@@ -495,7 +500,7 @@ Subscription レベルのタグは、Bicep でも設定できます：
 
 **tags.bicep の解説：**
 
-Subscriptionレベルでタグを設定するBicepモジュール。タグはResource Groupsに継承され、コスト管理やレポート作成に利用されます。
+Subscription レベルでタグを設定する Bicep モジュール。タグは Resource Groups に継承され、コスト管理やレポート作成に利用されます。
 
 ```bicep
 targetScope = 'subscription'
@@ -514,26 +519,28 @@ resource tagResource 'Microsoft.Resources/tags@2022-09-01' = {
 
 output appliedTags object = tagResource.properties.tags
 ```
+
 {
-  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
-  "contentVersion": "1.0.0.0",
-  "parameters": {
-    "tags": {
-      "value": {
-        "Environment": "Production",
-        "CostCenter": "IT-001",
-        "BusinessUnit": "IT",
-        "Application": "LandingZone",
-        "Criticality": "High",
-        "DataClassification": "Internal",
-        "ManagedBy": "Bicep",
-        "Project": "CAF-Landing-Zone"
-      }
-    }
-  }
+"$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+"contentVersion": "1.0.0.0",
+"parameters": {
+"tags": {
+"value": {
+"Environment": "Production",
+"CostCenter": "IT-001",
+"BusinessUnit": "IT",
+"Application": "LandingZone",
+"Criticality": "High",
+"DataClassification": "Internal",
+"ManagedBy": "Bicep",
+"Project": "CAF-Landing-Zone"
+}
+}
+}
 }
 EOF
-```
+
+````
 
 ---
 
@@ -551,7 +558,7 @@ az provider list --query "[?registrationState=='Registered'].{Namespace:namespac
 
 # すべてのリソースプロバイダーと状態を確認
 az provider list --query "[].{Namespace:namespace, State:registrationState}" -o table
-```
+````
 
 ### 6.6.3 必要なリソースプロバイダーの登録
 
@@ -599,7 +606,7 @@ done
 
 **resource-providers.bicep の解説：**
 
-リソースプロバイダー登録用のBicepファイル。注記：Bicepではリソースプロバイダーを直接登録できないため、Azure CLIまたはPowerShellを使用してください。このファイルは必要なプロバイダーのリストをドキュメントとして保持します。
+リソースプロバイダー登録用の Bicep ファイル。注記：Bicep ではリソースプロバイダーを直接登録できないため、Azure CLI または PowerShell を使用してください。このファイルは必要なプロバイダーのリストをドキュメントとして保持します。
 
 ```bicep
 targetScope = 'subscription'

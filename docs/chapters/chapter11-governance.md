@@ -438,7 +438,7 @@ az policy assignment create \
 
 **policy-definition.bicep の解説：**
 
-Management GroupレベルでカスタムAzure Policy定義を作成するモジュールです。ポリシー名、ルール、パラメータを指定して、組織固有のガバナンスルールを実装できます。
+Management Group レベルでカスタム Azure Policy 定義を作成するモジュールです。ポリシー名、ルール、パラメータを指定して、組織固有のガバナンスルールを実装できます。
 
 ```bicep
 targetScope = 'managementGroup'
@@ -472,7 +472,6 @@ resource policyDefinition 'Microsoft.Authorization/policyDefinitions@2021-06-01'
 }
 
 output policyDefinitionId string = policyDefinition.id
-EOF
 ```
 
 ### 11.6.2 Policy Assignment Bicep モジュール
@@ -481,7 +480,7 @@ EOF
 
 **policy-assignment.bicep の解説：**
 
-Management GroupレベルでAzure Policyを割り当てるモジュールです。ポリシー定義IDとパラメータを指定し、特定のスコープにポリシーを適用します。
+Management Group レベルで Azure Policy を割り当てるモジュールです。ポリシー定義 ID とパラメータを指定し、特定のスコープにポリシーを適用します。
 
 ```bicep
 targetScope = 'managementGroup'
@@ -513,7 +512,6 @@ resource policyAssignment 'Microsoft.Authorization/policyAssignments@2022-06-01'
 }
 
 output assignmentId string = policyAssignment.id
-EOF
 ```
 
 ---

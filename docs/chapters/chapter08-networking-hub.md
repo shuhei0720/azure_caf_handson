@@ -9,6 +9,24 @@
 
 ---
 
+## 8.0 事前準備：Connectivity Subscription の選択
+
+本章では、Hub Network リソース（Hub VNet、Azure Firewall、Azure Bastion 等）を **Connectivity Subscription** にデプロイします。
+
+作業を開始する前に、必ず適切なサブスクリプションを選択してください：
+
+```bash
+# Connectivity Subscriptionに切り替え
+az account set --subscription $SUB_CONNECTIVITY_ID
+
+# 現在のサブスクリプションを確認
+az account show --query "{Name:name, SubscriptionId:id}" -o table
+```
+
+**重要**: この確認を怠ると、誤ったサブスクリプションにリソースがデプロイされ、CAF の設計原則に反する構成になります。
+
+---
+
 ## 8.1 Hub-Spoke ネットワークトポロジーの理解
 
 ### 8.1.1 Hub-Spoke とは
@@ -131,7 +149,7 @@ mkdir -p infrastructure/bicep/modules/networking
 
 **hub-vnet.bicep の解説：**
 
-Hub VNetを作成し、GatewaySubnet、AzureFirewallSubnet、AzureBastionSubnet、ManagementSubnetの4つのサブネットを定義します。Management Subnet用のNSGでは、BastionからのRDP/SSHアクセスのみを許可します。
+Hub VNet を作成し、GatewaySubnet、AzureFirewallSubnet、AzureBastionSubnet、ManagementSubnet の 4 つのサブネットを定義します。Management Subnet 用の NSG では、Bastion からの RDP/SSH アクセスのみを許可します。
 
 ```bicep
 @description('Hub VNetの名前')
@@ -246,7 +264,6 @@ output gatewaySubnetId string = hubVNet.properties.subnets[0].id
 output firewallSubnetId string = hubVNet.properties.subnets[1].id
 output bastionSubnetId string = hubVNet.properties.subnets[2].id
 output managementSubnetId string = hubVNet.properties.subnets[3].id
-EOF
 ```
 
 ### 8.3.3 Hub VNet のデプロイ
@@ -302,13 +319,13 @@ az deployment group create \
 - 脅威インテリジェンス
 - IDPS（侵入検知・防止）
 
-### 8.4.2 Public IP の作成
+### 8.4.2 Firewall Bicep モジュールの作成
 
 ファイル `infrastructure/bicep/modules/networking/firewall.bicep` を作成し、以下の内容を記述します：
 
 **firewall.bicep の解説：**
 
-Azure Firewallを構築し、Firewall Policyを作成、Network Rule（HTTP/HTTPS、DNS）とApplication Rule（Azureサービスへのアクセス）を設定します。脅威インテリジェンス機能を有効化し、Public IPを割り当てます。
+Azure Firewall を構築し、Firewall Policy を作成、Network Rule（HTTP/HTTPS、DNS）と Application Rule（Azure サービスへのアクセス）を設定します。脅威インテリジェンス機能を有効化し、Public IP を割り当てます。
 
 ```bicep
 @description('Azure Firewallの名前')
@@ -491,7 +508,6 @@ output firewallName string = firewall.name
 output firewallPrivateIP string = firewall.properties.ipConfigurations[0].properties.privateIPAddress
 output firewallPublicIP string = firewallPublicIP.properties.ipAddress
 output firewallPolicyId string = firewallPolicy.id
-EOF
 ```
 
 ### 8.4.3 Firewall のデプロイ
@@ -558,7 +574,7 @@ az deployment group create \
 
 **bastion.bicep の解説：**
 
-Azure Bastionを構築し、ブラウザベースの安全なRDP/SSHアクセスを提供します。Standard SKUを使用し、Public IPを割り当て、Bastion Subnetにデプロイします。
+Azure Bastion を構築し、ブラウザベースの安全な RDP/SSH アクセスを提供します。Standard SKU を使用し、Public IP を割り当て、Bastion Subnet にデプロイします。
 
 ```bicep
 @description('Azure Bastionの名前')
@@ -623,7 +639,6 @@ resource bastion 'Microsoft.Network/bastionHosts@2023-05-01' = {
 output bastionId string = bastion.id
 output bastionName string = bastion.name
 output bastionPublicIP string = bastionPublicIP.properties.ipAddress
-EOF
 ```
 
 ### 8.5.3 Bastion のデプロイ
@@ -673,7 +688,7 @@ az deployment group create \
 
 **route-table.bicep の解説：**
 
-Route Tableを作成し、デフォルトルート（0.0.0.0/0）とSpoke VNetへのルートを設定します。すべてのトラフィックがAzure Firewallを経由するように、nextHopTypeをVirtualApplianceに設定します。
+Route Table を作成し、デフォルトルート（0.0.0.0/0）と Spoke VNet へのルートを設定します。すべてのトラフィックが Azure Firewall を経由するように、nextHopType を VirtualAppliance に設定します。
 
 ```bicep
 @description('Route Tableの名前')
@@ -726,7 +741,6 @@ resource routeTable 'Microsoft.Network/routeTables@2023-05-01' = {
 // 出力
 output routeTableId string = routeTable.id
 output routeTableName string = routeTable.name
-EOF
 ```
 
 ---

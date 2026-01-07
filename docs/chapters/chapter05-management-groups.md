@@ -201,7 +201,7 @@ touch infrastructure/bicep/modules/management-groups/main.bicep
 
 **main.bicep の解説：**
 
-CAF推奨の階層構造（Platform、Landing Zones、Sandbox、Decommissioned）を持つManagement Groupsを作成します。各Management Groupに説明メタデータを設定し、親子関係を明確に定義します。
+CAF 推奨の階層構造（Platform、Landing Zones、Sandbox、Decommissioned）を持つ Management Groups を作成します。各 Management Group に説明メタデータを設定し、親子関係を明確に定義します。
 
 ```bicep
 // Management Groups階層の作成
@@ -383,7 +383,7 @@ output decommissionedMGId string = decommissionedMG.id
 
 **management-groups.parameters.json の解説：**
 
-Management Groupsデプロイ用のパラメータファイル。会社プレフィックスを指定し、この値がすべてのManagement Group名に使用されます。
+Management Groups デプロイ用のパラメータファイル。会社プレフィックスを指定し、この値がすべての Management Group 名に使用されます。
 
 ```json
 {
@@ -399,9 +399,13 @@ Management Groupsデプロイ用のパラメータファイル。会社プレフ
 
 ### 5.3.3 デプロイ用メイン Bicep ファイルの作成
 
-```bash
-# メインエントリポイントを作成
-cat << 'EOF' > infrastructure/bicep/main-mg.bicep
+ファイル `infrastructure/bicep/main-mg.bicep` を作成し、以下の内容を記述します：
+
+**main-mg.bicep の解説：**
+
+Management Groups デプロイのエントリポイント。テナントスコープでモジュールを呼び出し、すべてのManagement Groupsを一括作成します。
+
+```bicep
 // Management Groupsデプロイのメインファイル
 targetScope = 'tenant'
 
@@ -420,10 +424,6 @@ module managementGroups './modules/management-groups/main.bicep' = {
 output platformMGId string = managementGroups.outputs.platformMGId
 output landingZonesMGId string = managementGroups.outputs.landingZonesMGId
 output sandboxMGId string = managementGroups.outputs.sandboxMGId
-EOF
-
-# 確認
-cat infrastructure/bicep/main-mg.bicep
 ```
 
 ---

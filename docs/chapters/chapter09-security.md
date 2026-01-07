@@ -9,6 +9,24 @@
 
 ---
 
+## 9.0 事前準備：Management Subscription の選択
+
+本章では、セキュリティ・監視リソース（Log Analytics Workspace、Key Vault 等）を **Management Subscription** にデプロイします。
+
+作業を開始する前に、必ず適切なサブスクリプションを選択してください：
+
+```bash
+# Management Subscriptionに切り替え
+az account set --subscription $SUB_MANAGEMENT_ID
+
+# 現在のサブスクリプションを確認
+az account show --query "{Name:name, SubscriptionId:id}" -o table
+```
+
+**重要**: Log Analytics Workspace や Key Vault は管理・監視の中核となるため、必ず Management Subscription に配置してください。
+
+---
+
 ## 9.1 ゼロトラストセキュリティモデル
 
 ### 9.1.1 ゼロトラストとは
@@ -118,7 +136,7 @@ az security contact create \
 
 **defender.bicep の解説：**
 
-Microsoft Defender for Cloudの複数のPlan（VirtualMachines、AppServices、StorageAccounts、SqlServers、Containers、KeyVaults）を有効化し、セキュリティ連絡先を設定します。
+Microsoft Defender for Cloud の複数の Plan（VirtualMachines、AppServices、StorageAccounts、SqlServers、Containers、KeyVaults）を有効化し、セキュリティ連絡先を設定します。
 
 ```bicep
 targetScope = 'subscription'
@@ -165,7 +183,6 @@ resource securityContact 'Microsoft.Security/securityContacts@2023-01-01' = {
 // 出力
 output defenderPlans array = defenderPlans
 output securityContactEmail string = securityContactEmail
-EOF
 ```
 
 ---
@@ -189,7 +206,7 @@ EOF
 
 **key-vault.bicep の解説：**
 
-Azure Key Vaultを構築し、RBAC認証、Soft Delete、Purge Protectionを有効化します。Publicアクセスを無効化し、Private EndpointでVNet統合し、Private DNS Zoneを構成します。Key Vault Administratorロールを管理者に割り当てます。
+Azure Key Vault を構築し、RBAC 認証、Soft Delete、Purge Protection を有効化します。Public アクセスを無効化し、Private Endpoint で VNet 統合し、Private DNS Zone を構成します。Key Vault Administrator ロールを管理者に割り当てます。
 
 ```bicep
 @description('Key Vaultの名前（グローバルで一意）')
@@ -311,7 +328,6 @@ resource kvAdministratorRoleAssignment 'Microsoft.Authorization/roleAssignments@
 output keyVaultId string = keyVault.id
 output keyVaultName string = keyVault.name
 output keyVaultUri string = keyVault.properties.vaultUri
-EOF
 ```
 
 ### 9.3.3 Key Vault のデプロイ
@@ -404,7 +420,7 @@ az keyvault secret show \
 
 **ddos-protection.bicep の解説：**
 
-Azure DDoS Protection Planを作成し、Hub VNetに適用することで、DDoS攻撃からアプリケーションを保護します。
+Azure DDoS Protection Plan を作成し、Hub VNet に適用することで、DDoS 攻撃からアプリケーションを保護します。
 
 ```bicep
 @description('DDoS Protection Planの名前')
@@ -427,7 +443,6 @@ resource ddosProtectionPlan 'Microsoft.Network/ddosProtectionPlans@2023-05-01' =
 // 出力
 output ddosProtectionPlanId string = ddosProtectionPlan.id
 output ddosProtectionPlanName string = ddosProtectionPlan.name
-EOF
 ```
 
 ### 9.4.3 VNet への DDoS Protection 適用
@@ -477,7 +492,7 @@ az network vnet update \
 
 **log-analytics.bicep の解説：**
 
-Log Analytics Workspaceを作成し、データ保持期間を設定します。すべての診断ログとメトリクスが集約される中央ログストアとして機能します。
+Log Analytics Workspace を作成し、データ保持期間を設定します。すべての診断ログとメトリクスが集約される中央ログストアとして機能します。
 
 ```bicep
 @description('Log Analytics Workspaceの名前')
@@ -516,8 +531,9 @@ resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10
 output workspaceId string = logAnalyticsWorkspace.id
 output workspaceName string = logAnalyticsWorkspace.name
 output customerId string = logAnalyticsWorkspace.properties.customerId
-EOF
+```
 
+```bash
 # デプロイ
 az deployment group create \
   --name "log-analytics-deployment-$(date +%Y%m%d-%H%M%S)" \
@@ -535,7 +551,7 @@ az deployment group create \
 
 **diagnostic-settings.bicep の解説：**
 
-Azureリソースに診断設定を適用し、すべてのログとメトリクスをLog Analytics Workspaceに送信する汎用モジュールです。allLogsカテゴリグループとAllMetricsを有効化します。
+Azure リソースに診断設定を適用し、すべてのログとメトリクスを Log Analytics Workspace に送信する汎用モジュールです。allLogs カテゴリグループと AllMetrics を有効化します。
 
 ```bicep
 @description('診断設定を適用するリソースID')
@@ -577,7 +593,6 @@ resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-pre
 }
 
 output diagnosticSettingId string = diagnosticSetting.id
-EOF
 ```
 
 ### 9.5.4 Key Vault に診断設定を適用
@@ -640,7 +655,7 @@ az sentinel onboard \
 
 **storage-account.bicep の解説：**
 
-Storage Accountを作成し、HTTPS強制、TLS 1.2以上、Publicアクセス禁止、暗号化有効化などのセキュリティベースラインを適用します。
+Storage Account を作成し、HTTPS 強制、TLS 1.2 以上、Public アクセス禁止、暗号化有効化などのセキュリティベースラインを適用します。
 
 ```bicep
 @description('Storage Accountの名前')
@@ -682,6 +697,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
 
 output storageAccountId string = storageAccount.id
 output storageAccountName string = storageAccount.name
+```
 ```
 
 ---

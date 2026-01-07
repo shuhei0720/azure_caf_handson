@@ -125,13 +125,13 @@ GitHub Codespaces は、ブラウザ上で動作する完全な VS Code 開発�
 
 Codespaces の環境は、リポジトリに含まれる`.devcontainer/devcontainer.json`で定義済みです。
 
-このファイルにより、Codespaces起動時に以下が自動的に設定されます：
+このファイルにより、Codespaces 起動時に以下が自動的に設定されます：
 
 - Azure CLI
 - Bicep CLI
-- Node.js (LTS版)
+- Node.js (LTS 版)
 - Git
-- VS Code拡張機能（Bicep、Azure CLI、ESLintなど）
+- VS Code 拡張機能（Bicep、Azure CLI、ESLint など）
 
 このファイルを作成したら、Codespaces を再起動するか、新しい Codespace を作成します。
 
@@ -410,14 +410,6 @@ Name                          SubscriptionId                        TenantId    
 ----------------------------  ------------------------------------  ------------------------------------  -------
 Azure subscription 1          xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx  yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy  Enabled
 ```
-
-テナント ID とサブスクリプション ID をメモしておきます。
-
-
-
-
-
-
 
 ---
 
