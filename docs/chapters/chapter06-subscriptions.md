@@ -338,9 +338,6 @@ SUB_LANDINGZONE_ID=$(az deployment tenant show \
 echo "Landing Zone Subscription ID: $SUB_LANDINGZONE_ID"
 ```
 
-````
-
-
 ### 6.3.2 Azure ポータルでの確認
 
 デプロイ後、Azure ポータルでサブスクリプションが正しく作成されたことを確認します。
@@ -361,7 +358,7 @@ echo "Landing Zone Subscription ID: $SUB_LANDINGZONE_ID"
 ```bash
 # すべてのサブスクリプションを表示
 az account list --output table
-````
+```
 
 出力例：
 
