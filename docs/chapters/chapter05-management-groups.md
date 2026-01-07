@@ -631,7 +631,7 @@ az account show --query '{Name:name, Id:id}' -o table
 
 サブスクリプション ID をメモします。
 
-### 5.6.2 サブスクリプションの移動（CLI）
+### 5.6.2 サブスクリプションの移動
 
 ```bash
 # サブスクリプションIDを変数に設定
@@ -643,23 +643,7 @@ az account management-group subscription add \
   --subscription $SUBSCRIPTION_ID
 ```
 
-### 5.6.3 サブスクリプションの移動（ポータル）
-
-または、ポータルから移動することもできます：
-
-1. Management Groups のページを開く
-
-2. 「contoso-sandbox」をクリック
-
-3. 「Subscriptions」タブを選択
-
-4. 「+ Add」をクリック
-
-5. 自分のサブスクリプションを選択
-
-6. 「Save」をクリック
-
-### 5.6.4 移動の確認
+### 5.6.3 移動の確認
 
 ```bash
 # サブスクリプションの親Management Groupを確認
@@ -667,8 +651,6 @@ az account management-group subscription show \
   --name contoso-sandbox \
   --subscription $SUBSCRIPTION_ID
 ```
-
-または、ポータルで「contoso-sandbox」の Subscriptions タブを確認します。
 
 ---
 
