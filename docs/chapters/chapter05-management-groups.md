@@ -250,6 +250,9 @@ param managementGroupMetadata object = {
   }
 }
 
+// Tenant Root Management Group ID
+var tenantRootGroupId = '/providers/Microsoft.Management/managementGroups/${tenant().tenantId}'
+
 // ルートレベルのManagement Groups
 // Platform
 resource platformMG 'Microsoft.Management/managementGroups@2021-04-01' = {
@@ -258,7 +261,7 @@ resource platformMG 'Microsoft.Management/managementGroups@2021-04-01' = {
     displayName: managementGroupMetadata.platform.displayName
     details: {
       parent: {
-        id: tenant().tenantId
+        id: tenantRootGroupId
       }
     }
   }
@@ -308,7 +311,7 @@ resource landingZonesMG 'Microsoft.Management/managementGroups@2021-04-01' = {
     displayName: managementGroupMetadata.landingZones.displayName
     details: {
       parent: {
-        id: tenant().tenantId
+        id: tenantRootGroupId
       }
     }
   }
@@ -346,7 +349,7 @@ resource sandboxMG 'Microsoft.Management/managementGroups@2021-04-01' = {
     displayName: managementGroupMetadata.sandbox.displayName
     details: {
       parent: {
-        id: tenant().tenantId
+        id: tenantRootGroupId
       }
     }
   }
@@ -359,7 +362,7 @@ resource decommissionedMG 'Microsoft.Management/managementGroups@2021-04-01' = {
     displayName: managementGroupMetadata.decommissioned.displayName
     details: {
       parent: {
-        id: tenant().tenantId
+        id: tenantRootGroupId
       }
     }
   }
