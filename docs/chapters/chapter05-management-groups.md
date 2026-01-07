@@ -828,7 +828,7 @@ az account management-group delete --name contoso-platform-management
 
 ---
 
-## 5.12 章のまとめ
+## 5.11 章のまとめ
 
 本章で行ったこと：
 
@@ -865,9 +865,7 @@ Tenant Root Group
 - **テナントスコープ**: Management Groups はテナントレベルでデプロイ
 - Management Groups は、ランディングゾーンのガバナンスの基盤です
 
----
-
-## 5.11 チェックリスト
+### チェックリスト
 
 - [ ] Management Groups Bicep モジュールを作成した
 - [ ] What-If でデプロイ内容を確認した
@@ -876,18 +874,14 @@ Tenant Root Group
 - [ ] サブスクリプションを適切な Management Group に移動した
 - [ ] Git にコミット・プッシュした
 
----
-
-## 5.12 次のステップ
-5.12 次のステップ
+### 次のステップ
 
 Management Groups 階層が構築できたら、次は Subscriptions の設計と構築に進みます。
 
 👉 [第 6 章：Subscriptions 設計・構築](chapter06-subscriptions.md)
 
----
+### 参考リンク
 
-## 5.13
 - [Management Groups](https://docs.microsoft.com/azure/governance/management-groups/)
 - [Management Groups Bicep](https://docs.microsoft.com/azure/azure-resource-manager/bicep/deploy-to-tenant)
 - [CAF Management Groups 設計](https://docs.microsoft.com/azure/cloud-adoption-framework/ready/landing-zone/design-area/resource-org-management-groups)

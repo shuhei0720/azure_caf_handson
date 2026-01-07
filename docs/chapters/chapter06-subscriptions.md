@@ -20,7 +20,7 @@
 - **アクセス制御の境界**: RBAC を適用
 - **リソース制限の単位**: クォータと制限
 
-###6.1.2 Subscription の特徴
+### 6.1.2 Subscription の特徴
 
 ```mermaid
 graph TB
