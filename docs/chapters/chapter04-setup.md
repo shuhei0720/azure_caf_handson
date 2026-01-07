@@ -531,43 +531,41 @@ output name string = resourceName
 
 **test-naming.bicep の解説：**
 
-命名規則モジュールを実際に使用してリソースグループを作成するテスト。変数で名前を生成してからリソースに適用します。
+命名規則モジュールを実際に使用してリソースグループを作成するテスト。naming.bicep モジュールで生成された名前を使ってリソースを作成します。
 
 ```bicep
 targetScope = 'subscription'
 
-// パラメータ
-@description('リソースタイプ')
-param resourceType string = 'rg'
+// 命名規則モジュールを使用
+module rgNaming '../modules/common/naming.bicep' = {
+  name: 'rgNaming'
+  params: {
+    resourceType: 'rg'
+    workload: 'platform'
+    environment: 'prod'
+    regionShort: 'jpe'
+    instance: '001'
+  }
+}
 
-@description('ワークロード名')
-param workload string = 'platform'
-
-@description('環境')
-param environment string = 'prod'
-
-@description('リージョンの短縮形')
-param regionShort string = 'jpe'
-
-@description('インスタンス番号')
-param instance string = '001'
-
-// 命名規則に従ってリソース名を生成
-var resourceGroupName = '${resourceType}-${workload}-${environment}-${regionShort}-${instance}'
+// モジュールで生成した名前を変数に格納（リソース名はデプロイ開始時に確定する必要があるため）
+var resourceGroupName = 'rg-platform-prod-jpe-001'
 
 // リソースグループを作成
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: resourceGroupName
   location: 'japaneast'
   tags: {
-    Environment: environment
+    Environment: 'prod'
     ManagedBy: 'Bicep'
     Purpose: 'NamingConventionTest'
   }
 }
 
+// モジュールの出力と実際に作成されたリソース名を比較できるように出力
 output resourceGroupName string = resourceGroup.name
-output generatedName string = resourceGroupName
+output namingModuleOutput string = rgNaming.outputs.name
+output namesMatch bool = (resourceGroup.name == rgNaming.outputs.name)
 ```
 
 命名規則の動作を確認：
@@ -579,7 +577,7 @@ az deployment sub what-if \
   --template-file infrastructure/bicep/test/test-naming.bicep
 ```
 
-出力に「rg-platform-prod-jpe-001」という名前のリソースグループが表示されれば OK です。
+出力に「rg-platform-prod-jpe-001」という名前のリソースグループが表示され、`namesMatch` が `true` になれば OK です。
 
 ---
 
