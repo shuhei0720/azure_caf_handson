@@ -432,35 +432,52 @@ output sandboxMGId string = managementGroups.outputs.sandboxMGId
 
 ### 5.4.1 Tenant ルートレベルの権限設定
 
-Management Groups を Tenant ルートレベルで作成するには、Tenant Root Group に対する Owner 権限が必要です。
+Management Groups を Tenant ルートレベルで作成するには、Tenant スコープ (`/`) に対する Owner 権限が必要です。
 
-#### Tenant Root Group に Owner ロールを割り当て
+#### ステップ 1: elevateAccess で User Access Administrator を取得
+
+まず、`elevateAccess` API を実行して、自分のアカウントに Tenant スコープでの User Access Administrator ロールを付与します。
+
+```bash
+# elevateAccessを実行
+az rest --method post --url "/providers/Microsoft.Authorization/elevateAccess?api-version=2016-07-01"
+```
+
+**出力**:
+```json
+{}
+```
+
+空の JSON が返れば成功です。
+
+#### ステップ 2: Tenant スコープに Owner ロールを付与
+
+次に、Tenant スコープ (`/`) に Owner ロールを自分に割り当てます。
 
 ```bash
 # 自分のオブジェクトIDを取得
 USER_OBJECT_ID=$(az ad signed-in-user show --query id -o tsv)
 
-# テナントIDを取得
-TENANT_ID=$(az account show --query tenantId -o tsv)
-
-# Tenant Root Group に Owner ロールを付与
+# Tenantスコープ (/) に Owner ロールを付与
 az role assignment create \
   --assignee $USER_OBJECT_ID \
   --role "Owner" \
-  --scope "/providers/Microsoft.Management/managementGroups/$TENANT_ID"
+  --scope "/"
 ```
 
-#### 権限を確認
+#### ステップ 3: 権限を確認
 
 ```bash
 # ロール割り当てを確認
 az role assignment list \
   --assignee $USER_OBJECT_ID \
-  --scope "/providers/Microsoft.Management/managementGroups/$TENANT_ID" \
+  --scope "/" \
   --output table
 ```
 
-`Owner` ロールが表示されれば OK です。これで Management Groups をデプロイできます。
+`Owner` と `User Access Administrator` の両方が表示されれば OK です。
+
+**注意**: この権限は非常に強力です。Management Groups のデプロイが完了したら、必要に応じて削除してください。
 
 ### 5.4.2 Bicep ファイルの検証
 
