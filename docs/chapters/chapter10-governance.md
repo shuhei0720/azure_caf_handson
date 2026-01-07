@@ -1,4 +1,4 @@
-# 第 10 章：ガバナンス・ポリシー実装（2日目）
+# 第 10 章：ガバナンス・ポリシー実装（2 日目）
 
 ## 本章の目的
 
@@ -6,7 +6,7 @@
 
 **所要時間**: 約 4-5 時間  
 **難易度**: ⭐⭐⭐⭐  
-**実施タイミング**: **2日目**
+**実施タイミング**: **2 日目**
 
 ---
 
@@ -744,11 +744,11 @@ git push origin main
 
 ## 次のステップ
 
-2日目の作業（Identity Subscription作成、IAM、ガバナンス）が完了しました。次は3日目の作業として、Connectivity Subscriptionの作成に進みます。
+2 日目の作業（Identity Subscription 作成、IAM、ガバナンス）が完了しました。次は 3 日目の作業として、Connectivity Subscription の作成に進みます。
 
-**24時間後に3日目の作業（Connectivity Subscription作成とセキュリティ基盤）に進んでください。**
+**24 時間後に 3 日目の作業（Connectivity Subscription 作成とセキュリティ基盤）に進んでください。**
 
-👉 [第 11 章：Connectivity Subscription 作成（3日目）](chapter11-connectivity-subscription.md)
+👉 [第 11 章：Connectivity Subscription 作成（3 日目）](chapter11-connectivity-subscription.md)
 
 ---
 

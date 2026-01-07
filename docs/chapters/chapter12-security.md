@@ -1,4 +1,4 @@
-# 第 12 章：Security 基盤構築（3日目）
+# 第 12 章：Security 基盤構築（3 日目）
 
 ## 本章の目的
 
@@ -6,7 +6,7 @@
 
 **所要時間**: 約 3-4 時間  
 **難易度**: ⭐⭐⭐  
-**実施タイミング**: **3日目**
+**実施タイミング**: **3 日目**
 
 ---
 
@@ -819,13 +819,13 @@ git push origin main
 
 ## 次のステップ
 
-3日目の作業（Connectivity Subscription作成とセキュリティ基盤）が完了しました。次は4日目以降の作業として、Hub Network（Networking-Hub）の構築に進みます。
+3 日目の作業（Connectivity Subscription 作成とセキュリティ基盤）が完了しました。次は 4 日目以降の作業として、Hub Network（Networking-Hub）の構築に進みます。
 
-**注意：4日目以降の作業は Azure リソースの費用が発生します。実施する前に予算とコストを確認してください。**
+**注意：4 日目以降の作業は Azure リソースの費用が発生します。実施する前に予算とコストを確認してください。**
 
-**24時間後に4日目の作業（Landing Zone Subscription作成とHub Network構築）に進んでください。**
+**24 時間後に 4 日目の作業（Landing Zone Subscription 作成と Hub Network 構築）に進んでください。**
 
-👉 [第 13 章：Hub Network 構築（4日目以降）](chapter13-networking-hub.md)
+👉 [第 13 章：Hub Network 構築（4 日目以降）](chapter13-networking-hub.md)
 
 ---
 

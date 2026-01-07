@@ -1,4 +1,7 @@
-# 第 14 章：アプリケーション開発・デプロイ
+﻿# 第 16 章：アプリケーション開発・デプロイ
+
+> **⚠️ 4日目以降の作業**  
+> Container Apps へのデプロイには Landing Zone の構築（第 15 章）が完了している必要があります。
 
 ## 本章の目的
 
@@ -9,27 +12,9 @@
 
 ---
 
-## 14.0 事前準備：Landing Zone Subscription の確認
+## 16.1 アプリケーションアーキテクチャ
 
-本章では、Chapter 13 で構築した Landing Zone にアプリケーションをデプロイします。
-
-作業を開始する前に、Landing Zone Subscription が選択されていることを確認してください：
-
-```bash
-# 現在のサブスクリプションを確認
-az account show --query "{Name:name, SubscriptionId:id}" -o table
-
-# 異なる場合は切り替え
-az account set --subscription $SUB_LANDINGZONE_ID
-```
-
-**注意**: Chapter 13 と同じ Subscription を使用することで、Container Apps Environment やデータベースにアクセスできます。
-
----
-
-## 14.1 アプリケーションアーキテクチャ
-
-### 14.1.1 3 層アーキテクチャ
+### 16.1.1 3 層アーキテクチャ
 
 ```mermaid
 graph TB
@@ -59,7 +44,7 @@ graph TB
     style Data Layer fill:#e8f5e9
 ```
 
-### 14.1.2 アプリケーション機能
+### 16.1.2 アプリケーション機能
 
 本ハンズオンで構築するアプリケーション：
 
@@ -72,9 +57,9 @@ graph TB
 
 ---
 
-## 14.2 Next.js プロジェクトの作成
+## 16.2 Next.js プロジェクトの作成
 
-### 14.2.1 プロジェクト初期化
+### 16.2.1 プロジェクト初期化
 
 ```bash
 # appディレクトリを作成
@@ -112,7 +97,7 @@ EOF
 echo ".env.local" >> .gitignore
 ```
 
-### 14.2.2 データベース接続モジュール
+### 16.2.2 データベース接続モジュール
 
 ```bash
 mkdir -p src/lib
@@ -143,7 +128,7 @@ export default pool;
 EOF
 ```
 
-### 14.2.3 Redis クライアントモジュール
+### 16.2.3 Redis クライアントモジュール
 
 ```bash
 cat << 'EOF' > src/lib/redis.ts
@@ -175,9 +160,9 @@ EOF
 
 ---
 
-## 14.3 データベーススキーマの作成
+## 16.3 データベーススキーマの作成
 
-### 14.3.1 マイグレーションスクリプト
+### 16.3.1 マイグレーションスクリプト
 
 ```bash
 mkdir -p database/migrations
@@ -251,9 +236,9 @@ chmod +x database/migrate.sh
 
 ---
 
-## 14.4 API ルートの実装
+## 16.4 API ルートの実装
 
-### 14.4.1 Task API（GET）
+### 16.4.1 Task API（GET）
 
 ```bash
 mkdir -p src/app/api/tasks
@@ -329,7 +314,7 @@ export async function POST(request: Request) {
 EOF
 ```
 
-### 14.4.2 Task API（PUT/DELETE）
+### 16.4.2 Task API（PUT/DELETE）
 
 ```bash
 cat << 'EOF' > src/app/api/tasks/[id]/route.ts
@@ -436,9 +421,9 @@ EOF
 
 ---
 
-## 14.5 フロントエンドの実装
+## 16.5 フロントエンドの実装
 
-### 14.5.1 ホームページ
+### 16.5.1 ホームページ
 
 ```bash
 cat << 'EOF' > src/app/page.tsx
@@ -497,7 +482,7 @@ export default function Home() {
 EOF
 ```
 
-### 14.5.2 タスク一覧ページ
+### 16.5.2 タスク一覧ページ
 
 ```bash
 mkdir -p src/app/tasks
@@ -681,9 +666,9 @@ EOF
 
 ---
 
-## 14.6 Dockerfile の作成
+## 16.6 Dockerfile の作成
 
-### 14.6.1 Multi-stage Dockerfile
+### 16.6.1 Multi-stage Dockerfile
 
 ```bash
 cat << 'EOF' > Dockerfile
@@ -739,7 +724,7 @@ README.md
 EOF
 ```
 
-### 14.6.2 next.config.js の設定
+### 16.6.2 next.config.js の設定
 
 ```bash
 cat << 'EOF' > next.config.js
@@ -759,9 +744,9 @@ EOF
 
 ---
 
-## 14.7 Azure Container Apps へのデプロイ
+## 16.7 Azure Container Apps へのデプロイ
 
-### 14.7.1 コンテナイメージのビルドとプッシュ
+### 16.7.1 コンテナイメージのビルドとプッシュ
 
 ```bash
 # ACRにログイン
@@ -774,15 +759,10 @@ docker build -t acrcafapp1prodjpe001.azurecr.io/task-manager:v1.0.0 .
 docker push acrcafapp1prodjpe001.azurecr.io/task-manager:v1.0.0
 ```
 
-### 14.7.2 Container App Bicep モジュール
+### 16.7.2 Container App Bicep モジュール
 
-ファイル `infrastructure/bicep/modules/compute/container-app.bicep` を作成し、以下の内容を記述します：
-
-**container-app.bicep の解説：**
-
-Container App を作成し、Container Apps Environment にデプロイします。Ingress を設定し、Container Registry からイメージを取得、環境変数を設定してアプリケーションを実行します。System-assigned Managed Identity を使用します。
-
-```bicep
+```bash
+cat << 'EOF' > infrastructure/bicep/modules/compute/container-app.bicep
 @description('Container Appの名前')
 param appName string
 
@@ -851,9 +831,10 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
 output appId string = containerApp.id
 output appName string = containerApp.name
 output appUrl string = containerApp.properties.configuration.ingress.fqdn
+EOF
 ```
 
-### 14.7.3 Container App のデプロイ
+### 16.7.3 Container App のデプロイ
 
 ```bash
 # Redis Primary Keyを取得
@@ -890,9 +871,9 @@ az deployment group create \
 
 ---
 
-## 14.8 GitHub Actions での自動デプロイ
+## 16.8 GitHub Actions での自動デプロイ
 
-### 14.8.1 アプリデプロイワークフロー
+### 16.8.1 アプリデプロイワークフロー
 
 ```bash
 cat << 'EOF' > .github/workflows/deploy-app.yml
@@ -955,7 +936,7 @@ EOF
 
 ---
 
-## 14.9 Azure Portal での確認
+## 16.9 Azure Portal での確認
 
 1. Azure ポータルで「Container Apps」を開く
 2. 「ca-taskmanager-prod-jpe-001」をクリック
@@ -964,7 +945,7 @@ EOF
 
 ---
 
-## 14.10 Git へのコミット
+## 16.10 Git へのコミット
 
 ```bash
 git add .
@@ -983,7 +964,7 @@ git push origin main
 
 ---
 
-## 14.11 章のまとめ
+## 16.11 章のまとめ
 
 本章で構築したもの：
 
@@ -1017,9 +998,9 @@ git push origin main
 
 ## 次のステップ
 
-アプリケーションのデプロイが完了しました。最終章でまとめと次のステップに進みます。
+アプリケーションのデプロイが完了しました。次は CI/CD パイプラインを構築します。
 
-👉 [第 15 章：まとめと次のステップ](chapter15-conclusion.md)
+👉 [第 17 章：CI/CD パイプライン構築](chapter17-cicd.md)
 
 ---
 

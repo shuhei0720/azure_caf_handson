@@ -6,7 +6,7 @@
 
 **所要時間**: 約 30 分〜1 時間  
 **難易度**: ⭐  
-**実施タイミング**: **3 日目**（2日目の作業から24時間後）
+**実施タイミング**: **3 日目**（2 日目の作業から 24 時間後）
 
 ---
 
@@ -229,7 +229,7 @@ Connectivity Subscription の作成が完了したら、次はセキュリティ
 
 Connectivity Subscription の準備が完了したら、次はセキュリティ基盤の構築に進みます。
 
-👉 [第 12 章：Security 基盤構築（3日目）](chapter12-security.md)
+👉 [第 12 章：Security 基盤構築（3 日目）](chapter12-security.md)
 
 **注意**: 次の章では、Key Vault、Diagnostic Settings、Network Security などのセキュリティリソースを構築します。
 

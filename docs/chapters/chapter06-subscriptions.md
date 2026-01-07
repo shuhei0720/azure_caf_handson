@@ -1,12 +1,12 @@
-# 第 6 章：Subscriptions 設計・構築（1日目）
+# 第 6 章：Subscriptions 設計・構築（1 日目）
 
 ## 本章の目的
 
-本章では、Subscription の設計戦略を学び、ランディングゾーンに必要な Subscriptions の全体像を理解します。そして、**1日目の作業として Management Subscription を作成**します。Subscription は課金とアクセス制御の境界であり、適切な設計が重要です。
+本章では、Subscription の設計戦略を学び、ランディングゾーンに必要な Subscriptions の全体像を理解します。そして、**1 日目の作業として Management Subscription を作成**します。Subscription は課金とアクセス制御の境界であり、適切な設計が重要です。
 
 **所要時間**: 約 1-2 時間  
 **難易度**: ⭐⭐  
-**実施タイミング**: **1日目**
+**実施タイミング**: **1 日目**
 
 ---
 
@@ -126,10 +126,10 @@ graph TB
 
 **本ハンズオンでは、CAF のベストプラクティスに従い、役割ごとに専用のサブスクリプションを作成します**：
 
-- **sub-platform-management-prod**: 管理・監視用（Log Analytics、Automation 等）← **1日目に作成**
-- **sub-platform-identity-prod**: ID 管理用（将来の拡張用）← **2日目に作成**
-- **sub-platform-connectivity-prod**: ネットワーク接続用（Hub VNet、Firewall、Bastion 等）← **3日目に作成**
-- **sub-landingzone-corp-prod**: 内部アプリケーション用（Spoke VNet、Container Apps 等）← **4日目以降に作成**
+- **sub-platform-management-prod**: 管理・監視用（Log Analytics、Automation 等）← **1 日目に作成**
+- **sub-platform-identity-prod**: ID 管理用（将来の拡張用）← **2 日目に作成**
+- **sub-platform-connectivity-prod**: ネットワーク接続用（Hub VNet、Firewall、Bastion 等）← **3 日目に作成**
+- **sub-landingzone-corp-prod**: 内部アプリケーション用（Spoke VNet、Container Apps 等）← **4 日目以降に作成**
 
 これにより、本番環境と同じ構成で学習できます。
 
@@ -137,13 +137,13 @@ graph TB
 >
 > 個人契約の Azure アカウント（Pay-As-You-Go、Free Trial など）では、セキュリティとリソース乱用防止のため、**24 時間に 1 つのサブスクリプションしか作成できない制限**があります。
 >
-> このため、個人アカウントで 4 つのサブスクリプションを作成する場合、**最大 4 日間**かかります。各日で1つずつサブスクリプションを作成していきます。
+> このため、個人アカウントで 4 つのサブスクリプションを作成する場合、**最大 4 日間**かかります。各日で 1 つずつサブスクリプションを作成していきます。
 >
 > Enterprise Agreement（EA）などのエンタープライズプランでは、この制限は緩和されています。
 
 ---
 
-## 6.3 Management Subscription の作成（1日目）
+## 6.3 Management Subscription の作成（1 日目）
 
 ### 6.3.1 前提条件
 
@@ -315,11 +315,11 @@ git push origin main
 - **Subscription は課金の境界**: コスト管理の基本単位
 - **アクセス制御の境界**: RBAC 適用の単位
 - **本番環境では分離**: 役割ごとに独立した Subscription
-- **24時間に1つの制約**: 個人アカウントではサブスクリプション作成に時間がかかる
+- **24 時間に 1 つの制約**: 個人アカウントではサブスクリプション作成に時間がかかる
 
 ### 次のステップ
 
-1日目の作業として、Management Subscription の作成が完了しました。次は、このサブスクリプションに監視・ログ基盤を構築します。
+1 日目の作業として、Management Subscription の作成が完了しました。次は、このサブスクリプションに監視・ログ基盤を構築します。
 
 ---
 

@@ -1,4 +1,7 @@
-# 第 12 章：CI/CD パイプライン構築
+﻿# 第 17 章：CI/CD パイプライン構築
+
+> **⚠️ 4日目以降の作業**  
+> CI/CD パイプラインは前章までのインフラ構築が完了していることを前提とします。
 
 ## 本章の目的
 
@@ -9,9 +12,9 @@
 
 ---
 
-## 12.1 CI/CD の重要性
+## 17.1 CI/CD の重要性
 
-### 12.1.1 CI/CD とは
+### 17.1.1 CI/CD とは
 
 ```mermaid
 graph LR
@@ -47,7 +50,7 @@ graph LR
 - 環境別デプロイ
 - ロールバック機能
 
-### 12.1.2 GitOps ワークフロー
+### 17.1.2 GitOps ワークフロー
 
 ```mermaid
 graph TB
@@ -68,9 +71,9 @@ graph TB
 
 ---
 
-## 12.2 GitHub Actions の基礎
+## 17.2 GitHub Actions の基礎
 
-### 12.2.1 ワークフローの構成要素
+### 17.2.1 ワークフローの構成要素
 
 ```yaml
 name: ワークフロー名
@@ -85,7 +88,7 @@ jobs: # ジョブ
       - run: echo "Hello"
 ```
 
-### 12.2.2 GitHub Secrets の設定
+### 17.2.2 GitHub Secrets の設定
 
 ```bash
 # Azure認証情報をGitHub Secretsに登録
@@ -108,9 +111,9 @@ az ad sp create-for-rbac \
 
 ---
 
-## 12.3 Bicep 検証ワークフロー
+## 17.3 Bicep 検証ワークフロー
 
-### 12.3.1 Pull Request 時の検証
+### 17.3.1 Pull Request 時の検証
 
 ```bash
 mkdir -p .github/workflows
@@ -190,9 +193,9 @@ EOF
 
 ---
 
-## 12.4 インフラデプロイワークフロー
+## 17.4 インフラデプロイワークフロー
 
-### 12.4.1 main ブランチへのプッシュ時デプロイ
+### 17.4.1 main ブランチへのプッシュ時デプロイ
 
 ```bash
 cat << 'EOF' > .github/workflows/deploy-infrastructure.yml
@@ -329,9 +332,9 @@ EOF
 
 ---
 
-## 12.5 Policy デプロイワークフロー
+## 17.5 Policy デプロイワークフロー
 
-### 12.5.1 Policy 定義の自動デプロイ
+### 17.5.1 Policy 定義の自動デプロイ
 
 ```bash
 cat << 'EOF' > .github/workflows/deploy-policies.yml
@@ -437,9 +440,9 @@ EOF
 
 ---
 
-## 12.6 セキュリティスキャン
+## 17.6 セキュリティスキャン
 
-### 12.6.1 Bicep セキュリティスキャン
+### 17.6.1 Bicep セキュリティスキャン
 
 ```bash
 cat << 'EOF' > .github/workflows/security-scan.yml
@@ -521,9 +524,9 @@ EOF
 
 ---
 
-## 12.7 環境別デプロイ
+## 17.7 環境別デプロイ
 
-### 12.7.1 Environment の作成
+### 17.7.1 Environment の作成
 
 GitHub リポジトリで環境を定義：
 
@@ -538,7 +541,7 @@ GitHub リポジトリで環境を定義：
    - ✅ Required reviewers（承認者を指定）
    - ✅ Wait timer（例: 5 分待機）
 
-### 12.7.2 環境別パラメータ
+### 17.7.2 環境別パラメータ
 
 ```bash
 # Development環境用パラメータ
@@ -580,7 +583,7 @@ cat << 'EOF' > infrastructure/bicep/parameters/hub-vnet.prod.parameters.json
 EOF
 ```
 
-### 12.7.3 環境別デプロイワークフロー
+### 17.7.3 環境別デプロイワークフロー
 
 ```bash
 cat << 'EOF' > .github/workflows/deploy-multi-env.yml
@@ -650,9 +653,9 @@ EOF
 
 ---
 
-## 12.8 ロールバック戦略
+## 17.8 ロールバック戦略
 
-### 12.8.1 タグベースのロールバック
+### 17.8.1 タグベースのロールバック
 
 ```bash
 # デプロイ前にタグを付与
@@ -672,9 +675,9 @@ az deployment group create \
 
 ---
 
-## 12.9 Notification 設定
+## 17.9 Notification 設定
 
-### 12.9.1 Slack 通知（オプション）
+### 17.9.1 Slack 通知（オプション）
 
 ```bash
 cat << 'EOF' > .github/workflows/notify-slack.yml
@@ -703,15 +706,15 @@ EOF
 
 ---
 
-## 12.10 Azure Portal での確認
+## 17.10 Azure Portal での確認
 
-### 12.10.1 GitHub Actions の実行履歴
+### 17.10.1 GitHub Actions の実行履歴
 
 1. GitHub リポジトリの「Actions」タブを開く
 2. 実行中・完了したワークフローを確認
 3. 各ステップのログを確認
 
-### 12.10.2 Azure Deployment の確認
+### 17.10.2 Azure Deployment の確認
 
 1. Azure ポータルで Resource Group を開く
 2. 「Deployments」で デプロイ履歴を確認
@@ -719,7 +722,7 @@ EOF
 
 ---
 
-## 12.11 Git へのコミット
+## 17.11 Git へのコミット
 
 ```bash
 git add .
@@ -741,7 +744,7 @@ git push origin main
 
 ---
 
-## 12.12 章のまとめ
+## 17.12 章のまとめ
 
 本章で構築したもの：
 
@@ -785,9 +788,9 @@ git push origin main
 
 ## 次のステップ
 
-CI/CD パイプラインが構築できたら、次は Landing Zone（Spoke）の構築に進みます。
+CI/CD パイプラインの構築が完了しました。最終章でまとめと今後の学習の進め方を確認します。
 
-👉 [第 13 章：Landing Zone（Spoke）構築](chapter13-landing-zone.md)
+👉 [第 18 章：まとめと次のステップ](chapter18-conclusion.md)
 
 ---
 

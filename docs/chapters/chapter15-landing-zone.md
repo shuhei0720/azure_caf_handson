@@ -1,4 +1,8 @@
-# 第 13 章：Landing Zone（Spoke）構築
+﻿# 第 15 章：Landing Zone（Spoke）構築
+
+> **⚠️ 4日目以降の作業**  
+> 本章から先は **有料リソース（Azure Firewall、Container Apps、PostgreSQL、Redis など）** を作成します。  
+> サブスクリプション作成後 24 時間経過していることを確認してから進めてください。
 
 ## 本章の目的
 
@@ -9,27 +13,9 @@
 
 ---
 
-## 13.0 事前準備：Landing Zone Subscription の選択
+## 15.1 Landing Zone の設計
 
-本章では、アプリケーションリソース（Spoke VNet、Container Apps、PostgreSQL、Redis 等）を **Landing Zone Subscription** にデプロイします。
-
-作業を開始する前に、必ず適切なサブスクリプションを選択してください：
-
-```bash
-# Landing Zone Subscriptionに切り替え
-az account set --subscription $SUB_LANDINGZONE_ID
-
-# 現在のサブスクリプションを確認
-az account show --query "{Name:name, SubscriptionId:id}" -o table
-```
-
-**重要**: アプリケーションリソースを Platform Subscription（Management や Connectivity）と分離することで、セキュリティとコスト管理が明確になります。
-
----
-
-## 13.1 Landing Zone の設計
-
-### 13.1.1 Spoke VNet の役割
+### 15.1.1 Spoke VNet の役割
 
 ```mermaid
 graph TB
@@ -65,7 +51,7 @@ graph TB
     style Spoke VNet fill:#e8f5e9
 ```
 
-### 13.1.2 Spoke VNet のサブネット設計
+### 15.1.2 Spoke VNet のサブネット設計
 
 | サブネット名          | CIDR        | 用途              | NSG  |
 | --------------------- | ----------- | ----------------- | ---- |
@@ -76,9 +62,9 @@ graph TB
 
 ---
 
-## 13.2 Spoke VNet の構築
+## 15.2 Spoke VNet の構築
 
-### 13.2.1 Resource Group の作成
+### 15.2.1 Resource Group の作成
 
 ```bash
 # Landing Zone用のResource Group
@@ -93,15 +79,10 @@ az group create \
     CostCenter=IT-001
 ```
 
-### 13.2.2 Spoke VNet Bicep モジュール
+### 15.2.2 Spoke VNet Bicep モジュール
 
-ファイル `infrastructure/bicep/modules/landing-zone/networking/spoke-vnet.bicep` を作成し、以下の内容を記述します：
-
-**spoke-vnet.bicep の解説：**
-
-Spoke VNet を作成し、AppSubnet、DataSubnet、PrivateEndpointSubnet を 3 つのサブネットを定義します。Hub VNet への Peering を設定し、各サブネットに NSG と Route Table を適用します。
-
-```bicep
+```bash
+cat << 'EOF' > infrastructure/bicep/modules/networking/spoke-vnet.bicep
 @description('Spoke VNetの名前')
 param vnetName string
 
@@ -312,17 +293,13 @@ output vnetName string = spokeVNet.name
 output appSubnetId string = spokeVNet.properties.subnets[0].id
 output dataSubnetId string = spokeVNet.properties.subnets[1].id
 output privateEndpointSubnetId string = spokeVNet.properties.subnets[2].id
+EOF
 ```
 
-### 13.2.3 Hub 側の Peering 設定
+### 15.2.3 Hub 側の Peering 設定
 
-ファイル `infrastructure/bicep/modules/landing-zone/networking/hub-to-spoke-peering.bicep` を作成し、以下の内容を記述します：
-
-**hub-to-spoke-peering.bicep の解説：**
-
-Hub VNet から Spoke VNet への Peering を設定します。Gateway Transit を有効化し、Spoke VNet が Hub の Gateway を使用できるようにします。
-
-```bicep
+```bash
+cat << 'EOF' > infrastructure/bicep/modules/networking/hub-to-spoke-peering.bicep
 @description('Hub VNetの名前')
 param hubVNetName string
 
@@ -347,9 +324,10 @@ resource hubToSpokePeering 'Microsoft.Network/virtualNetworks/virtualNetworkPeer
 }
 
 output peeringId string = hubToSpokePeering.id
+EOF
 ```
 
-### 13.2.4 Spoke VNet のデプロイ
+### 15.2.4 Spoke VNet のデプロイ
 
 ```bash
 # Hub VNet IDを取得
@@ -393,7 +371,7 @@ EOF
 az deployment group create \
   --name "spoke-vnet-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/landing-zone/networking/spoke-vnet.bicep \
+  --template-file infrastructure/bicep/modules/networking/spoke-vnet.bicep \
   --parameters infrastructure/bicep/parameters/spoke-vnet.parameters.json
 
 # Hub側のPeeringを設定
@@ -405,7 +383,7 @@ SPOKE_VNET_ID=$(az network vnet show \
 az deployment group create \
   --name "hub-to-spoke-peering-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-connectivity-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/landing-zone/networking/hub-to-spoke-peering.bicep \
+  --template-file infrastructure/bicep/modules/networking/hub-to-spoke-peering.bicep \
   --parameters \
     hubVNetName=vnet-hub-prod-jpe-001 \
     spokeVNetId="$SPOKE_VNET_ID" \
@@ -414,17 +392,12 @@ az deployment group create \
 
 ---
 
-## 13.3 Azure Container Apps の構築
+## 15.3 Azure Container Apps の構築
 
-### 13.3.1 Container Apps Environment の作成
+### 15.3.1 Container Apps Environment の作成
 
-ファイル `infrastructure/bicep/modules/compute/container-apps-environment.bicep` を作成し、以下の内容を記述します：
-
-**container-apps-environment.bicep の解説：**
-
-Container Apps Environment を作成し、VNet 統合と Log Analytics Workspace によるログ記録を設定します。内部 Load Balancer を使用し、Private アクセスのみを許可します。
-
-```bicep
+```bash
+cat << 'EOF' > infrastructure/bicep/modules/compute/container-apps-environment.bicep
 @description('Container Apps Environmentの名前')
 param environmentName string
 
@@ -466,9 +439,8 @@ output environmentId string = containerAppsEnvironment.id
 output environmentName string = containerAppsEnvironment.name
 output defaultDomain string = containerAppsEnvironment.properties.defaultDomain
 output staticIp string = containerAppsEnvironment.properties.staticIp
-```
+EOF
 
-```bash
 # デプロイ
 LOG_WORKSPACE_ID=$(az monitor log-analytics workspace show \
   --resource-group rg-platform-management-prod-jpe-001 \
@@ -494,17 +466,12 @@ az deployment group create \
 
 ---
 
-## 13.4 Azure Database for PostgreSQL の構築
+## 15.4 Azure Database for PostgreSQL の構築
 
-### 13.4.1 PostgreSQL Flexible Server Bicep モジュール
+### 15.4.1 PostgreSQL Flexible Server Bicep モジュール
 
-ファイル `infrastructure/bicep/modules/data/postgresql.bicep` を作成し、以下の内容を記述します：
-
-**postgresql.bicep の解説：**
-
-PostgreSQL Flexible Server を作成し、VNet 統合と Private DNS Zone を設定します。データベースを自動作成し、バックアップと SSL 接続を強制します。
-
-```bicep
+```bash
+cat << 'EOF' > infrastructure/bicep/modules/data/postgresql.bicep
 @description('PostgreSQL Serverの名前')
 param serverName string
 
@@ -587,17 +554,13 @@ resource database 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2023-03-0
 output serverId string = postgresqlServer.id
 output serverName string = postgresqlServer.name
 output fqdn string = postgresqlServer.properties.fullyQualifiedDomainName
+EOF
 ```
 
-### 13.4.2 Private DNS Zone の作成
+### 15.4.2 Private DNS Zone の作成
 
-ファイル `infrastructure/bicep/modules/landing-zone/networking/private-dns-zone.bicep` を作成し、以下の内容を記述します：
-
-**private-dns-zone.bicep の解説：**
-
-Private DNS Zone を作成し、複数の VNet にリンクします。Private Endpoint や VNet 統合リソースが内部 DNS 名を解決できるようにします。
-
-```bicep
+```bash
+cat << 'EOF' > infrastructure/bicep/modules/networking/private-dns-zone.bicep
 @description('Private DNS Zoneの名前')
 param zoneName string
 
@@ -628,20 +591,19 @@ resource vnetLinks 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-0
 }]
 
 output privateDnsZoneId string = privateDnsZone.id
-```
+EOF
 
-```bash
 # PostgreSQL用のPrivate DNS Zoneを作成
 az deployment group create \
   --name "postgres-private-dns-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/landing-zone/networking/private-dns-zone.bicep \
+  --template-file infrastructure/bicep/modules/networking/private-dns-zone.bicep \
   --parameters \
     zoneName=privatelink.postgres.database.azure.com \
     vnetIds="[\"$SPOKE_VNET_ID\",\"$HUB_VNET_ID\"]"
 ```
 
-### 13.4.3 PostgreSQL のデプロイ
+### 15.4.3 PostgreSQL のデプロイ
 
 ```bash
 # Data SubnetのIDを取得
@@ -678,17 +640,12 @@ az deployment group create \
 
 ---
 
-## 13.5 Azure Cache for Redis の構築
+## 15.5 Azure Cache for Redis の構築
 
-### 13.5.1 Redis Cache Bicep モジュール
+### 15.5.1 Redis Cache Bicep モジュール
 
-ファイル `infrastructure/bicep/modules/data/redis-cache.bicep` を作成し、以下の内容を記述します：
-
-**redis-cache.bicep の解説：**
-
-Redis Cache を作成し、TLS 1.2 を強制、Public アクセスを無効化して Private Endpoint 経由でのみアクセスを許可します。maxmemory-policy を設定してメモリ管理を最適化します。
-
-```bicep
+```bash
+cat << 'EOF' > infrastructure/bicep/modules/data/redis-cache.bicep
 @description('Redis Cacheの名前')
 param redisCacheName string
 
@@ -757,9 +714,8 @@ output redisId string = redisCache.id
 output redisName string = redisCache.name
 output redisHostName string = redisCache.properties.hostName
 output redisPort int = redisCache.properties.sslPort
-```
+EOF
 
-```bash
 # デプロイ
 az deployment group create \
   --name "redis-deployment-$(date +%Y%m%d-%H%M%S)" \
@@ -773,7 +729,7 @@ az deployment group create \
     skuCapacity=1
 ```
 
-### 13.5.2 Redis Private Endpoint の作成
+### 15.5.2 Redis Private Endpoint の作成
 
 ```bash
 # Private Endpoint SubnetのIDを取得
@@ -822,17 +778,12 @@ az network private-endpoint dns-zone-group create \
 
 ---
 
-## 13.6 Azure Container Registry の構築
+## 15.6 Azure Container Registry の構築
 
-### 13.6.1 ACR Bicep モジュール
+### 15.6.1 ACR Bicep モジュール
 
-ファイル `infrastructure/bicep/modules/compute/container-registry.bicep` を作成し、以下の内容を記述します：
-
-**container-registry.bicep の解説：**
-
-Container Registry を作成し、Admin ユーザーを無効化、Public アクセスを禁止して Private Endpoint 経由でのみアクセスを許可します。Premium SKU で高可用性と Private Endpoint をサポートします。
-
-```bicep
+```bash
+cat << 'EOF' > infrastructure/bicep/modules/compute/container-registry.bicep
 @description('Container Registryの名前')
 param registryName string
 
@@ -870,9 +821,8 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' =
 output registryId string = containerRegistry.id
 output registryName string = containerRegistry.name
 output loginServer string = containerRegistry.properties.loginServer
-```
+EOF
 
-```bash
 # デプロイ
 az deployment group create \
   --name "acr-deployment-$(date +%Y%m%d-%H%M%S)" \
@@ -901,15 +851,15 @@ az network private-endpoint create \
 
 ---
 
-## 13.7 Azure Portal での確認
+## 15.7 Azure Portal での確認
 
-### 13.7.1 VNet Peering の確認
+### 15.7.1 VNet Peering の確認
 
 1. Azure ポータルで「Virtual networks」を開く
 2. Hub VNet と Spoke VNet を開く
 3. 「Peerings」で Peering ステータスが「Connected」であることを確認
 
-### 13.7.2 ネットワーク接続のテスト
+### 15.7.2 ネットワーク接続のテスト
 
 ```bash
 # Spoke VNet内のリソースからインターネットへの接続テスト（Firewall経由）
@@ -919,9 +869,9 @@ curl -I https://www.microsoft.com
 
 ---
 
-## 13.8 コスト管理
+## 15.8 コスト管理
 
-### 13.8.1 リソース別のコスト
+### 15.8.1 リソース別のコスト
 
 | リソース                          | 概算月額コスト（東日本） |
 | --------------------------------- | ------------------------ |
@@ -934,7 +884,7 @@ curl -I https://www.microsoft.com
 
 ---
 
-## 13.9 Git へのコミット
+## 15.9 Git へのコミット
 
 ```bash
 git add .
@@ -953,7 +903,7 @@ git push origin main
 
 ---
 
-## 13.10 章のまとめ
+## 15.10 章のまとめ
 
 本章で構築したもの：
 
@@ -995,7 +945,7 @@ git push origin main
 
 Landing Zone が構築できたら、次はアプリケーション開発・デプロイに進みます。
 
-👉 [第 14 章：アプリケーション開発・デプロイ](chapter14-application.md)
+👉 [第 16 章：アプリケーション開発・デプロイ](chapter16-application.md)
 
 ---
 
