@@ -216,8 +216,13 @@ EOF
 
 **アクショングループ**は、アラート発火時の通知先を定義します。
 
-```bash
-cat << 'EOF' > infrastructure/bicep/modules/monitoring/action-group.bicep
+ファイル `infrastructure/bicep/modules/monitoring/action-group.bicep` を作成し、以下の内容を記述します：
+
+**action-group.bicep の解説：**
+
+アラート発火時の通知先を定義するアクショングループを作成します。複数のメールアドレスに通知を送信できます。
+
+```bicep
 @description('アクショングループの名前')
 param actionGroupName string
 
@@ -263,8 +268,13 @@ az deployment group create \
 
 ### 10.4.2 メトリクスベースのアラート
 
-```bash
-cat << 'EOF' > infrastructure/bicep/modules/monitoring/metric-alert.bicep
+ファイル `infrastructure/bicep/modules/monitoring/metric-alert.bicep` を作成し、以下の内容を記述します：
+
+**metric-alert.bicep の解説：**
+
+メトリクスベースのアラートルールを作成します。指定したメトリクスがしきい値を超えた場合に、アクショングループに通知します。
+
+```bicep
 @description('アラートルールの名前')
 param alertRuleName string
 
@@ -380,8 +390,13 @@ az deployment group create \
 
 ### 10.4.4 ログベースのアラート
 
-```bash
-cat << 'EOF' > infrastructure/bicep/modules/monitoring/log-alert.bicep
+ファイル `infrastructure/bicep/modules/monitoring/log-alert.bicep` を作成し、以下の内容を記述します：
+
+**log-alert.bicep の解説：**
+
+KQLクエリベースのアラートルールを作成します。Log Analytics Workspaceのログデータを分析し、特定の条件（例：アクセス失敗が5回以上）でアラートを発火します。
+
+```bicep
 @description('アラートルールの名前')
 param alertRuleName string
 
@@ -497,8 +512,13 @@ az deployment group create \
 
 ### 10.5.2 Bicep でのダッシュボード作成
 
-```bash
-cat << 'EOF' > infrastructure/bicep/modules/monitoring/dashboard.bicep
+ファイル `infrastructure/bicep/modules/monitoring/dashboard.bicep` を作成し、以下の内容を記述します：
+
+**dashboard.bicep の解説：**
+
+Azure PortalダッシュボードをBicepで作成します。Markdownパーツを含むダッシュボードを定義し、CAF Landing Zoneの主要なメトリクスを監視できるようにします。
+
+```bicep
 @description('ダッシュボードの名前')
 param dashboardName string
 
@@ -566,8 +586,13 @@ EOF
 
 ### 10.6.2 Automation Account の作成
 
-```bash
-cat << 'EOF' > infrastructure/bicep/modules/automation/automation-account.bicep
+ファイル `infrastructure/bicep/modules/automation/automation-account.bicep` を作成し、以下の内容を記述します：
+
+**automation-account.bicep の解説：**
+
+Azure Automation Accountを作成し、System-assigned Managed Identityを有効化します。定期的なタスク（VMの起動・停止等）を自動化するための基盤として機能します。
+
+```bicep
 @description('Automation Accountの名前')
 param automationAccountName string
 
@@ -708,8 +733,13 @@ az automation job-schedule create \
 
 ### 10.7.2 Application Insights Bicep モジュール
 
-```bash
-cat << 'EOF' > infrastructure/bicep/modules/monitoring/application-insights.bicep
+ファイル `infrastructure/bicep/modules/monitoring/application-insights.bicep` を作成し、以下の内容を記述します：
+
+**application-insights.bicep の解説：**
+
+Application Insightsを作成し、Log Analytics Workspaceと統合します。アプリケーションのパフォーマンスとユーザー行動を監視するAPMサービスです。
+
+```bicep
 @description('Application Insightsの名前')
 param appInsightsName string
 

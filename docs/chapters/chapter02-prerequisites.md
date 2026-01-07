@@ -123,45 +123,15 @@ GitHub Codespaces は、ブラウザ上で動作する完全な VS Code 開発�
 
 ### 2.2.3 devcontainer 設定
 
-Codespaces の環境を定義するため、`.devcontainer`設定ファイルを作成します。
+Codespaces の環境は、リポジトリに含まれる`.devcontainer/devcontainer.json`で定義済みです。
 
-#### .devcontainer/devcontainer.json
+このファイルにより、Codespaces起動時に以下が自動的に設定されます：
 
-プロジェクトのルートに`.devcontainer`ディレクトリを作成し、以下のファイルを配置します：
-
-```json
-{
-  "name": "Azure CAF Handson",
-  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
-  "features": {
-    "ghcr.io/devcontainers/features/azure-cli:1": {
-      "version": "latest"
-    },
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "lts"
-    },
-    "ghcr.io/devcontainers/features/git:1": {}
-  },
-  "customizations": {
-    "vscode": {
-      "extensions": [
-        "ms-azuretools.vscode-bicep",
-        "ms-vscode.azurecli",
-        "ms-azuretools.vscode-azureresourcegroups",
-        "ms-vscode.azure-account",
-        "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode",
-        "GitHub.copilot"
-      ],
-      "settings": {
-        "terminal.integrated.defaultProfile.linux": "bash"
-      }
-    }
-  },
-  "postCreateCommand": "az bicep install && npm install -g @azure/static-web-apps-cli",
-  "remoteUser": "vscode"
-}
-```
+- Azure CLI
+- Bicep CLI
+- Node.js (LTS版)
+- Git
+- VS Code拡張機能（Bicep、Azure CLI、ESLintなど）
 
 このファイルを作成したら、Codespaces を再起動するか、新しい Codespace を作成します。
 
@@ -403,75 +373,7 @@ CI/CD パイプラインの定義です。GitHub Actions で自動デプロイ�
 
 ## 2.6 .gitignore の設定
 
-機密情報やビルド成果物を Git にコミットしないように、`.gitignore`ファイルを設定します。
-
-### .gitignore
-
-プロジェクトルートに以下の内容で`.gitignore`を作成：
-
-```gitignore
-# Azure
-*.publishsettings
-azureProfile.json
-
-# Bicep
-bicepconfig.json
-
-# Node
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# Next.js
-.next/
-out/
-build
-dist
-.cache
-
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-logs
-*.log
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-
-# Secrets (重要!)
-secrets/
-*.secret
-*.key
-*.pem
-*.pfx
-
-# Terraform (将来使う場合)
-.terraform/
-*.tfstate
-*.tfstate.backup
-.terraform.lock.hcl
-
-# Local config
-local.settings.json
-```
+機密情報やビルド成果物を Git にコミットしないように、`.gitignore`ファイルがリポジトリに設定済みです。
 
 ### 重要: 機密情報の取り扱い
 
@@ -511,134 +413,11 @@ Azure subscription 1          xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx  yyyyyyyy-yyy
 
 テナント ID とサブスクリプション ID をメモしておきます。
 
-### 2.7.2 アカウントの権限確認
 
-Management Groups を作成するには、適切な権限が必要です。
 
-```bash
-az role assignment list --assignee $(az account show --query user.name -o tsv) --all --output table
-```
 
-理想的には、**Owner** または **User Access Administrator** ロールがルートスコープに割り当てられている必要があります。
 
-新規アカウントの場合、最初のユーザーには自動的に権限が付与されますが、確認しましょう。
 
-### 2.7.3 必要な権限の付与（必要な場合）
-
-Management Groups のルートに権限を付与するには、Azure ポータルから操作します。
-
-1. [Azure ポータル](https://portal.azure.com)にアクセス
-2. 「Management groups」を検索して開く
-3. 画面右上の設定アイコンをクリック
-4. 「Require permissions」の下の「Elevate access for this user」をクリック
-5. 自分のアカウントに「User Access Administrator」ロールが付与される
-
-これにより、すべての Management Groups とサブスクリプションにアクセスできるようになります。
-
----
-
-## 2.8 サービスプリンシパルの作成
-
-CI/CD パイプラインから Azure にデプロイするために、サービスプリンシパル（アプリケーション用の ID）を作成します。
-
-### 2.8.1 サービスプリンシパルとは
-
-サービスプリンシパルは、アプリケーションやサービスが Azure リソースにアクセスするための ID です。
-
-人間のユーザーアカウントとは異なり、自動化されたプロセスで使用されます。
-
-### 2.8.2 サービスプリンシパルの作成
-
-#### サブスクリプション ID の取得
-
-```bash
-SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-echo $SUBSCRIPTION_ID
-```
-
-#### サービスプリンシパルの作成
-
-```bash
-az ad sp create-for-rbac \
-  --name "sp-azure-caf-handson-cicd" \
-  --role Owner \
-  --scopes /subscriptions/$SUBSCRIPTION_ID \
-  --sdk-auth
-```
-
-出力例（**重要: この情報は安全に保管してください**）：
-
-```json
-{
-  "clientId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "clientSecret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-  "subscriptionId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "tenantId": "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
-  "activeDirectoryEndpointUrl": "https://login.microsoftonline.com",
-  "resourceManagerEndpointUrl": "https://management.azure.com/",
-  "activeDirectoryGraphResourceId": "https://graph.windows.net/",
-  "sqlManagementEndpointUrl": "https://management.core.windows.net:8443/",
-  "galleryEndpointUrl": "https://gallery.azure.com/",
-  "managementEndpointUrl": "https://management.core.windows.net/"
-}
-```
-
-**この出力全体をコピーして、安全な場所に保存してください**（次のセクションで使用します）。
-
-### 2.8.3 サービスプリンシパルの権限
-
-作成したサービスプリンシパルには、サブスクリプションの Owner ロールが付与されています。
-
-本番環境では、必要最小限の権限に絞るべきですが、ハンズオンでは簡略化のため Owner を使用します。
-
----
-
-## 2.9 GitHub Secrets の設定
-
-サービスプリンシパルの認証情報を GitHub Secrets に保存します。
-
-### 2.9.1 GitHub Secrets とは
-
-GitHub Secrets は、機密情報を安全に保存し、GitHub Actions から利用できる機能です。
-
-### 2.9.2 Secrets の追加
-
-1. GitHub のリポジトリページにアクセス
-
-2. 「Settings」タブをクリック
-
-3. 左サイドバーの「Secrets and variables」→「Actions」をクリック
-
-4. 「New repository secret」をクリック
-
-5. 以下の Secrets を追加：
-
-#### AZURE_CREDENTIALS
-
-- **Name**: `AZURE_CREDENTIALS`
-- **Value**: 前のセクションで取得した JSON 全体をペースト
-
-```json
-{
-  "clientId": "...",
-  "clientSecret": "...",
-  "subscriptionId": "...",
-  "tenantId": "...",
-  ...
-}
-```
-
-#### AZURE_SUBSCRIPTION_ID
-
-- **Name**: `AZURE_SUBSCRIPTION_ID`
-- **Value**: サブスクリプション ID（`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`形式）
-
-#### AZURE_TENANT_ID
-
-- **Name**: `AZURE_TENANT_ID`
-- **Value**: テナント ID（`yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy`形式）
-
-これで、GitHub Actions から Azure にデプロイできる準備が整いました。
 
 ---
 
@@ -678,7 +457,7 @@ Codespaces では、GitHub との認証が自動的に行われるため、パ�
 
 ---
 
-## 2.11 章のまとめ
+## 2.10 章のまとめ
 
 本章で行ったこと：
 
@@ -693,11 +472,9 @@ Codespaces では、GitHub との認証が自動的に行われるため、パ�
    - Git
    - Node.js
 7. ✅ プロジェクト構造の理解
-8. ✅ .gitignore の設定
+8. ✅ .gitignore の確認
 9. ✅ Azure 環境の確認
-10. ✅ サービスプリンシパルの作成
-11. ✅ GitHub Secrets の設定
-12. ✅ 初回の Git コミット・プッシュ
+10. ✅ 初回の Git コミット・プッシュ
 
 ### チェックリスト
 
@@ -708,8 +485,7 @@ Codespaces では、GitHub との認証が自動的に行われるため、パ�
 - [ ] GitHub Codespaces が起動している
 - [ ] `az --version`でバージョンが表示される
 - [ ] `az bicep version`でバージョンが表示される
-- [ ] サービスプリンシパルの情報を保存した
-- [ ] GitHub Secrets に 3 つの Secret を追加した
+- [ ] テナント ID とサブスクリプション ID を確認した
 - [ ] 初回の Git コミット・プッシュが完了した
 
 ---
@@ -743,20 +519,7 @@ az bicep install
 az bicep version
 ```
 
-### Q3: サービスプリンシパルの作成に失敗する
-
-**症状**: `az ad sp create-for-rbac`でエラー
-
-**解決策**:
-
-```bash
-# 権限を確認
-az role assignment list --assignee $(az account show --query user.name -o tsv) --all
-
-# 必要に応じて、Azureポータルから「Elevate access」を実行
-```
-
-### Q4: GitHub にプッシュできない
+### Q3: GitHub にプッシュできない
 
 **症状**: `git push`で認証エラー
 
@@ -771,7 +534,7 @@ gh auth status
 gh auth login
 ```
 
-### Q5: Codespaces が起動しない
+### Q4: Codespaces が起動しない
 
 **症状**: Codespaces の作成に失敗
 

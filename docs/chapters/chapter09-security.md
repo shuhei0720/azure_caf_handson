@@ -114,8 +114,13 @@ az security contact create \
 
 ### 9.2.4 Bicep での実装
 
-```bash
-cat << 'EOF' > infrastructure/bicep/modules/security/defender.bicep
+ファイル `infrastructure/bicep/modules/security/defender.bicep` を作成し、以下の内容を記述します：
+
+**defender.bicep の解説：**
+
+Microsoft Defender for Cloudの複数のPlan（VirtualMachines、AppServices、StorageAccounts、SqlServers、Containers、KeyVaults）を有効化し、セキュリティ連絡先を設定します。
+
+```bicep
 targetScope = 'subscription'
 
 @description('Defender Plansの設定')
@@ -180,8 +185,13 @@ EOF
 
 ### 9.3.2 Key Vault Bicep モジュール
 
-```bash
-cat << 'EOF' > infrastructure/bicep/modules/security/key-vault.bicep
+ファイル `infrastructure/bicep/modules/security/key-vault.bicep` を作成し、以下の内容を記述します：
+
+**key-vault.bicep の解説：**
+
+Azure Key Vaultを構築し、RBAC認証、Soft Delete、Purge Protectionを有効化します。Publicアクセスを無効化し、Private EndpointでVNet統合し、Private DNS Zoneを構成します。Key Vault Administratorロールを管理者に割り当てます。
+
+```bicep
 @description('Key Vaultの名前（グローバルで一意）')
 @minLength(3)
 @maxLength(24)
@@ -390,8 +400,13 @@ az keyvault secret show \
 
 ### 9.4.2 DDoS Protection Plan Bicep モジュール
 
-```bash
-cat << 'EOF' > infrastructure/bicep/modules/security/ddos-protection.bicep
+ファイル `infrastructure/bicep/modules/security/ddos-protection.bicep` を作成し、以下の内容を記述します：
+
+**ddos-protection.bicep の解説：**
+
+Azure DDoS Protection Planを作成し、Hub VNetに適用することで、DDoS攻撃からアプリケーションを保護します。
+
+```bicep
 @description('DDoS Protection Planの名前')
 param ddosProtectionPlanName string
 
@@ -458,8 +473,13 @@ az network vnet update \
 
 ### 9.5.2 Log Analytics Workspace の作成
 
-```bash
-cat << 'EOF' > infrastructure/bicep/modules/monitoring/log-analytics.bicep
+ファイル `infrastructure/bicep/modules/monitoring/log-analytics.bicep` を作成し、以下の内容を記述します：
+
+**log-analytics.bicep の解説：**
+
+Log Analytics Workspaceを作成し、データ保持期間を設定します。すべての診断ログとメトリクスが集約される中央ログストアとして機能します。
+
+```bicep
 @description('Log Analytics Workspaceの名前')
 param workspaceName string
 
@@ -511,8 +531,13 @@ az deployment group create \
 
 ### 9.5.3 リソースへの診断設定適用
 
-```bash
-cat << 'EOF' > infrastructure/bicep/modules/monitoring/diagnostic-settings.bicep
+ファイル `infrastructure/bicep/modules/monitoring/diagnostic-settings.bicep` を作成し、以下の内容を記述します：
+
+**diagnostic-settings.bicep の解説：**
+
+Azureリソースに診断設定を適用し、すべてのログとメトリクスをLog Analytics Workspaceに送信する汎用モジュールです。allLogsカテゴリグループとAllMetricsを有効化します。
+
+```bicep
 @description('診断設定を適用するリソースID')
 param resourceId string
 
@@ -611,9 +636,13 @@ az sentinel onboard \
 
 すべてのストレージとデータベースで暗号化を有効化：
 
-```bash
-# Storage Account作成時に暗号化を強制
-cat << 'EOF' > infrastructure/bicep/modules/storage/storage-account.bicep
+ファイル `infrastructure/bicep/modules/storage/storage-account.bicep` を作成し、以下の内容を記述します：
+
+**storage-account.bicep の解説：**
+
+Storage Accountを作成し、HTTPS強制、TLS 1.2以上、Publicアクセス禁止、暗号化有効化などのセキュリティベースラインを適用します。
+
+```bicep
 @description('Storage Accountの名前')
 param storageAccountName string
 
@@ -653,7 +682,6 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
 
 output storageAccountId string = storageAccount.id
 output storageAccountName string = storageAccount.name
-EOF
 ```
 
 ---

@@ -197,10 +197,13 @@ mkdir -p infrastructure/bicep/modules/management-groups
 touch infrastructure/bicep/modules/management-groups/main.bicep
 ```
 
-#### main.bicep の作成
+ファイル `infrastructure/bicep/modules/management-groups/main.bicep` を作成し、以下の内容を記述します：
 
-```bash
-cat << 'EOF' > infrastructure/bicep/modules/management-groups/main.bicep
+**main.bicep の解説：**
+
+CAF推奨の階層構造（Platform、Landing Zones、Sandbox、Decommissioned）を持つManagement Groupsを作成します。各Management Groupに説明メタデータを設定し、親子関係を明確に定義します。
+
+```bicep
 // Management Groups階層の作成
 targetScope = 'tenant'
 
@@ -372,17 +375,17 @@ output landingZonesCorpMGId string = landingZonesCorpMG.id
 output landingZonesOnlineMGId string = landingZonesOnlineMG.id
 output sandboxMGId string = sandboxMG.id
 output decommissionedMGId string = decommissionedMG.id
-EOF
-
-# 確認
-cat infrastructure/bicep/modules/management-groups/main.bicep
 ```
 
 ### 5.3.2 パラメータファイルの作成
 
-```bash
-# パラメータファイルを作成
-cat << 'EOF' > infrastructure/bicep/parameters/management-groups.parameters.json
+ファイル `infrastructure/bicep/parameters/management-groups.parameters.json` を作成し、以下の内容を記述します：
+
+**management-groups.parameters.json の解説：**
+
+Management Groupsデプロイ用のパラメータファイル。会社プレフィックスを指定し、この値がすべてのManagement Group名に使用されます。
+
+```json
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
@@ -392,10 +395,6 @@ cat << 'EOF' > infrastructure/bicep/parameters/management-groups.parameters.json
     }
   }
 }
-EOF
-
-# 確認
-cat infrastructure/bicep/parameters/management-groups.parameters.json
 ```
 
 ### 5.3.3 デプロイ用メイン Bicep ファイルの作成

@@ -125,8 +125,15 @@ az group create \
 ```bash
 # Hub VNetモジュールを作成
 mkdir -p infrastructure/bicep/modules/networking
+```
 
-cat << 'EOF' > infrastructure/bicep/modules/networking/hub-vnet.bicep
+ファイル `infrastructure/bicep/modules/networking/hub-vnet.bicep` を作成し、以下の内容を記述します：
+
+**hub-vnet.bicep の解説：**
+
+Hub VNetを作成し、GatewaySubnet、AzureFirewallSubnet、AzureBastionSubnet、ManagementSubnetの4つのサブネットを定義します。Management Subnet用のNSGでは、BastionからのRDP/SSHアクセスのみを許可します。
+
+```bicep
 @description('Hub VNetの名前')
 param vnetName string
 
@@ -297,8 +304,13 @@ az deployment group create \
 
 ### 8.4.2 Public IP の作成
 
-```bash
-cat << 'EOF' > infrastructure/bicep/modules/networking/firewall.bicep
+ファイル `infrastructure/bicep/modules/networking/firewall.bicep` を作成し、以下の内容を記述します：
+
+**firewall.bicep の解説：**
+
+Azure Firewallを構築し、Firewall Policyを作成、Network Rule（HTTP/HTTPS、DNS）とApplication Rule（Azureサービスへのアクセス）を設定します。脅威インテリジェンス機能を有効化し、Public IPを割り当てます。
+
+```bicep
 @description('Azure Firewallの名前')
 param firewallName string
 
@@ -542,8 +554,13 @@ az deployment group create \
 
 ### 8.5.2 Bastion Bicep モジュール
 
-```bash
-cat << 'EOF' > infrastructure/bicep/modules/networking/bastion.bicep
+ファイル `infrastructure/bicep/modules/networking/bastion.bicep` を作成し、以下の内容を記述します：
+
+**bastion.bicep の解説：**
+
+Azure Bastionを構築し、ブラウザベースの安全なRDP/SSHアクセスを提供します。Standard SKUを使用し、Public IPを割り当て、Bastion Subnetにデプロイします。
+
+```bicep
 @description('Azure Bastionの名前')
 param bastionName string
 
@@ -652,8 +669,13 @@ az deployment group create \
 
 すべてのトラフィックを Firewall 経由にするため、Route Table を設定します。
 
-```bash
-cat << 'EOF' > infrastructure/bicep/modules/networking/route-table.bicep
+ファイル `infrastructure/bicep/modules/networking/route-table.bicep` を作成し、以下の内容を記述します：
+
+**route-table.bicep の解説：**
+
+Route Tableを作成し、デフォルトルート（0.0.0.0/0）とSpoke VNetへのルートを設定します。すべてのトラフィックがAzure Firewallを経由するように、nextHopTypeをVirtualApplianceに設定します。
+
+```bicep
 @description('Route Tableの名前')
 param routeTableName string
 

@@ -434,8 +434,13 @@ az policy assignment create \
 
 ### 11.6.1 Policy Definition Bicep モジュール
 
-```bash
-cat << 'EOF' > infrastructure/bicep/modules/governance/policy-definition.bicep
+ファイル `infrastructure/bicep/modules/governance/policy-definition.bicep` を作成し、以下の内容を記述します：
+
+**policy-definition.bicep の解説：**
+
+Management GroupレベルでカスタムAzure Policy定義を作成するモジュールです。ポリシー名、ルール、パラメータを指定して、組織固有のガバナンスルールを実装できます。
+
+```bicep
 targetScope = 'managementGroup'
 
 @description('ポリシー定義の名前')
@@ -472,8 +477,13 @@ EOF
 
 ### 11.6.2 Policy Assignment Bicep モジュール
 
-```bash
-cat << 'EOF' > infrastructure/bicep/modules/governance/policy-assignment.bicep
+ファイル `infrastructure/bicep/modules/governance/policy-assignment.bicep` を作成し、以下の内容を記述します：
+
+**policy-assignment.bicep の解説：**
+
+Management GroupレベルでAzure Policyを割り当てるモジュールです。ポリシー定義IDとパラメータを指定し、特定のスコープにポリシーを適用します。
+
+```bicep
 targetScope = 'managementGroup'
 
 @description('割り当て名')

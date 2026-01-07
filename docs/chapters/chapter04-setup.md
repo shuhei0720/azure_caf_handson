@@ -109,7 +109,7 @@ Management Groups は、複数のサブスクリプションをグループ化�
 
 ### 4.3.2 ルート Management Group へのアクセス権付与
 
-Management Groups を作成・管理するには、ルート Management Group に対する権限が必要です。
+Management Groups を作成・管理するには、ルート Management Group に対する **Owner** ロールが必要です。
 
 #### ポータルでの権限付与
 
@@ -127,6 +127,20 @@ Management Groups を作成・管理するには、ルート Management Group �
 
 これで、あなたのアカウントにルートスコープの「User Access Administrator」ロールが付与されます。
 
+**重要**: その後、ルート Management Group に **Owner** ロールを追加で付与してください。
+
+```bash
+# ルート Management Group に Owner ロールを付与
+ROOT_MG_ID=$(az account tenant list --query "[0].tenantId" -o tsv)
+USER_OBJECT_ID=$(az ad signed-in-user show --query id -o tsv)
+
+az role assignment create \
+  --role "Owner" \
+  --assignee-object-id $USER_OBJECT_ID \
+  --assignee-principal-type User \
+  --scope /providers/Microsoft.Management/managementGroups/$ROOT_MG_ID
+```
+
 #### CLI での確認
 
 ```bash
@@ -137,92 +151,17 @@ az role assignment list \
   --output table
 ```
 
-「User Access Administrator」または「Owner」ロールが表示されれば OK です。
+「Owner」ロールが表示されれば OK です。
 
 ---
 
 ## 4.4 プロジェクトの初期化
 
-### 4.4.1 .gitignore ファイルの作成
-
-第 2 章で説明した.gitignore ファイルを作成します（まだの場合）。
-
-```bash
-# プロジェクトルートに移動
-cd /workspaces/azure_caf_handson
-
-# .gitignoreファイルを作成
-cat << 'EOF' > .gitignore
-# Azure
-*.publishsettings
-azureProfile.json
-
-# Bicep
-bicepconfig.json
-
-# Node
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# Next.js
-.next/
-out/
-build
-dist
-.cache
-
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-logs
-*.log
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-
-# Secrets
-secrets/
-*.secret
-*.key
-*.pem
-*.pfx
-
-# Terraform
-.terraform/
-*.tfstate
-*.tfstate.backup
-.terraform.lock.hcl
-
-# Local config
-local.settings.json
-EOF
-
-# 確認
-cat .gitignore
-```
-
-### 4.4.2 環境変数ファイルの準備
+### 4.4.1 環境変数ファイルの準備
 
 機密情報を環境変数で管理します。
+
+※ この時点では、現在 Azure アカウントで使用できるサブスクリプション（無料トライアルまたは既存のサブスクリプション）を使用します。専用のサブスクリプション（management、connectivityなど）は第6章で作成します。
 
 ```bash
 # .envファイルを作成（このファイルはGitにコミットしません）
@@ -289,9 +228,15 @@ output storageAccountId string = storageAccount.id
 ```bash
 # テスト用ディレクトリを作成
 mkdir -p infrastructure/bicep/test
+```
 
-# Bicepファイルを作成
-cat << 'EOF' > infrastructure/bicep/test/test-rg.bicep
+ファイル `infrastructure/bicep/test/test-rg.bicep` を作成し、以下の内容を記述します：
+
+**test-rg.bicep の解説：**
+
+サブスクリプションレベルでリソースグループを作成するテンプレート。タグ付けのベストプラクティスとして、Environment、Project、ManagedBy、CreatedDateを設定しています。
+
+```bicep
 // テスト用リソースグループ作成
 targetScope = 'subscription'
 
@@ -319,10 +264,6 @@ resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 // 出力
 output resourceGroupId string = resourceGroup.id
 output resourceGroupName string = resourceGroup.name
-EOF
-
-# ファイルの確認
-cat infrastructure/bicep/test/test-rg.bicep
 ```
 
 ### 4.5.3 Bicep ファイルの検証
@@ -470,9 +411,15 @@ infrastructure/
 ```bash
 # パラメータディレクトリを作成
 mkdir -p infrastructure/bicep/parameters
+```
 
-# 共通パラメータファイルを作成
-cat << 'EOF' > infrastructure/bicep/parameters/common.parameters.json
+ファイル `infrastructure/bicep/parameters/common.parameters.json` を作成し、以下の内容を記述します：
+
+**common.parameters.json の解説：**
+
+共通パラメータファイル。会社プレフィックス、デフォルトリージョン、共通タグを定義しており、すべてのBicepデプロイで再利用されます。
+
+```json
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
@@ -492,10 +439,6 @@ cat << 'EOF' > infrastructure/bicep/parameters/common.parameters.json
     }
   }
 }
-EOF
-
-# 確認
-cat infrastructure/bicep/parameters/common.parameters.json
 ```
 
 ---
@@ -529,9 +472,15 @@ Bicep で命名規則を実装します。
 ```bash
 # 共通モジュールディレクトリを作成
 mkdir -p infrastructure/bicep/modules/common
+```
 
-# 命名規則モジュールを作成
-cat << 'EOF' > infrastructure/bicep/modules/common/naming.bicep
+ファイル `infrastructure/bicep/modules/common/naming.bicep` を作成し、以下の内容を記述します：
+
+**naming.bicep の解説：**
+
+命名規則を標準化するモジュール。リソースタイプ、ワークロード、環境、リージョン、インスタンス番号から、一貫した命名パターン（{type}-{workload}-{env}-{region}-{instance}）を生成します。
+
+```bicep
 // 命名規則モジュール
 
 @description('リソースタイプ（例: rg, vnet, afw）')
@@ -559,17 +508,17 @@ var resourceName = '${resourceType}-${workload}-${environment}-${regionShort}-${
 
 // 出力
 output name string = resourceName
-EOF
-
-# 確認
-cat infrastructure/bicep/modules/common/naming.bicep
 ```
 
 ### 4.7.3 命名規則のテスト
 
-```bash
-# テスト用Bicepファイルを作成
-cat << 'EOF' > infrastructure/bicep/test/test-naming.bicep
+ファイル `infrastructure/bicep/test/test-naming.bicep` を作成し、以下の内容を記述します：
+
+**test-naming.bicep の解説：**
+
+命名規則モジュールを実際に使用してリソースグループを作成するテスト。モジュールから生成された名前が正しいかWhat-Ifで確認できます。
+
+```bicep
 targetScope = 'subscription'
 
 // 命名規則モジュールを使用
@@ -591,8 +540,11 @@ resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 }
 
 output resourceGroupName string = resourceGroup.name
-EOF
+```
 
+命名規則の動作を確認：
+
+```bash
 # What-Ifで確認
 az deployment sub what-if \
   --location japaneast \

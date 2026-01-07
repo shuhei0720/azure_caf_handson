@@ -231,8 +231,15 @@ az ad group member add \
 ```bash
 # ロール割り当てモジュールを作成
 mkdir -p infrastructure/bicep/modules/rbac
+```
 
-cat << 'EOF' > infrastructure/bicep/modules/rbac/role-assignments.bicep
+ファイル `infrastructure/bicep/modules/rbac/role-assignments.bicep` を作成し、以下の内容を記述します：
+
+**role-assignments.bicep の解説：**
+
+Management GroupレベルでRBACロールを割り当てるモジュール。ロール定義ID、プリンシパルID（ユーザー、グループ、サービスプリンシパル）を指定して使用します。
+
+```bicep
 targetScope = 'managementGroup'
 
 @description('割り当てるロールの定義ID')
@@ -260,7 +267,6 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 }
 
 output roleAssignmentId string = roleAssignment.id
-EOF
 ```
 
 #### ロール割り当ての実行（例）
