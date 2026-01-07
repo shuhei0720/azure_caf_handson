@@ -416,6 +416,7 @@ infrastructure/
 ```
 
 **構造設計の原則：**
+
 - **networking/**: Hub 側（Connectivity サブスクリプション）のプラットフォームネットワーク
 - **landing-zone/networking/**: Spoke 側（Landing Zone サブスクリプション）のアプリケーションネットワーク
 - CAF では、Spoke リソースはアプリケーションチームが管理するため、landing-zone 配下に配置
@@ -530,30 +531,43 @@ output name string = resourceName
 
 **test-naming.bicep の解説：**
 
-命名規則モジュールを実際に使用してリソースグループを作成するテスト。モジュールから生成された名前が正しいか What-If で確認できます。
+命名規則モジュールを実際に使用してリソースグループを作成するテスト。変数で名前を生成してからリソースに適用します。
 
 ```bicep
 targetScope = 'subscription'
 
-// 命名規則モジュールを使用
-module rgNaming '../modules/common/naming.bicep' = {
-  name: 'rgNaming'
-  params: {
-    resourceType: 'rg'
-    workload: 'platform'
-    environment: 'prod'
-    regionShort: 'jpe'
-    instance: '001'
-  }
-}
+// パラメータ
+@description('リソースタイプ')
+param resourceType string = 'rg'
+
+@description('ワークロード名')
+param workload string = 'platform'
+
+@description('環境')
+param environment string = 'prod'
+
+@description('リージョンの短縮形')
+param regionShort string = 'jpe'
+
+@description('インスタンス番号')
+param instance string = '001'
+
+// 命名規則に従ってリソース名を生成
+var resourceGroupName = '${resourceType}-${workload}-${environment}-${regionShort}-${instance}'
 
 // リソースグループを作成
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: rgNaming.outputs.name
+  name: resourceGroupName
   location: 'japaneast'
+  tags: {
+    Environment: environment
+    ManagedBy: 'Bicep'
+    Purpose: 'NamingConventionTest'
+  }
 }
 
 output resourceGroupName string = resourceGroup.name
+output generatedName string = resourceGroupName
 ```
 
 命名規則の動作を確認：
