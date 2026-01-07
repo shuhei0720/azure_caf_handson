@@ -217,22 +217,39 @@ output subscriptionId string = subManagement.properties.subscriptionId
 ### 6.3.4 Bicep のデプロイ（10-15 分）
 
 ```bash
+# デプロイ名を変数に保存（重要：タイムスタンプが変わらないように）
+DEPLOYMENT_NAME="deploy-sub-management-$(date +%Y%m%d-%H%M%S)"
+
 echo "Creating Management Subscription..."
 az deployment tenant create \
-  --name "deploy-sub-management-$(date +%Y%m%d-%H%M%S)" \
+  --name "$DEPLOYMENT_NAME" \
   --location japaneast \
   --template-file infrastructure/bicep/subscriptions/sub-management.bicep \
   --parameters billingScope="$BILLING_SCOPE"
+
+# デプロイ結果から Subscription ID を取得
+SUB_MANAGEMENT_ID=$(az deployment tenant show \
+  --name "$DEPLOYMENT_NAME" \
+  --query properties.outputs.subscriptionId.value -o tsv)
+
+echo "Management Subscription ID: $SUB_MANAGEMENT_ID"
 ```
 
 ### 6.3.5 Subscription ID の記録
 
 ```bash
+# .envファイルに追記（既に取得済みの場合はスキップ可）
+echo "SUB_MANAGEMENT_ID=$SUB_MANAGEMENT_ID" >> .env
+
+# 確認
+echo "Management Subscription ID: $SUB_MANAGEMENT_ID"
+```
+
+**代替方法**: デプロイから時間が経過している場合は、以下のコマンドでも取得可能です：
+
+```bash
 SUB_MANAGEMENT_ID=$(az account list --query "[?name=='sub-platform-management-prod'].id" -o tsv)
 echo "Management Subscription ID: $SUB_MANAGEMENT_ID"
-
-# .envファイルに追記
-echo "SUB_MANAGEMENT_ID=$SUB_MANAGEMENT_ID" >> .env
 ```
 
 ### 6.3.6 Azure ポータルでの確認
