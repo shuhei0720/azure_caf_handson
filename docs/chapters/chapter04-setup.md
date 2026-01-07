@@ -391,20 +391,34 @@ infrastructure/
     └── modules/                   # 再利用可能モジュール
         ├── management-groups/     # Management Groups
         │   └── main.bicep
-        ├── networking/            # ネットワーク
+        ├── networking/            # Hub ネットワーク（Platform チーム管理）
         │   ├── hub-vnet.bicep
-        │   ├── spoke-vnet.bicep
         │   ├── firewall.bicep
-        │   └── bastion.bicep
+        │   ├── bastion.bicep
+        │   └── route-table.bicep
         ├── security/              # セキュリティ
         │   ├── key-vault.bicep
         │   └── nsg.bicep
         ├── monitoring/            # 監視
         │   ├── log-analytics.bicep
         │   └── alerts.bicep
-        └── landing-zone/          # Landing Zone
-            └── main.bicep
+        └── landing-zone/          # Landing Zone（Application チーム管理）
+            ├── main.bicep
+            ├── networking/        # Spoke ネットワーク
+            │   ├── spoke-vnet.bicep
+            │   ├── hub-to-spoke-peering.bicep
+            │   └── private-dns-zone.bicep
+            ├── compute/           # コンピューティング
+            │   └── container-apps.bicep
+            └── data/              # データストア
+                ├── postgresql.bicep
+                └── redis-cache.bicep
 ```
+
+**構造設計の原則：**
+- **networking/**: Hub 側（Connectivity サブスクリプション）のプラットフォームネットワーク
+- **landing-zone/networking/**: Spoke 側（Landing Zone サブスクリプション）のアプリケーションネットワーク
+- CAF では、Spoke リソースはアプリケーションチームが管理するため、landing-zone 配下に配置
 
 ### 4.6.2 共通パラメータファイルの作成
 

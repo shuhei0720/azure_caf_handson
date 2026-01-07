@@ -95,7 +95,7 @@ az group create \
 
 ### 13.2.2 Spoke VNet Bicep モジュール
 
-ファイル `infrastructure/bicep/modules/networking/spoke-vnet.bicep` を作成し、以下の内容を記述します：
+ファイル `infrastructure/bicep/modules/landing-zone/networking/spoke-vnet.bicep` を作成し、以下の内容を記述します：
 
 **spoke-vnet.bicep の解説：**
 
@@ -316,7 +316,7 @@ output privateEndpointSubnetId string = spokeVNet.properties.subnets[2].id
 
 ### 13.2.3 Hub 側の Peering 設定
 
-ファイル `infrastructure/bicep/modules/networking/hub-to-spoke-peering.bicep` を作成し、以下の内容を記述します：
+ファイル `infrastructure/bicep/modules/landing-zone/networking/hub-to-spoke-peering.bicep` を作成し、以下の内容を記述します：
 
 **hub-to-spoke-peering.bicep の解説：**
 
@@ -393,7 +393,7 @@ EOF
 az deployment group create \
   --name "spoke-vnet-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/networking/spoke-vnet.bicep \
+  --template-file infrastructure/bicep/modules/landing-zone/networking/spoke-vnet.bicep \
   --parameters infrastructure/bicep/parameters/spoke-vnet.parameters.json
 
 # Hub側のPeeringを設定
@@ -405,7 +405,7 @@ SPOKE_VNET_ID=$(az network vnet show \
 az deployment group create \
   --name "hub-to-spoke-peering-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-connectivity-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/networking/hub-to-spoke-peering.bicep \
+  --template-file infrastructure/bicep/modules/landing-zone/networking/hub-to-spoke-peering.bicep \
   --parameters \
     hubVNetName=vnet-hub-prod-jpe-001 \
     spokeVNetId="$SPOKE_VNET_ID" \
@@ -591,7 +591,7 @@ output fqdn string = postgresqlServer.properties.fullyQualifiedDomainName
 
 ### 13.4.2 Private DNS Zone の作成
 
-ファイル `infrastructure/bicep/modules/networking/private-dns-zone.bicep` を作成し、以下の内容を記述します：
+ファイル `infrastructure/bicep/modules/landing-zone/networking/private-dns-zone.bicep` を作成し、以下の内容を記述します：
 
 **private-dns-zone.bicep の解説：**
 
@@ -635,7 +635,7 @@ output privateDnsZoneId string = privateDnsZone.id
 az deployment group create \
   --name "postgres-private-dns-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/networking/private-dns-zone.bicep \
+  --template-file infrastructure/bicep/modules/landing-zone/networking/private-dns-zone.bicep \
   --parameters \
     zoneName=privatelink.postgres.database.azure.com \
     vnetIds="[\"$SPOKE_VNET_ID\",\"$HUB_VNET_ID\"]"
