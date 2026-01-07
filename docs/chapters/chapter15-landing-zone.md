@@ -1,6 +1,6 @@
 ﻿# 第 15 章：Landing Zone（Spoke）構築
 
-> **⚠️ 4日目以降の作業**  
+> **⚠️ 4 日目以降の作業**  
 > 本章から先は **有料リソース（Azure Firewall、Container Apps、PostgreSQL、Redis など）** を作成します。  
 > サブスクリプション作成後 24 時間経過していることを確認してから進めてください。
 

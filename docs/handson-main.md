@@ -56,7 +56,7 @@
 
 ---
 
-### Phase 2: プラットフォーム基盤の構築（所要時間：15-20 時間）
+### Phase 2: プラットフォーム基盤の構築（1日目：第 6-7 章）
 
 #### [第 5 章：Management Groups 設計・構築](chapters/chapter05-management-groups.md)
 
@@ -69,58 +69,15 @@
 - Management Groups 階層の可視化
 - Azure Portal での確認
 
-#### [第 6 章：Subscriptions 設計・構築](chapters/chapter06-subscriptions.md)
+#### [第 6 章：Subscriptions 設計・構築（1日目）](chapters/chapter06-subscriptions.md)
 
 - Subscription 戦略の設計
-- 必要な Subscriptions の作成
-  - Connectivity Subscription（ネットワーク Hub 用）
-  - Management Subscription（監視・ログ用）
-  - Identity Subscription（ID 管理用）
-  - Landing Zone Subscriptions（アプリケーション用）
+- Management Subscription の作成（1日目）
 - Subscriptions と Management Groups の関連付け
 - Subscription 間の権限設計
+- **注意**: 他の Subscription は翌日以降に作成（24時間の制限あり）
 
-#### [第 7 章：Identity & Access Management](chapters/chapter07-identity.md)
-
-- Azure AD（Entra ID）の設計
-- ユーザーとグループの作成
-- Azure RBAC の設計と実装
-  - カスタムロールの作成
-  - ロール割り当ての実装
-- 管理グループレベルでの権限設定
-- Privileged Identity Management (PIM) の設定
-- 条件付きアクセスの設定
-- Multi-Factor Authentication (MFA) の有効化
-
-#### [第 8 章：Hub Network 構築](chapters/chapter08-networking-hub.md)
-
-- Hub-Spoke ネットワークトポロジーの設計
-- Hub VNet の作成
-  - アドレス空間の設計
-  - サブネット設計（GatewaySubnet, AzureFirewallSubnet, etc.）
-- Azure Firewall の構築
-  - Firewall Policy の設定
-  - ルールコレクションの作成
-- Azure Bastion の構築
-- VPN Gateway または ExpressRoute Gateway の構築
-- Network Security Groups (NSG) の設計
-- Route Table の設定
-- Azure DNS Private Zone の設定
-
-#### [第 9 章：セキュリティ基盤構築](chapters/chapter09-security.md)
-
-- Microsoft Defender for Cloud の有効化
-  - すべてのサブスクリプションでの有効化
-  - セキュリティポリシーの設定
-- Azure Sentinel の構築（SIEM/SOAR）
-- Key Vault の構築
-  - 暗号化キーの管理
-  - シークレット管理
-  - 証明書管理
-- セキュリティベースラインの設定
-- Azure DDoS Protection Standard の有効化
-
-#### [第 10 章：監視・管理基盤構築](chapters/chapter10-monitoring.md)
+#### [第 7 章：監視・ログ基盤構築（1日目）](chapters/chapter07-monitoring.md)
 
 - Log Analytics Workspace の構築
 - Azure Monitor の設定
@@ -137,9 +94,27 @@
 
 ---
 
-### Phase 3: ガバナンスと自動化（所要時間：8-12 時間）
+### Phase 2: Identity & ガバナンス（2日目：第 8-10 章）
 
-#### [第 11 章：ガバナンス・ポリシー実装](chapters/chapter11-governance.md)
+#### [第 8 章：Identity Subscription 作成（2日目）](chapters/chapter08-identity-subscription.md)
+
+- Identity Subscription の作成（24時間後）
+- Management Groups への割り当て
+- サブスクリプション設定
+
+#### [第 9 章：Identity & Access Management（IAM）設計（2日目）](chapters/chapter09-iam.md)
+
+- Azure AD（Entra ID）の設計
+- ユーザーとグループの作成
+- Azure RBAC の設計と実装
+  - カスタムロールの作成
+  - ロール割り当ての実装
+- 管理グループレベルでの権限設定
+- Privileged Identity Management (PIM) の設定
+- 条件付きアクセスの設定
+- Multi-Factor Authentication (MFA) の有効化
+
+#### [第 10 章：ガバナンス・ポリシー実装（2日目）](chapters/chapter10-governance.md)
 
 - Azure Policy の設計思想
 - 組み込みポリシーの理解
@@ -147,6 +122,144 @@
   - ポリシー定義の作成
   - ポリシーイニシアチブの作成
 - ポリシーの割り当て
+  - Management Group レベルでの割り当て
+  - 除外設定
+- 主要なポリシーの実装
+  - 許可されるリージョンの制限
+  - リソースタグの強制
+  - SKU の制限
+  - 診断設定の強制
+  - ネットワークセキュリティの強制
+  - 暗号化の強制
+- Blueprints の作成と割り当て
+- Cost Management の設定
+  - 予算アラートの設定
+  - コスト分析の設定
+- Azure Resource Graph を使用したクエリ
+
+---
+
+### Phase 3: ネットワークとセキュリティ（3日目：第 11-12 章）
+
+#### [第 11 章：Connectivity Subscription 作成（3日目）](chapters/chapter11-connectivity-subscription.md)
+
+- Connectivity Subscription の作成（48時間後）
+- Management Groups への割り当て
+- サブスクリプション設定
+
+#### [第 12 章：Security 基盤構築（3日目）](chapters/chapter12-security.md)
+
+- Microsoft Defender for Cloud の有効化
+  - すべてのサブスクリプションでの有効化
+  - セキュリティポリシーの設定
+- Azure Sentinel の構築（SIEM/SOAR）
+- Key Vault の構築
+  - 暗号化キーの管理
+  - シークレット管理
+  - 証明書管理
+- セキュリティベースラインの設定
+- Azure DDoS Protection Standard の有効化
+
+---
+
+### Phase 4: Hub Network 構築（4日目以降：第 13-14 章）
+
+#### [第 13 章：Hub Network 構築（4日目以降）](chapters/chapter13-networking-hub.md)
+
+- Hub-Spoke ネットワークトポロジーの設計
+- Hub VNet の作成
+  - アドレス空間の設計
+  - サブネット設計（GatewaySubnet, AzureFirewallSubnet, etc.）
+- Azure Firewall の構築
+  - Firewall Policy の設定
+  - ルールコレクションの作成
+- Azure Bastion の構築
+- VPN Gateway または ExpressRoute Gateway の構築
+- Network Security Groups (NSG) の設計
+- Route Table の設定
+- Azure DNS Private Zone の設定
+
+#### [第 14 章：Landing Zone Subscription 作成（4日目以降）](chapters/chapter14-landingzone-subscription.md)
+
+- Landing Zone Subscription の作成（72時間後）
+- Management Groups への割り当て
+- サブスクリプション設定
+
+---
+
+### Phase 5: アプリケーション実装（4日目以降：第 15-18 章）
+
+#### [第 15 章：Landing Zone（Spoke）構築](chapters/chapter15-landing-zone.md)
+
+- Spoke VNet の設計
+  - アドレス空間の割り当て
+  - サブネット設計
+- Spoke VNet の作成（Bicep）
+- Hub-Spoke Peering の構築
+- NSG と RouteTable の適用
+- Private Endpoint の設計
+- Spoke 固有のリソース作成
+  - Azure Container Registry (ACR)
+  - Azure Container Apps
+  - Azure Database for PostgreSQL
+  - Azure Storage Account
+  - Azure Cache for Redis
+- Private Link の構築
+- DNS 設定の統合
+
+#### [第 16 章：アプリケーション開発・デプロイ](chapters/chapter16-application.md)
+
+- Next.js アプリケーションの構築
+  - プロジェクト作成
+  - TypeScript 設定
+  - Tailwind CSS 設定
+- アプリケーションの設計
+  - フロントエンド構成
+  - API ルート設計
+  - データベース接続
+- Azure Container Apps へのデプロイ準備
+  - Dockerfile の作成
+  - Docker Compose でのローカルテスト
+- CI/CD パイプラインの作成（アプリ用）
+  - ビルドワークフロー
+  - デプロイワークフロー
+  - 環境変数の管理
+- 本番デプロイ
+- カスタムドメインの設定
+- SSL 証明書の設定
+- Application Gateway の構築（オプション）
+- CDN の構築（Azure Front Door）
+
+#### [第 17 章：CI/CD パイプライン構築](chapters/chapter17-cicd.md)
+
+- GitHub Actions の基礎
+- Infrastructure as Code のワークフロー設計
+- Bicep デプロイワークフローの作成
+  - Pull Request 時のバリデーション
+  - main ブランチへのマージ時のデプロイ
+- ポリシーデプロイワークフローの作成
+- 環境ごとの分離（dev/staging/production）
+- シークレット管理のベストプラクティス
+- ロールバック戦略
+- デプロイの承認フロー
+
+#### [第 18 章：まとめと次のステップ](chapters/chapter18-conclusion.md)
+
+- 構築したアーキテクチャの振り返り
+- 運用フェーズへの移行
+  - 監視とアラートの確認
+  - インシデント対応プロセス
+  - 変更管理プロセス
+- スケーリング戦略
+  - 新しい Landing Zone の追加
+  - グローバル展開
+- コスト最適化
+  - リソースの見直し
+  - Reserved Instances と Savings Plans
+- セキュリティの継続的改善
+- さらなる学習リソース
+- コミュニティとサポート
+- クリーンアップ手順（リソースの削除）
   - Management Group レベルでの割り当て
   - 除外設定
 - 主要なポリシーの実装
@@ -242,24 +355,27 @@
 
 ## 章別の推奨所要時間
 
-| 章       | タイトル                       | 推定時間       | 難易度   |
-| -------- | ------------------------------ | -------------- | -------- |
-| 1        | イントロダクションと CAF 概要  | 1 時間         | ⭐       |
-| 2        | 前提条件と環境準備             | 1-2 時間       | ⭐       |
-| 3        | CAF ランディングゾーン詳細     | 1-2 時間       | ⭐⭐     |
-| 4        | Azure 環境の初期セットアップ   | 1-2 時間       | ⭐⭐     |
-| 5        | Management Groups 設計・構築   | 2-3 時間       | ⭐⭐     |
-| 6        | Subscriptions 設計・構築       | 2-3 時間       | ⭐⭐     |
-| 7        | Identity & Access Management   | 3-4 時間       | ⭐⭐⭐   |
-| 8        | Hub Network 構築               | 4-6 時間       | ⭐⭐⭐   |
-| 9        | セキュリティ基盤構築           | 3-4 時間       | ⭐⭐⭐   |
-| 10       | 監視・管理基盤構築             | 3-4 時間       | ⭐⭐⭐   |
-| 11       | ガバナンス・ポリシー実装       | 4-6 時間       | ⭐⭐⭐⭐ |
-| 12       | CI/CD パイプライン構築         | 4-6 時間       | ⭐⭐⭐⭐ |
-| 13       | Landing Zone（Spoke）構築      | 4-6 時間       | ⭐⭐⭐   |
-| 14       | アプリケーション開発・デプロイ | 8-12 時間      | ⭐⭐⭐⭐ |
-| 15       | まとめと次のステップ           | 1-2 時間       | ⭐       |
-| **合計** |                                | **43-65 時間** |          |
+| 章       | タイトル                       | 推定時間       | 難易度   | 実施日 |
+| -------- | ------------------------------ | -------------- | -------- | ------ |
+| 1        | イントロダクションと CAF 概要  | 1 時間         | ⭐       | -      |
+| 2        | 前提条件と環境準備             | 1-2 時間       | ⭐       | -      |
+| 3        | CAF ランディングゾーン詳細     | 1-2 時間       | ⭐⭐     | -      |
+| 4        | Azure 環境の初期セットアップ   | 1-2 時間       | ⭐⭐     | -      |
+| 5        | Management Groups 設計・構築   | 2-3 時間       | ⭐⭐     | 1日目  |
+| 6        | Subscriptions 設計・構築       | 1-2 時間       | ⭐⭐     | 1日目  |
+| 7        | 監視・ログ基盤構築             | 3-4 時間       | ⭐⭐⭐   | 1日目  |
+| 8        | Identity Subscription 作成     | 30分           | ⭐       | 2日目  |
+| 9        | IAM 設計                       | 3-4 時間       | ⭐⭐⭐   | 2日目  |
+| 10       | ガバナンス・ポリシー実装       | 4-6 時間       | ⭐⭐⭐⭐ | 2日目  |
+| 11       | Connectivity Subscription 作成 | 30分           | ⭐       | 3日目  |
+| 12       | Security 基盤構築              | 3-4 時間       | ⭐⭐⭐   | 3日目  |
+| 13       | Hub Network 構築               | 4-6 時間       | ⭐⭐⭐   | 4日目  |
+| 14       | Landing Zone Subscription 作成 | 30分           | ⭐       | 4日目  |
+| 15       | Landing Zone（Spoke）構築      | 4-6 時間       | ⭐⭐⭐⭐ | 4日目+ |
+| 16       | アプリケーション開発・デプロイ | 8-12 時間      | ⭐⭐⭐⭐ | 4日目+ |
+| 17       | CI/CD パイプライン構築         | 4-6 時間       | ⭐⭐⭐⭐ | 4日目+ |
+| 18       | まとめと次のステップ           | 1-2 時間       | ⭐       | -      |
+| **合計** |                                | **47-72 時間** |          |        |
 
 ---
 
@@ -303,7 +419,13 @@ A: 可能ですが、無料枠（$200 クレジット）を超える可能性が
 
 ### Q2: どのくらいの期間で完了できますか？
 
-A: 個人差がありますが、平日 2-3 時間、週末 4-6 時間のペースで進めて、2-4 週間程度が目安です。
+A: 個人差がありますが、**最低4日間必要**です（Azure Subscription の作成制限のため）。各日の作業時間は 2-6 時間程度。週末を使って 1-2 週間で完了できます。
+
+**推奨スケジュール：**
+- **1日目**: 第5-7章（Management Groups、Subscription作成、監視基盤）
+- **2日目**: 第8-10章（Identity Subscription、IAM、ガバナンス）
+- **3日目**: 第11-12章（Connectivity Subscription、セキュリティ）
+- **4日目以降**: 第13-18章（Hub Network、Landing Zone、アプリケーション、CI/CD）
 
 ### Q3: 途中で止めて、後から再開できますか？
 

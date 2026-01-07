@@ -1,4 +1,4 @@
-# 第 14 章：Landing Zone Subscription 作成（4日目以降）
+# 第 14 章：Landing Zone Subscription 作成（4 日目以降）
 
 ## 本章の目的
 
@@ -6,7 +6,7 @@
 
 **所要時間**: 約 30 分〜1 時間  
 **難易度**: ⭐  
-**実施タイミング**: **4日目以降**（Connectivity Subscription作成から24時間後）  
+**実施タイミング**: **4 日目以降**（Connectivity Subscription 作成から 24 時間後）  
 **注意**: このサブスクリプションにデプロイするリソースは費用が発生します
 
 ---
@@ -59,7 +59,7 @@ echo "Connectivity Subscription ID: $SUB_CONNECTIVITY_ID"
 - **データベース**: SQL Database、Cosmos DB など
 - **ストレージ**: Storage Account、Blob など
 
-本ハンズオンでは、**Corp（内部アプリケーション）向けの Landing Zone** を1つ作成します。
+本ハンズオンでは、**Corp（内部アプリケーション）向けの Landing Zone** を 1 つ作成します。
 
 ### 14.1.2 CAF における Landing Zone Subscription の位置づけ
 
@@ -232,7 +232,7 @@ Landing Zone Subscription の作成が完了したら、次は Spoke VNet の構
 
 Landing Zone Subscription の準備が完了したら、次は Spoke VNet（Landing Zone Network）の構築に進みます。
 
-👉 [第 15 章：Spoke VNet 構築（Landing Zone Network）](chapter15-spoke-vnet.md)
+👉 [第 15 章：Landing Zone（Spoke）構築](chapter15-landing-zone.md)
 
 **注意**: 次の章では、Spoke VNet、VNet Peering、アプリケーションサブネットなどを構築します。
 

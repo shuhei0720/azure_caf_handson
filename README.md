@@ -55,16 +55,19 @@ docs/
     ├── chapter03-caf-overview.md      # 第3章：CAFランディングゾーン詳細
     ├── chapter04-setup.md             # 第4章：Azure環境のセットアップ
     ├── chapter05-management-groups.md # 第5章：Management Groups設計・構築
-    ├── chapter06-subscriptions.md     # 第6章：Subscriptions設計・構築
-    ├── chapter07-identity.md          # 第7章：Identity & Access Management
-    ├── chapter08-networking-hub.md    # 第8章：Hub Network構築
-    ├── chapter09-security.md          # 第9章：セキュリティ基盤構築
-    ├── chapter10-monitoring.md        # 第10章：監視・管理基盤構築
-    ├── chapter11-governance.md        # 第11章：ガバナンス・ポリシー実装
-    ├── chapter12-cicd.md              # 第12章：CI/CDパイプライン構築
-    ├── chapter13-landing-zone.md      # 第13章：Landing Zone（Spoke）構築
-    ├── chapter14-application.md       # 第14章：アプリケーション開発・デプロイ
-    └── chapter15-conclusion.md        # 第15章：まとめと次のステップ
+    ├── chapter06-subscriptions.md     # 第6章：Subscriptions設計・構築（1日目）
+    ├── chapter07-monitoring.md        # 第7章：監視・ログ基盤構築（1日目）
+    ├── chapter08-identity-subscription.md # 第8章：Identity Subscription作成（2日目）
+    ├── chapter09-iam.md               # 第9章：Identity & Access Management（2日目）
+    ├── chapter10-governance.md        # 第10章：ガバナンス・ポリシー実装（2日目）
+    ├── chapter11-connectivity-subscription.md # 第11章：Connectivity Subscription作成（3日目）
+    ├── chapter12-security.md          # 第12章：セキュリティ基盤構築（3日目）
+    ├── chapter13-networking-hub.md    # 第13章：Hub Network構築（4日目以降）
+    ├── chapter14-landingzone-subscription.md # 第14章：Landing Zone Subscription作成（4日目以降）
+    ├── chapter15-landing-zone.md      # 第15章：Landing Zone（Spoke）構築
+    ├── chapter16-application.md       # 第16章：アプリケーション開発・デプロイ
+    ├── chapter17-cicd.md              # 第17章：CI/CDパイプライン構築
+    └── chapter18-conclusion.md        # 第18章：まとめと次のステップ
 ```
 
 ### インフラストラクチャ構成
@@ -122,23 +125,34 @@ Root Management Group
 - Azure 環境の準備
 - 開発環境のセットアップ
 
-### Phase 2: プラットフォーム構築（第 5-10 章）
+### Phase 2: プラットフォーム基盤（1 日目：第 5-7 章）
 
 - Management Groups の階層構造作成
-- ネットワーク Hub の構築
-- セキュリティと監視基盤の実装
+- Subscription 作成（Management）
+- 監視・ログ基盤の実装
 
-### Phase 3: ガバナンスと自動化（第 11-12 章）
+### Phase 3: Identity & ガバナンス（2 日目：第 8-10 章）
 
-- Azure Policy の実装
-- CI/CD パイプラインの構築
-- Infrastructure as Code の完成
+- Identity Subscription 作成
+- IAM 設計と実装
+- Azure Policy とガバナンス
 
-### Phase 4: アプリケーション実装（第 13-15 章）
+### Phase 4: ネットワークとセキュリティ（3 日目：第 11-12 章）
+
+- Connectivity Subscription 作成
+- セキュリティ基盤の実装
+
+### Phase 5: Hub Network 構築（4 日目以降：第 13-14 章）
+
+- Hub VNet と Azure Firewall
+- Landing Zone Subscription 作成
+
+### Phase 6: アプリケーション実装（4 日目以降：第 15-18 章）
 
 - Landing Zone（Spoke）の構築
 - Next.js アプリケーションの開発
-- デプロイと運用
+- CI/CD パイプラインの構築
+- まとめと次のステップ
 
 ## 重要な注意事項
 
