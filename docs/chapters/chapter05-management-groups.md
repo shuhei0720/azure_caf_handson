@@ -544,15 +544,10 @@ Scope: /
 
 ### 5.4.4 実際のデプロイ
 
-```bash
-# 事前確認
-az deployment tenant what-if \
-  --name "mg-deployment-$(date +%Y%m%d-%H%M%S)" \
-  --location japaneast \
-  --template-file infrastructure/bicep/main-mg.bicep \
-  --parameters infrastructure/bicep/parameters/management-groups.parameters.json
+What-If で問題がないことを確認したら、実際にデプロイを実行します。
 
-# 確認後、デプロイ実行
+```bash
+# デプロイ実行
 az deployment tenant create \
   --name "mg-deployment-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
