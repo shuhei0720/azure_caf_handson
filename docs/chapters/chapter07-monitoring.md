@@ -2205,6 +2205,10 @@ graph LR
 
 Automation Account を Management Subscription に作成します。集中管理の観点から、監視・運用ツールは Management Subscription に配置します。
 
+```bash
+mkdir -p infrastructure/bicep/modules/automation
+```
+
 ファイル `infrastructure/bicep/modules/automation/automation-account.bicep` を作成します：
 
 ```bicep
