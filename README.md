@@ -50,23 +50,23 @@
 docs/
 ├── handson-main.md                    # メインハンズオン文書（全体の目次）
 └── chapters/                          # 各章の詳細ハンズオン
-    ├── chapter01-introduction.md      # 第1章：イントロダクションとCAF概要
+    ├── chapter01-introduction.md      # 第1章：イントロダクションと CAF 概要
     ├── chapter02-prerequisites.md     # 第2章：前提条件と環境準備
-    ├── chapter03-caf-overview.md      # 第3章：CAFランディングゾーン詳細
-    ├── chapter04-setup.md             # 第4章：Azure環境のセットアップ
-    ├── chapter05-management-groups.md # 第5章：Management Groups設計・構築
-    ├── chapter06-subscriptions.md     # 第6章：Subscriptions設計・構築（1日目）
+    ├── chapter03-caf-overview.md      # 第3章：CAF ランディングゾーン詳細
+    ├── chapter04-setup.md             # 第4章：Azure 環境の初期セットアップ
+    ├── chapter05-management-groups.md # 第5章：Management Groups 設計・構築
+    ├── chapter06-subscriptions.md     # 第6章：Subscriptions 設計・構築（1日目）
     ├── chapter07-monitoring.md        # 第7章：監視・ログ基盤構築（1日目）
-    ├── chapter08-identity-subscription.md # 第8章：Identity Subscription作成（2日目）
-    ├── chapter09-iam.md               # 第9章：Identity & Access Management（2日目）
+    ├── chapter08-identity-subscription.md # 第8章：Identity Subscription 作成（2日目）
+    ├── chapter09-iam.md               # 第9章：Identity & Access Management（IAM）設計（2日目）
     ├── chapter10-governance.md        # 第10章：ガバナンス・ポリシー実装（2日目）
-    ├── chapter11-connectivity-subscription.md # 第11章：Connectivity Subscription作成（3日目）
-    ├── chapter12-security.md          # 第12章：セキュリティ基盤構築（3日目）
-    ├── chapter13-networking-hub.md    # 第13章：Hub Network構築（4日目以降）
-    ├── chapter14-landingzone-subscription.md # 第14章：Landing Zone Subscription作成（4日目以降）
+    ├── chapter11-connectivity-subscription.md # 第11章：Connectivity Subscription 作成（3日目）
+    ├── chapter12-security.md          # 第12章：Security 基盤構築（3日目）
+    ├── chapter13-networking-hub.md    # 第13章：Hub Network 構築（4日目以降）
+    ├── chapter14-landingzone-subscription.md # 第14章：Landing Zone Subscription 作成（4日目以降）
     ├── chapter15-landing-zone.md      # 第15章：Landing Zone（Spoke）構築
     ├── chapter16-application.md       # 第16章：アプリケーション開発・デプロイ
-    ├── chapter17-cicd.md              # 第17章：CI/CDパイプライン構築
+    ├── chapter17-cicd.md              # 第17章：CI/CD パイプライン構築
     └── chapter18-conclusion.md        # 第18章：まとめと次のステップ
 ```
 
@@ -75,14 +75,18 @@ docs/
 ```
 infrastructure/
 ├── bicep/                    # Bicep IaCテンプレート
-│   ├── main.bicep           # メインデプロイメント
-│   ├── parameters/          # パラメータファイル
-│   └── modules/             # 再利用可能なモジュール
-│       ├── management-groups/
-│       ├── networking/
-│       ├── security/
-│       ├── monitoring/
-│       └── landing-zone/
+│   ├── orchestration/       # オーケストレーション（統合デプロイ）
+│   │   ├── main.bicep       # サブスクリプションスコープ統合
+│   │   ├── main.bicepparam  # 統合パラメータファイル
+│   │   ├── tenant.bicep     # テナントスコープ（Management Groups）
+│   │   └── tenant.bicepparam # Management Groupsパラメータ
+│   ├── modules/             # 再利用可能なモジュール
+│   │   ├── management-groups/
+│   │   ├── networking/
+│   │   ├── security/
+│   │   ├── monitoring/
+│   │   └── resource-group/
+│   └── parameters/          # 個別パラメータファイル（参考用）
 └── policies/                # Azure Policyの定義
     ├── definitions/
     ├── initiatives/
