@@ -564,6 +564,9 @@ module tableRetention '../modules/monitoring/log-analytics-table-retention.bicep
     retentionInDays: monitoring.tableRetention.retentionInDays
     totalRetentionInDays: monitoring.tableRetention.totalRetentionInDays
   }
+  dependsOn: [
+    logAnalytics
+  ]
 }
 ```
 
@@ -957,7 +960,6 @@ module dcrVMInsights '../modules/monitoring/dcr-vm-insights.bicep' = {
   }
   dependsOn: [
     managementRG
-    logAnalytics
   ]
 }
 ```
@@ -1122,7 +1124,6 @@ module dcrOSLogs '../modules/monitoring/dcr-os-logs.bicep' = {
   }
   dependsOn: [
     managementRG
-    logAnalytics
   ]
 }
 ```
