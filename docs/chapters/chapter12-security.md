@@ -133,6 +133,8 @@ az security contact create \
 
 ### 12.2.4 Bicep での実装
 
+#### モジュールの作成
+
 ファイル `infrastructure/bicep/modules/security/defender.bicep` を作成し、以下の内容を記述します：
 
 **defender.bicep の解説：**
@@ -186,6 +188,81 @@ output defenderPlans array = defenderPlans
 output securityContactEmail string = securityContactEmail
 ```
 
+#### オーケストレーションへのパラメータ追記
+
+ファイル `infrastructure/bicep/orchestration/main.bicepparam` を開き、以下を追記：
+
+```bicep
+// =============================================================================
+// Chapter 12: Security
+// =============================================================================
+
+@description('Security設定')
+param security = {
+  defender: {
+    plans: [
+      'VirtualMachines'
+      'AppServices'
+      'StorageAccounts'
+      'SqlServers'
+      'Containers'
+      'KeyVaults'
+    ]
+    securityContactEmail: 'security@example.com'
+  }
+  // 12.3以降で追記予定
+}
+```
+
+#### オーケストレーションへのモジュール追加
+
+ファイル `infrastructure/bicep/orchestration/main.bicep` を開き、以下を追記：
+
+```bicep
+// =============================================================================
+// パラメータ定義（既存のセクションに追加）
+// =============================================================================
+
+@description('Security設定')
+param security object
+
+// =============================================================================
+// モジュールデプロイ（既存のセクションに追加）
+// =============================================================================
+
+// Chapter 12: Defender for Cloud
+module defender '../modules/security/defender.bicep' = {
+  name: 'deploy-defender'
+  params: {
+    defenderPlans: security.defender.plans
+    securityContactEmail: security.defender.securityContactEmail
+  }
+}
+```
+
+#### デプロイ実行
+
+```bash
+# Management Subscription に切り替え
+az account set --subscription $SUB_MANAGEMENT_ID
+
+# What-If実行
+az deployment sub what-if \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+
+# デプロイ実行
+az deployment sub create \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+
+echo "✅ Defender for Cloud が orchestration 経由でデプロイされました"
+```
+
 ---
 
 ## 12.3 Azure Key Vault の構築
@@ -207,7 +284,7 @@ output securityContactEmail string = securityContactEmail
 
 **key-vault.bicep の解説：**
 
-Azure Key Vault を構築し、RBAC 認証、Soft Delete、Purge Protection を有効化します。Public アクセスを無効化し、Private Endpoint で VNet 統合し、Private DNS Zone を構成します。Key Vault Administrator ロールを管理者に割り当てます。
+Azure Key Vault を構築し、RBAC 認証、Soft Delete、Purge Protection を有効化します。本ハンズオンでは簡略化のため Public Access を有効にしていますが、Chapter 13 で Hub VNet を作成後に Private Endpoint を追加できます。
 
 ```bicep
 @description('Key Vaultの名前（グローバルで一意）')
@@ -229,18 +306,17 @@ param administratorObjectId string
 @maxValue(90)
 param softDeleteRetentionInDays int = 90
 
-@description('ネットワークアクセス設定')
-@allowed([
-  'Enabled'
-  'Disabled'
-])
-param publicNetworkAccess string = 'Disabled'
-
-@description('Hub VNetのサブネットID（Private Endpoint用）')
-param subnetId string
-
 @description('タグ')
 param tags object = {}
+
+@description('リソースグループ名')
+param resourceGroupName string
+
+// 既存のResource Group
+resource resourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
+  scope: subscription()
+  name: resourceGroupName
+}
 
 // Key Vault
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
@@ -260,58 +336,13 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
     softDeleteRetentionInDays: softDeleteRetentionInDays
     enablePurgeProtection: true
     enableRbacAuthorization: true  // RBAC使用
-    publicNetworkAccess: publicNetworkAccess
+    publicNetworkAccess: 'Enabled'  // 簡略化のため有効
     networkAcls: {
       bypass: 'AzureServices'
-      defaultAction: publicNetworkAccess == 'Disabled' ? 'Deny' : 'Allow'
+      defaultAction: 'Allow'
     }
   }
-}
-
-// Private Endpoint（VNet統合）
-resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-05-01' = if (publicNetworkAccess == 'Disabled') {
-  name: '${keyVaultName}-pe'
-  location: location
-  tags: tags
-  properties: {
-    subnet: {
-      id: subnetId
-    }
-    privateLinkServiceConnections: [
-      {
-        name: '${keyVaultName}-connection'
-        properties: {
-          privateLinkServiceId: keyVault.id
-          groupIds: [
-            'vault'
-          ]
-        }
-      }
-    ]
-  }
-}
-
-// Private DNS Zone
-resource privateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (publicNetworkAccess == 'Disabled') {
-  name: 'privatelink.vaultcore.azure.net'
-  location: 'global'
-  tags: tags
-}
-
-// Private DNS Zone Group
-resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-05-01' = if (publicNetworkAccess == 'Disabled') {
-  name: 'default'
-  parent: privateEndpoint
-  properties: {
-    privateDnsZoneConfigs: [
-      {
-        name: 'vault-config'
-        properties: {
-          privateDnsZoneId: privateDnsZone.id
-        }
-      }
-    ]
-  }
+  scope: resourceGroup
 }
 
 // Key Vault管理者ロールの割り当て
@@ -331,73 +362,111 @@ output keyVaultName string = keyVault.name
 output keyVaultUri string = keyVault.properties.vaultUri
 ```
 
+**注意**: Private Endpoint と Private DNS Zone は Chapter 13 で Hub VNet 作成後に追加します。
+
 ### 12.3.3 Key Vault のデプロイ
+
+#### オーケストレーションへのパラメータ追記
+
+自分のオブジェクトIDを取得：
 
 ```bash
 # 自分のオブジェクトIDを取得
 MY_OBJECT_ID=$(az ad signed-in-user show --query id -o tsv)
+echo "My Object ID: $MY_OBJECT_ID"
 ```
 
-パラメーターファイル `infrastructure/bicep/parameters/security-resource-group.bicepparam` を作成：
+ファイル `infrastructure/bicep/orchestration/main.bicepparam` を開き、`security` セクションに追記：
 
 ```bicep
-using '../modules/resource-group/resource-group.bicep'
-
-param resourceGroupName = 'rg-platform-security-prod-jpe-001'
-param location = 'japaneast'
-param tags = {
-  Environment: 'Production'
-  ManagedBy: 'Bicep'
-  Component: 'Security'
+@description('Security設定')
+param security = {
+  defender: {
+    plans: [
+      'VirtualMachines'
+      'AppServices'
+      'StorageAccounts'
+      'SqlServers'
+      'Containers'
+      'KeyVaults'
+    ]
+    securityContactEmail: 'security@example.com'
+  }
+  // 👇 12.3で追記
+  resourceGroup: {
+    name: 'rg-platform-security-prod-jpe-001'
+    tags: {
+      Environment: 'Production'
+      ManagedBy: 'Bicep'
+      Component: 'Security'
+    }
+  }
+  keyVault: {
+    name: 'kv-hub-prod-jpe-001'  // グローバルで一意な名前に変更してください
+    administratorObjectId: 'YOUR_OBJECT_ID'  // 👆上記コマンドで取得したIDに置き換え
+    softDeleteRetentionInDays: 90
+    tags: {
+      Environment: 'Production'
+      ManagedBy: 'Bicep'
+      Component: 'Security'
+    }
+  }
 }
 ```
 
-Key Vault 用の Resource Group を Bicep で作成：
+#### オーケストレーションへのモジュール追加
 
-**What-If による事前確認：**
+ファイル `infrastructure/bicep/orchestration/main.bicep` を開き、以下を追記：
 
-```bash
-# 事前確認
-az deployment sub what-if \
-  --name "rg-security-$(date +%Y%m%d-%H%M%S)" \
-  --location japaneast \
-  --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
-  --parameters infrastructure/bicep/parameters/security-resource-group.bicepparam
+```bicep
+// Chapter 12: Security Resource Group
+module securityRG '../modules/resource-group/resource-group.bicep' = {
+  name: 'deploy-security-rg'
+  params: {
+    resourceGroupName: security.resourceGroup.name
+    location: location
+    tags: union(tags, security.resourceGroup.tags)
+  }
+}
+
+// Chapter 12: Key Vault
+module keyVault '../modules/security/key-vault.bicep' = {
+  name: 'deploy-key-vault'
+  params: {
+    keyVaultName: security.keyVault.name
+    location: location
+    administratorObjectId: security.keyVault.administratorObjectId
+    softDeleteRetentionInDays: security.keyVault.softDeleteRetentionInDays
+    resourceGroupName: security.resourceGroup.name
+    tags: union(tags, security.keyVault.tags)
+  }
+  dependsOn: [
+    securityRG
+  ]
+}
 ```
 
-**デプロイ実行：**
+#### デプロイ実行
 
-````bash
+```bash
+# Management Subscription に切り替え
+az account set --subscription $SUB_MANAGEMENT_ID
+
+# What-If実行
+az deployment sub what-if \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+
 # デプロイ実行
 az deployment sub create \
-  --name "rg-security-$(date +%Y%m%d-%H%M%S)" \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
-  --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
-  --parameters infrastructure/bicep/parameters/security-resource-group.bicepparam
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
 
-# Management Subnet の ID を取得
-
-MANAGEMENT_SUBNET_ID=$(az network vnet subnet show \
- --vnet-name vnet-hub-prod-jpe-001 \
- --name ManagementSubnet \
- --resource-group rg-platform-connectivity-prod-jpe-001 \
- --query id -o tsv)
-
-# パラメータファイルを作成
-
-cat << EOF > infrastructure/bicep/parameters/key-vault.parameters.json
-{
-"\$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
-"contentVersion": "1.0.0.0",
-"parameters": {
-"keyVaultName": {
-"value": "kv-hub-prod-jpe-001"
-},
-"location": {
-"value": "japaneast"
-},
-"administratorObjectId": {
-"value": "$MY_OBJECT_ID"
+echo "✅ Key Vault が orchestration 経由でデプロイされました"
     },
     "publicNetworkAccess": {
       "value": "Disabled"
