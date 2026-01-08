@@ -2263,11 +2263,7 @@ module automationAccount '../modules/automation/automation-account.bicep' = {
     })
   }
 }
-```
 
-`main.bicep` の最後に出力を追加：
-
-```bicep
 // Chapter 7: Automation Account Outputs
 output automationAccountId string = automationAccount.outputs.automationAccountId
 output automationPrincipalId string = automationAccount.outputs.principalId
