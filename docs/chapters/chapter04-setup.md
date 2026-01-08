@@ -750,6 +750,9 @@ targetScope = 'subscription'
 // パラメータ定義
 // =============================================================================
 
+@description('Company prefix for naming resources')
+param companyPrefix string
+
 @description('デプロイ先のリージョン')
 param location string
 
@@ -798,6 +801,8 @@ using './main.bicep'
 // =============================================================================
 // 共通設定
 // =============================================================================
+
+param companyPrefix = 'contoso'
 
 param location = 'japaneast'
 
