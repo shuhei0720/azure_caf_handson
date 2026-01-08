@@ -128,19 +128,33 @@ Spoke 2 VNet:  10.2.0.0/16  (65,536 IP)
 
 ### 13.3.1 Resource Group の作成
 
+Hub Network用のResource GroupをBicepで作成します：
+
 ```bash
-# Hub Network用のResource Groupを作成
-az group create \
-  --name rg-platform-connectivity-prod-jpe-001 \
+# 事前確認
+az deployment sub what-if \
+  --name "rg-connectivity-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
-  --tags \
-    Environment=Production \
-    ManagedBy=Bicep \
-    Project=CAF-Landing-Zone \
-    Component=Connectivity
+  --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
+  --parameters \
+    resourceGroupName=rg-platform-connectivity-prod-jpe-001 \
+    location=japaneast \
+    tags='{"Environment":"Production","ManagedBy":"Bicep","Project":"CAF-Landing-Zone","Component":"Connectivity"}'
+
+# 確認後、デプロイ実行
+az deployment sub create \
+  --name "rg-connectivity-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
+  --parameters \
+    resourceGroupName=rg-platform-connectivity-prod-jpe-001 \
+    location=japaneast \
+    tags='{"Environment":"Production","ManagedBy":"Bicep","Project":"CAF-Landing-Zone","Component":"Connectivity"}'
+
+echo "Resource Group が Bicep で作成されました"
 ```
 
-### 8.3.2 Hub VNet Bicep モジュールの作成
+### 13.3.2 Hub VNet Bicep モジュールの作成
 
 ```bash
 # Hub VNetモジュールを作成

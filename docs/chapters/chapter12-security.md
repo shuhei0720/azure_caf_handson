@@ -337,14 +337,26 @@ output keyVaultUri string = keyVault.properties.vaultUri
 # 自分のオブジェクトIDを取得
 MY_OBJECT_ID=$(az ad signed-in-user show --query id -o tsv)
 
-# Key Vault用のResource Groupを作成
-az group create \
-  --name rg-platform-security-prod-jpe-001 \
+# Key Vault用のResource GroupをBicepで作成
+# 事前確認
+az deployment sub what-if \
+  --name "rg-security-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
-  --tags \
-    Environment=Production \
-    ManagedBy=Bicep \
-    Component=Security
+  --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
+  --parameters \
+    resourceGroupName=rg-platform-security-prod-jpe-001 \
+    location=japaneast \
+    tags='{"Environment":"Production","ManagedBy":"Bicep","Component":"Security"}'
+
+# 確認後、デプロイ実行
+az deployment sub create \
+  --name "rg-security-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
+  --parameters \
+    resourceGroupName=rg-platform-security-prod-jpe-001 \
+    location=japaneast \
+    tags='{"Environment":"Production","ManagedBy":"Bicep","Component":"Security"}'
 
 # Management SubnetのIDを取得
 MANAGEMENT_SUBNET_ID=$(az network vnet subnet show \

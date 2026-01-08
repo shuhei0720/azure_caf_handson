@@ -66,17 +66,30 @@ graph TB
 
 ### 15.2.1 Resource Group の作成
 
+Landing Zone用のResource GroupをBicepで作成します：
+
 ```bash
-# Landing Zone用のResource Group
-az group create \
-  --name rg-landingzone-app1-prod-jpe-001 \
+# 事前確認
+az deployment sub what-if \
+  --name "rg-landingzone-app1-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
-  --tags \
-    Environment=Production \
-    ManagedBy=Bicep \
-    Project=CAF-Landing-Zone \
-    Component=LandingZone-App1 \
-    CostCenter=IT-001
+  --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
+  --parameters \
+    resourceGroupName=rg-landingzone-app1-prod-jpe-001 \
+    location=japaneast \
+    tags='{"Environment":"Production","ManagedBy":"Bicep","Project":"CAF-Landing-Zone","Component":"LandingZone-App1","CostCenter":"IT-001"}'
+
+# 確認後、デプロイ実行
+az deployment sub create \
+  --name "rg-landingzone-app1-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
+  --parameters \
+    resourceGroupName=rg-landingzone-app1-prod-jpe-001 \
+    location=japaneast \
+    tags='{"Environment":"Production","ManagedBy":"Bicep","Project":"CAF-Landing-Zone","Component":"LandingZone-App1","CostCenter":"IT-001"}'
+
+echo "Resource Group が Bicep で作成されました"
 ```
 
 ### 15.2.2 Spoke VNet Bicep モジュール
