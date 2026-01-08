@@ -354,6 +354,8 @@ param tags = {
 
 Key Vault 用の Resource Group を Bicep で作成：
 
+**What-Ifによる事前確認：**
+
 ```bash
 # 事前確認
 az deployment sub what-if \
@@ -361,8 +363,12 @@ az deployment sub what-if \
   --location japaneast \
   --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
   --parameters infrastructure/bicep/parameters/security-resource-group.bicepparam
+```
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# デプロイ実行
 az deployment sub create \
   --name "rg-security-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
@@ -403,6 +409,9 @@ cat << EOF > infrastructure/bicep/parameters/key-vault.parameters.json
 }
 EOF
 
+**What-Ifによる事前確認：**
+
+```bash
 # 事前確認
 
 az deployment group what-if \
@@ -410,8 +419,12 @@ az deployment group what-if \
  --resource-group rg-platform-security-prod-jpe-001 \
  --template-file infrastructure/bicep/modules/security/key-vault.bicep \
  --parameters infrastructure/bicep/parameters/key-vault.parameters.json
+```
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# デプロイ実行
 
 az deployment group create \
  --name "key-vault-deployment-$(date +%Y%m%d-%H%M%S)" \
@@ -483,6 +496,8 @@ output ddosProtectionPlanName string = ddosProtectionPlan.name
 
 ### 12.4.3 VNet への DDoS Protection 適用
 
+**What-Ifによる事前確認：**
+
 ```bash
 # 事前確認
 az deployment group what-if \
@@ -492,8 +507,12 @@ az deployment group what-if \
   --parameters \
     ddosProtectionPlanName=ddos-hub-prod-jpe-001 \
     location=japaneast
+```
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# デプロイ実行
 az deployment group create \
   --name "ddos-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-security-prod-jpe-001 \

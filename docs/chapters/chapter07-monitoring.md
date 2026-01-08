@@ -225,13 +225,9 @@ param tags = {
 }
 ```
 
-**重要：** パラメーターファイルを Git 管理下に置くことで、すべてのリソースを消しても一発で復元できます。
-
 **What-If による事前確認：**
 
 ```bash
-# パラメーターファイルのディレクトリを作成
-mkdir -p infrastructure/bicep/parameters
 
 # Management Subscription に切り替え（念のため確認）
 az account set --subscription $SUB_MANAGEMENT_ID
@@ -1906,7 +1902,7 @@ output automationAccountName string = automationAccount.name
 output principalId string = automationAccount.identity.principalId
 ```
 
-**What-Ifによる事前確認：**
+**What-If による事前確認：**
 
 ```bash
 # Management Subscription にデプロイ
