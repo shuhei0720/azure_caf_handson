@@ -997,11 +997,6 @@ echo "VM Insights DCR ID: $DCR_VM_INSIGHTS_ID"
 echo "✅ DCR for VM Insights が orchestration 経由でデプロイされました"
 ```
 
-echo "DCR_VM_INSIGHTS_ID=$DCR_VM_INSIGHTS_ID" >> .env
-echo "VM Insights DCR ID: $DCR_VM_INSIGHTS_ID"
-
-````
-
 ### 7.4.2 DCR for Windows Event Logs and Syslog
 
 Windows Event ログと Linux Syslog を収集する DCR を作成します。
