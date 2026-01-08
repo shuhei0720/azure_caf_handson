@@ -141,33 +141,33 @@ graph TB
         C[Entra ID<br/>監査ログ]
         D[Activity Log]
     end
-    
+
     subgraph "Log Analytics Workspace"
         E[データ取り込み<br/>Ingestion]
         F[Interactive層<br/>90日: $2.30/GB]
         G[Archive層<br/>640日: $0.10/GB]
     end
-    
+
     subgraph "利用"
         H[KQL クエリ<br/>高速分析]
         I[Azure Monitor<br/>アラート]
         J[Workbooks<br/>可視化]
         K[コンプライアンス<br/>監査]
     end
-    
+
     A --> E
     B --> E
     C --> E
     D --> E
-    
+
     E --> F
     F --> G
-    
+
     F --> H
     F --> I
     F --> J
     G --> K
-    
+
     style F fill:#e1f5ff
     style G fill:#f0f0f0
 ```
@@ -178,21 +178,69 @@ Log Analytics Workspace は、Azure 全体のログとメトリクスを集約�
 
 ### 7.3.1 Resource Group の作成
 
-監視リソース用の Resource Group を作成します：
+監視リソース用の Resource Group を Bicep で作成します。
+
+ディレクトリを作成：
 
 ```bash
-# Management Subscriptionに切り替え（念のため確認）
+mkdir -p infrastructure/bicep/modules/resource-group
+```
+
+ファイル `infrastructure/bicep/modules/resource-group/resource-group.bicep` を作成：
+
+```bicep
+targetScope = 'subscription'
+
+@description('リソースグループ名')
+param resourceGroupName string
+
+@description('デプロイ先のリージョン')
+param location string
+
+@description('タグ')
+param tags object = {}
+
+// Resource Group
+resource resourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' = {
+  name: resourceGroupName
+  location: location
+  tags: tags
+}
+
+output resourceGroupName string = resourceGroup.name
+output resourceGroupId string = resourceGroup.id
+```
+
+デプロイ：
+
+```bash
+# Management Subscription に切り替え（念のため確認）
 az account set --subscription $SUB_MANAGEMENT_ID
 
-# Resource Group作成
-az group create \
-  --name rg-platform-management-prod-jpe-001 \
+# 事前確認
+az deployment sub what-if \
+  --name "rg-management-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
-  --tags \
-    Environment=Production \
-    ManagedBy=Bicep \
-    Component=Management
+  --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
+  --parameters \
+    resourceGroupName=rg-platform-management-prod-jpe-001 \
+    location=japaneast \
+    tags='{"Environment":"Production","ManagedBy":"Bicep","Component":"Management"}'
+
+# 確認後、デプロイ実行
+az deployment sub create \
+  --name "rg-management-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
+  --parameters \
+    resourceGroupName=rg-platform-management-prod-jpe-001 \
+    location=japaneast \
+    tags='{"Environment":"Production","ManagedBy":"Bicep","Component":"Management"}'
+
+echo "Resource Group が Bicep で作成されました"
 ```
+
+**重要：** すべてのリソースを Bicep で管理することで、インフラストラクチャのパラメーターシート兼バックアップとして機能します。Resource Group も例外ではありません。
 
 ### 7.3.2 Log Analytics Workspace の作成
 
@@ -335,14 +383,16 @@ totalRetentionInDays: 730日 # 総保持期間（アーカイブ含む）
 デプロイ後、Azure Portal で以下を確認します:
 
 1. **リソースグループの確認**
+
    - Azure Portal → Resource groups → `rg-platform-management-prod-jpe-001`
    - Log Analytics Workspace `log-platform-prod-jpe-001` が存在することを確認
 
 2. **ワークスペースの設定確認**
+
    - Workspace を開く → Settings → Usage and estimated costs
    - Retention: 90 days (Interactive) + Archive until 730 days を確認
 
-3. **ワークスペースIDの確認**
+3. **ワークスペース ID の確認**
    - Workspace を開く → Properties → Workspace ID をコピー
    - `.env` ファイルの `LOG_WORKSPACE_ID` と一致することを確認
 
@@ -357,42 +407,42 @@ graph LR
         VM2[Linux VM]
         A1[Azure Monitor<br/>Agent]
         A2[Azure Monitor<br/>Agent]
-        
+
         VM1 --> A1
         VM2 --> A2
     end
-    
+
     subgraph "Data Collection Rules"
         DCR1[DCR:<br/>VM Insights]
         DCR2[DCR:<br/>OS Logs]
     end
-    
+
     subgraph "収集データ"
         D1[パフォーマンス<br/>メトリクス]
         D2[プロセス情報]
         D3[Windows<br/>Event Logs]
         D4[Linux<br/>Syslog]
     end
-    
+
     subgraph "Log Analytics"
         LA[Log Analytics<br/>Workspace]
     end
-    
+
     A1 -->|VM Insights| DCR1
     A2 -->|VM Insights| DCR1
     A1 -->|OS Logs| DCR2
     A2 -->|OS Logs| DCR2
-    
+
     DCR1 --> D1
     DCR1 --> D2
     DCR2 --> D3
     DCR2 --> D4
-    
+
     D1 --> LA
     D2 --> LA
     D3 --> LA
     D4 --> LA
-    
+
     style DCR1 fill:#ffe6cc
     style DCR2 fill:#ffe6cc
     style LA fill:#e1f5ff
@@ -669,10 +719,12 @@ echo "OS Logs DCR ID: $DCR_OS_LOGS_ID"
 デプロイ後、Azure Portal で以下を確認します:
 
 1. **Data Collection Rules の確認**
+
    - Azure Portal → Monitor → Data Collection Rules
    - `dcr-vm-insights-prod-jpe-001` と `dcr-os-logs-prod-jpe-001` が存在することを確認
 
 2. **DCR の詳細確認**
+
    - DCR を開く → Resources → 後の章で VM を作成後、ここに VM が自動的に関連付けられることを確認
    - Data sources で Performance Counters や Syslog が設定されていることを確認
 
@@ -691,37 +743,37 @@ graph LR
         C[サービス<br/>プリンシパル]
         D[マネージドID]
     end
-    
+
     subgraph "診断設定 (Tenant Level)"
         E[診断設定:<br/>Entra ID Logs]
     end
-    
+
     subgraph "ログカテゴリ"
         F[SignInLogs]
         G[AuditLogs]
         H[NonInteractive<br/>SignIn]
         I[Service Principal<br/>SignIn]
     end
-    
+
     subgraph "Log Analytics"
         J[Log Analytics<br/>Workspace]
     end
-    
+
     A --> E
     B --> E
     C --> E
     D --> E
-    
+
     E --> F
     E --> G
     E --> H
     E --> I
-    
+
     F --> J
     G --> J
     H --> J
     I --> J
-    
+
     style E fill:#ffe6cc
     style J fill:#e1f5ff
 ```
@@ -800,10 +852,12 @@ AuditLogs
 デプロイ後、Azure Portal で以下を確認します:
 
 1. **Entra ID 診断設定の確認**
+
    - Azure Portal → Entra ID → Diagnostic settings
    - `entra-id-to-log-analytics` が存在し、有効になっていることを確認
 
 2. **ログカテゴリの確認**
+
    - Diagnostic settings で AuditLogs, SignInLogs など全カテゴリが有効であることを確認
 
 3. **Log Analytics でログ確認**
@@ -821,34 +875,34 @@ graph TB
         S2[Connectivity<br/>Subscription]
         S3[Sandbox<br/>Subscription]
     end
-    
+
     subgraph "Activity Log"
         A1[リソース作成]
         A2[リソース削除]
         A3[RBAC変更]
         A4[Policy適用]
     end
-    
+
     subgraph "診断設定"
         D[Diagnostic Settings<br/>Subscription Level]
     end
-    
+
     subgraph "Log Analytics"
         LA[Log Analytics<br/>Workspace]
     end
-    
+
     S1 --> A1
     S1 --> A2
     S2 --> A3
     S3 --> A4
-    
+
     A1 --> D
     A2 --> D
     A3 --> D
     A4 --> D
-    
+
     D --> LA
-    
+
     style D fill:#ffe6cc
     style LA fill:#e1f5ff
 ```
@@ -923,10 +977,12 @@ az deployment sub create \
 デプロイ後、Azure Portal で以下を確認します:
 
 1. **サブスクリプション診断設定の確認**
+
    - Azure Portal → Subscriptions → Management Subscription
    - Diagnostic settings で `send-to-log-analytics` が存在することを確認
 
 2. **ログカテゴリの確認**
+
    - Administrative, Security, Policy など全カテゴリが有効であることを確認
 
 3. **Activity Log の確認**
@@ -946,27 +1002,27 @@ graph LR
         B[DCR: VM Insights]
         C[DCR: OS Logs]
     end
-    
+
     subgraph "診断設定"
         D[診断設定:<br/>Audit ログ]
         E[診断設定:<br/>メトリクス]
     end
-    
+
     subgraph "収集先"
         F[Log Analytics<br/>Workspace]
     end
-    
+
     A -->|操作ログ| D
     B -->|変更履歴| D
     C -->|変更履歴| D
-    
+
     A -->|パフォーマンス| E
     B -->|メトリクス| E
     C -->|メトリクス| E
-    
+
     D --> F
     E --> F
-    
+
     style F fill:#e1f5ff
 ```
 
@@ -985,25 +1041,25 @@ graph TB
     subgraph "Management Subscription"
         MI[マネージドID:<br/>id-policy-assignment]
     end
-    
+
     subgraph "Azure Policy"
         P1[Policy: Defender<br/>for Cloud]
         P2[Policy: Diagnostic<br/>Settings]
     end
-    
+
     subgraph "Target Subscriptions"
         SUB1[Connectivity<br/>Subscription]
         SUB2[Sandbox<br/>Subscription]
         SUB3[Application<br/>Subscription]
     end
-    
+
     P1 -->|DeployIfNotExists| MI
     P2 -->|Modify| MI
-    
+
     MI -->|Owner権限で<br/>リソース作成/変更| SUB1
     MI -->|Owner権限で<br/>リソース作成/変更| SUB2
     MI -->|Owner権限で<br/>リソース作成/変更| SUB3
-    
+
     style MI fill:#ffe6cc
     style SUB1 fill:#e1f5ff
     style SUB2 fill:#e1f5ff
@@ -1128,10 +1184,12 @@ echo "マネージドIDにOwner権限を付与しました"
 デプロイ後、Azure Portal で以下を確認します:
 
 1. **マネージド ID の確認**
+
    - Azure Portal → Resource groups → rg-platform-management-prod-jpe-001
    - `id-policy-assignment-prod-jpe-001` が存在することを確認
 
 2. **Principal ID の確認**
+
    - Managed Identity を開く → Properties → Object (principal) ID をコピー
    - `.env` ファイルの `POLICY_IDENTITY_PRINCIPAL_ID` と一致することを確認
 
@@ -1293,10 +1351,12 @@ az deployment group create \
 デプロイ後、Azure Portal で以下を確認します:
 
 1. **リソース診断設定の確認**
+
    - Azure Portal → Log Analytics workspace → Diagnostic settings
    - `send-to-log-analytics` が存在することを確認
 
 2. **DCR 診断設定の確認**
+
    - Azure Portal → Monitor → Data Collection Rules → dcr-vm-insights
    - Diagnostic settings で診断が有効になっていることを確認
 
@@ -1313,28 +1373,28 @@ graph LR
     subgraph "スケジュール"
         S[毎日 20:00<br/>JST]
     end
-    
+
     subgraph "Automation Account"
         R[Runbook:<br/>Stop-SandboxVMs]
         MI[System-assigned<br/>Managed Identity]
     end
-    
+
     subgraph "Sandbox Subscription"
         VM1[VM: sandbox-vm-001]
         VM2[VM: sandbox-vm-002]
         VM3[VM: sandbox-vm-003]
     end
-    
+
     S -->|トリガー| R
     R -->|認証| MI
     MI -->|Contributor権限| VM1
     MI -->|Contributor権限| VM2
     MI -->|Contributor権限| VM3
-    
+
     VM1 -->|シャットダウン| D[Deallocated]
     VM2 -->|シャットダウン| D
     VM3 -->|シャットダウン| D
-    
+
     style R fill:#ffe6cc
     style D fill:#ffcccc
 ```
@@ -1344,11 +1404,13 @@ graph LR
 **Azure Automation** は、定期的なタスクを自動化するサービスです。本章では、コスト最適化のために **Sandbox Subscription のすべての VM を毎晩 20:00 に自動停止** する仕組みを構築します。
 
 **シナリオ：**
+
 - 開発・テスト用の Sandbox 環境では、VM を夜間に稼働させる必要がない
 - 毎日夜 8 時に自動停止することで、約 50% のコスト削減が可能
 - 翌朝、必要に応じて手動で起動する運用
 
 **主な機能：**
+
 - **Runbook**: PowerShell スクリプトで VM 停止処理を実装
 - **Schedule**: 毎日 20:00 (JST) に自動実行
 - **Managed Identity**: Sandbox Subscription への権限付与
@@ -1441,6 +1503,7 @@ echo "Automation Account に Sandbox Subscription の Contributor 権限を付�
 ```
 
 **権限の範囲：**
+
 - **Contributor**: VM の起動・停止が可能
 - **Scope**: Sandbox Subscription 全体
 - **用途**: 夜間の自動シャットダウン
@@ -1450,6 +1513,7 @@ echo "Automation Account に Sandbox Subscription の Contributor 権限を付�
 すべての Sandbox VM を停止する PowerShell Runbook を作成します。
 
 ディレクトリを作成：
+
 ```bash
 mkdir -p infrastructure/automation/runbooks
 ```
@@ -1520,13 +1584,13 @@ try {
     foreach ($vm in $runningVMs) {
         try {
             Write-Output "VM 停止中: $($vm.Name) (Resource Group: $($vm.ResourceGroupName))"
-            
+
             Stop-AzVM `
                 -ResourceGroupName $vm.ResourceGroupName `
                 -Name $vm.Name `
                 -Force `
                 -NoWait | Out-Null
-            
+
             Write-Output "  ✓ 停止要求送信完了: $($vm.Name)"
             $stoppedCount++
         }
@@ -1608,6 +1672,7 @@ echo "次回実行予定: 2026-01-09 20:00 (JST)"
 ```
 
 **スケジュールの詳細：**
+
 - **頻度**: 毎日
 - **実行時刻**: 20:00 (JST)
 - **対象**: Sandbox Subscription のすべての VM
@@ -1618,26 +1683,31 @@ echo "次回実行予定: 2026-01-09 20:00 (JST)"
 デプロイ後、Azure Portal で以下を確認します:
 
 1. **Automation Account の確認**
+
    - Azure Portal → Automation Accounts → `aa-platform-prod-jpe-001`
    - Identity → System assigned が **On** になっていることを確認
    - Principal ID が環境変数 `$AUTOMATION_PRINCIPAL_ID` と一致することを確認
 
 2. **Runbook の確認**
+
    - Automation Account → Runbooks → `Stop-SandboxVMs`
    - State が **Published** であることを確認
    - Edit → Test pane でテスト実行可能
 
 3. **スケジュールの確認**
+
    - Automation Account → Schedules → `Daily-Evening-Shutdown`
    - Frequency: **Day**, Start time: **20:00 JST**
    - Next run time が翌日 20:00 に設定されていることを確認
 
 4. **ロールアサインメントの確認**
+
    - Azure Portal → Subscriptions → Sandbox Subscription
    - Access control (IAM) → Role assignments
    - Automation Account の Managed Identity に **Contributor** が付与されていることを確認
 
 5. **テスト実行（任意）**
+
    ```bash
    # 手動でテスト実行
    az automation runbook start \
@@ -1645,7 +1715,7 @@ echo "次回実行予定: 2026-01-09 20:00 (JST)"
      --automation-account-name aa-platform-prod-jpe-001 \
      --name "Stop-SandboxVMs" \
      --parameters "{\"SubscriptionId\":\"$SUB_SANDBOX_ID\"}"
-   
+
    # ジョブの状態を確認
    az automation job list \
      --resource-group rg-platform-management-prod-jpe-001 \
@@ -1654,6 +1724,7 @@ echo "次回実行予定: 2026-01-09 20:00 (JST)"
    ```
 
 **期待される動作：**
+
 - 毎晩 20:00 に自動実行
 - Sandbox Subscription の実行中 VM をすべて停止
 - ジョブ履歴で実行結果を確認可能
