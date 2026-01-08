@@ -1647,7 +1647,7 @@ graph LR
 
 ---
 
-### 7.7.1 Log Analytics Workspace の診断設定
+### 7.7.1 診断設定モジュールの作成
 
 ファイル `infrastructure/bicep/modules/monitoring/log-analytics-diagnostics.bicep` を作成します：
 
@@ -1688,167 +1688,60 @@ resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-pre
 output diagnosticSettingId string = diagnosticSetting.id
 ```
 
-ファイル `infrastructure/bicep/parameters/log-analytics-diagnostics.bicepparam` を作成し、以下の内容を記述します：
+### 7.7.2 オーケストレーションへのモジュール追加
+
+`infrastructure/bicep/orchestration/main.bicep` に診断設定モジュールを追加します：
 
 ```bicep
-using '../modules/monitoring/log-analytics-diagnostics.bicep'
-
-param workspaceName = 'log-platform-prod-jpe-001'
-param destinationWorkspaceId = '/subscriptions/YOUR_SUB_ID/resourceGroups/rg-platform-management-prod-jpe-001/providers/Microsoft.OperationalInsights/workspaces/log-platform-prod-jpe-001'
-param diagnosticSettingName = 'send-to-log-analytics'
+// Chapter 7: Log Analytics Diagnostics
+module logAnalyticsDiagnostics 'modules/monitoring/log-analytics-diagnostics.bicep' = {
+  name: 'deploy-log-analytics-diagnostics'
+  scope: resourceGroup(monitoring.resourceGroup.name)
+  params: {
+    workspaceName: monitoring.logAnalytics.workspaceName
+    destinationWorkspaceId: logAnalytics.outputs.workspaceId
+    diagnosticSettingName: 'send-to-log-analytics'
+  }
+  dependsOn: [
+    logAnalytics
+  ]
+}
 ```
 
-**重要：** `destinationWorkspaceId` の値を置き換えてください。以下のコマンドで取得した Workspace ID を使用します：
+### 7.7.3 What-If による事前確認
 
 ```bash
-# Log Analytics Workspace IDの値を確認（前のセクションで取得済み）
-echo $WORKSPACE_ID
+# Management Subscription で実行
+az account set --subscription $SUB_MANAGEMENT_ID
 
-# 出力例：
-# /subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-platform-management-prod-jpe-001/providers/Microsoft.OperationalInsights/workspaces/log-platform-prod-jpe-001
-```
-
-この値をパラメーターファイルの `destinationWorkspaceId` に設定します。
-
-**What-If による事前確認：**
-
-```bash
-# Log Analytics Workspace の診断設定を適用
 # 事前確認
-az deployment group what-if \
-  --name "log-diagnostics-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/monitoring/log-analytics-diagnostics.bicep \
-  --parameters infrastructure/bicep/parameters/log-analytics-diagnostics.bicepparam
+az deployment sub what-if \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
 ```
 
-**デプロイ実行：**
+### 7.7.4 デプロイ実行
 
 ```bash
 # デプロイ実行
-az deployment group create \
-  --name "log-diagnostics-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/monitoring/log-analytics-diagnostics.bicep \
-  --parameters infrastructure/bicep/parameters/log-analytics-diagnostics.bicepparam
+az deployment sub create \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+
+echo "✅ Log Analytics Workspace の診断設定が orchestration 経由でデプロイされました"
 ```
 
-### 7.7.2 Data Collection Rule の診断設定
-
-ファイル `infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep` を作成します：
-
-**dcr-diagnostics.bicep の解説：**
-
-DCR 自体の操作ログを収集します。DCR の変更や削除を追跡できます。
-
-```bicep
-@description('DCR名')
-param dcrName string
-
-@description('診断設定の送信先 Workspace ID')
-param destinationWorkspaceId string
-
-@description('診断設定の名前')
-param diagnosticSettingName string = 'send-to-log-analytics'
-
-// 既存のDCR
-resource dcr 'Microsoft.Insights/dataCollectionRules@2022-06-01' existing = {
-  name: dcrName
-}
-
-// 診断設定
-resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
-  name: diagnosticSettingName
-  scope: dcr
-  properties: {
-    workspaceId: destinationWorkspaceId
-    logs: [
-      { category: 'allLogs', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-    ]
-    metrics: [
-      { category: 'AllMetrics', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-    ]
-  }
-}
-
-output diagnosticSettingId string = diagnosticSetting.id
-```
-
-ファイル `infrastructure/bicep/parameters/dcr-diagnostics-vm-insights.bicepparam` を作成し、以下の内容を記述します：
-
-```bicep
-using '../modules/monitoring/dcr-diagnostics.bicep'
-
-param dcrName = 'dcr-vm-insights-prod-jpe-001'
-param destinationWorkspaceId = '/subscriptions/YOUR_SUB_ID/resourceGroups/rg-platform-management-prod-jpe-001/providers/Microsoft.OperationalInsights/workspaces/log-platform-prod-jpe-001'
-param diagnosticSettingName = 'send-to-log-analytics'
-```
-
-ファイル `infrastructure/bicep/parameters/dcr-diagnostics-os-logs.bicepparam` を作成し、以下の内容を記述します：
-
-```bicep
-using '../modules/monitoring/dcr-diagnostics.bicep'
-
-param dcrName = 'dcr-os-logs-prod-jpe-001'
-param destinationWorkspaceId = '/subscriptions/YOUR_SUB_ID/resourceGroups/rg-platform-management-prod-jpe-001/providers/Microsoft.OperationalInsights/workspaces/log-platform-prod-jpe-001'
-param diagnosticSettingName = 'send-to-log-analytics'
-```
-
-**重要：** `destinationWorkspaceId` の値を置き換えてください。以下のコマンドで取得した Workspace ID を使用します：
-
-```bash
-# Log Analytics Workspace IDの値を確認（前のセクションで取得済み）
-echo $WORKSPACE_ID
-
-# 出力例：
-# /subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-platform-management-prod-jpe-001/providers/Microsoft.OperationalInsights/workspaces/log-platform-prod-jpe-001
-```
-
-この値をパラメーターファイルの `destinationWorkspaceId` に設定します。
-
-**What-If による事前確認：**
-
-```bash
-# VM Insights DCR の診断設定
-# 事前確認
-az deployment group what-if \
-  --name "dcr-vm-insights-diagnostics-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep \
-  --parameters infrastructure/bicep/parameters/dcr-diagnostics-vm-insights.bicepparam
-
-# OS Logs DCR の診断設定
-# 事前確認
-az deployment group what-if \
-  --name "dcr-os-logs-diagnostics-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep \
-  --parameters infrastructure/bicep/parameters/dcr-diagnostics-os-logs.bicepparam
-```
-
-**デプロイ実行：**
-
-```bash
-# VM Insights DCR のデプロイ
-az deployment group create \
-  --name "dcr-vm-insights-diagnostics-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep \
-  --parameters infrastructure/bicep/parameters/dcr-diagnostics-vm-insights.bicepparam
-
-# OS Logs DCR のデプロイ
-az deployment group create \
-  --name "dcr-os-logs-diagnostics-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep \
-  --parameters infrastructure/bicep/parameters/dcr-diagnostics-os-logs.bicepparam
-```
+**注意：** DCR リソースは現在、診断設定をサポートしていないため、このセクションはスキップします。
 
 **今後のリソース作成ルール：**
 
 今後、新しいリソースを作成する際は、診断設定が利用可能なリソース（Azure Firewall、Key Vault、Bastion、Storage Account 等）については、リソース作成と同じ Bicep ファイル内で診断設定も一緒に定義します。
 
-### 7.7.3 Azure Portal での確認
+### 7.7.5 Azure Portal での確認
 
 デプロイ後、Azure Portal で以下を確認します:
 
@@ -1863,10 +1756,10 @@ az deployment group create \
    - Diagnostic settings で診断が有効になっていることを確認
 
 3. **監視基盤のログ確認**
-   - Log Analytics → Logs → `AzureDiagnostics | where ResourceType == "DATACOLECTIONRULES" | take 10`
+   - Log Analytics → Logs → `AzureDiagnostics | where ResourceType == "OPERATIONALINSIGHTS/WORKSPACES" | take 10`
    - 監視リソース自体のログが収集されていることを確認
 
-### 7.7.4 診断設定ログのクエリ例
+### 7.7.6 診断設定ログのクエリ例
 
 今後作成する Azure Firewall などのリソースの診断設定ログを検索する KQL クエリ例：
 
@@ -1997,23 +1890,37 @@ output principalId string = managedIdentity.properties.principalId
 output clientId string = managedIdentity.properties.clientId
 ```
 
-### 7.8.2 マネージド ID の作成
+### 7.8.2 オーケストレーションへのモジュール追加
 
-パラメーターファイル `infrastructure/bicep/parameters/policy-managed-identity.bicepparam` を作成：
+`infrastructure/bicep/orchestration/main.bicep` にマネージド ID モジュールを追加します：
 
 ```bicep
-using '../modules/identity/managed-identity.bicep'
-
-param identityName = 'id-policy-assignment-prod-jpe-001'
-param location = 'japaneast'
-param tags = {
-  Environment: 'Production'
-  ManagedBy: 'Bicep'
-  Purpose: 'Policy Assignment'
+// Chapter 7: Policy Managed Identity
+module policyIdentity 'modules/identity/managed-identity.bicep' = {
+  name: 'deploy-policy-identity'
+  scope: resourceGroup(monitoring.resourceGroup.name)
+  params: {
+    identityName: 'id-policy-assignment-prod-jpe-001'
+    location: location
+    tags: union(tags, {
+      Purpose: 'Policy Assignment'
+    })
+  }
+  dependsOn: [
+    managementRG
+  ]
 }
 ```
 
-**What-If による事前確認：**
+`main.bicep` の最後に出力を追加：
+
+```bicep
+// Chapter 7: Policy Identity Outputs
+output policyIdentityId string = policyIdentity.outputs.identityId
+output policyIdentityPrincipalId string = policyIdentity.outputs.principalId
+```
+
+### 7.8.3 What-If による事前確認
 
 ```bash
 # ディレクトリ作成
@@ -2023,27 +1930,27 @@ mkdir -p infrastructure/bicep/modules/identity
 az account set --subscription $SUB_MANAGEMENT_ID
 
 # 事前確認
-az deployment group what-if \
-  --name "policy-identity-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/identity/managed-identity.bicep \
-  --parameters infrastructure/bicep/parameters/policy-managed-identity.bicepparam
+az deployment sub what-if \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
 ```
 
-**デプロイ実行：**
+### 7.8.4 デプロイ実行
 
 ```bash
 # デプロイ実行
-DEPLOYMENT_OUTPUT=$(az deployment group create \
-  --name "policy-identity-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/identity/managed-identity.bicep \
-  --parameters infrastructure/bicep/parameters/policy-managed-identity.bicepparam \
+DEPLOYMENT_OUTPUT=$(az deployment sub create \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam \
   --query 'properties.outputs' -o json)
 
 # 環境変数に保存
-POLICY_IDENTITY_ID=$(echo $DEPLOYMENT_OUTPUT | jq -r '.identityId.value')
-POLICY_IDENTITY_PRINCIPAL_ID=$(echo $DEPLOYMENT_OUTPUT | jq -r '.principalId.value')
+POLICY_IDENTITY_ID=$(echo $DEPLOYMENT_OUTPUT | jq -r '.policyIdentityId.value')
+POLICY_IDENTITY_PRINCIPAL_ID=$(echo $DEPLOYMENT_OUTPUT | jq -r '.policyIdentityPrincipalId.value')
 
 # .envファイルに保存（重複防止）
 grep -q "POLICY_IDENTITY_ID=" .env || echo "POLICY_IDENTITY_ID=$POLICY_IDENTITY_ID" >> .env
@@ -2053,7 +1960,7 @@ echo "Policy用マネージドID: $POLICY_IDENTITY_ID"
 echo "Principal ID: $POLICY_IDENTITY_PRINCIPAL_ID"
 ```
 
-### 7.8.3 マネージド ID への権限付与
+### 7.8.5 マネージド ID への権限付与
 
 Azure Policy の DeployIfNotExists/Modify 効果（特に Defender for Cloud の適用）には **Owner** 権限が必要です。Management Subscription に対して Owner ロールを付与します。
 
@@ -2108,7 +2015,7 @@ az deployment sub create \
 echo "マネージドIDにOwner権限を付与しました"
 ```
 
-### 7.8.4 Azure Portal での確認
+### 7.8.6 Azure Portal での確認
 
 デプロイ後、Azure Portal で以下を確認します:
 
@@ -2177,7 +2084,7 @@ graph LR
 - **Schedule**: 毎日 20:00 (JST) に自動実行
 - **Managed Identity**: Sandbox Subscription への権限付与
 
-### 7.9.2 Automation Account の作成
+### 7.9.2 Automation Account モジュールの作成
 
 Automation Account を Management Subscription に作成します。集中管理の観点から、監視・運用ツールは Management Subscription に配置します。
 
@@ -2218,42 +2125,68 @@ output automationAccountName string = automationAccount.name
 output principalId string = automationAccount.identity.principalId
 ```
 
-**What-If による事前確認：**
+### 7.9.3 オーケストレーションへのモジュール追加
+
+`infrastructure/bicep/orchestration/main.bicep` に Automation Account モジュールを追加します：
+
+```bicep
+// Chapter 7: Automation Account
+module automationAccount 'modules/automation/automation-account.bicep' = {
+  name: 'deploy-automation-account'
+  scope: resourceGroup(monitoring.resourceGroup.name)
+  params: {
+    automationAccountName: 'aa-platform-prod-jpe-001'
+    location: location
+    tags: union(tags, {
+      Purpose: 'Automation and Runbooks'
+    })
+  }
+  dependsOn: [
+    managementRG
+  ]
+}
+```
+
+`main.bicep` の最後に出力を追加：
+
+```bicep
+// Chapter 7: Automation Account Outputs
+output automationAccountId string = automationAccount.outputs.automationAccountId
+output automationPrincipalId string = automationAccount.outputs.principalId
+```
+
+### 7.9.4 What-If による事前確認
 
 ```bash
 # Management Subscription にデプロイ
 az account set --subscription $SUB_MANAGEMENT_ID
 
 # 事前確認
-az deployment group what-if \
-  --name "automation-account-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/automation/automation-account.bicep \
-  --parameters \
-    automationAccountName=aa-platform-prod-jpe-001 \
-    location=japaneast
+az deployment sub what-if \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
 ```
 
-**デプロイ実行：**
+### 7.9.5 デプロイ実行
 
 ```bash
 # デプロイ実行
-DEPLOYMENT_OUTPUT=$(az deployment group create \
-  --name "automation-account-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/automation/automation-account.bicep \
-  --parameters \
-    automationAccountName=aa-platform-prod-jpe-001 \
-    location=japaneast \
+DEPLOYMENT_OUTPUT=$(az deployment sub create \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam \
   --query 'properties.outputs' -o json)
 
 # Principal ID を環境変数に保存（重複防止）
-AUTOMATION_PRINCIPAL_ID=$(echo $DEPLOYMENT_OUTPUT | jq -r '.principalId.value')
+AUTOMATION_PRINCIPAL_ID=$(echo $DEPLOYMENT_OUTPUT | jq -r '.automationPrincipalId.value')
 grep -q "AUTOMATION_PRINCIPAL_ID=" .env || echo "AUTOMATION_PRINCIPAL_ID=$AUTOMATION_PRINCIPAL_ID" >> .env
 echo "Automation Account Principal ID: $AUTOMATION_PRINCIPAL_ID"
 ```
 
-### 7.9.3 Sandbox Subscription への権限付与
+### 7.9.6 Sandbox Subscription への権限付与
 
 Automation Account の Managed Identity に対して、Sandbox Subscription の **Contributor** 権限を付与します。これにより、Runbook が VM を停止できるようになります。
 
@@ -2276,7 +2209,7 @@ echo "Automation Account に Sandbox Subscription の Contributor 権限を付�
 - **Scope**: Sandbox Subscription 全体
 - **用途**: 夜間の自動シャットダウン
 
-### 7.9.4 Runbook の作成（Sandbox VM 自動停止）
+### 7.9.7 Runbook の作成（Sandbox VM 自動停止）
 
 すべての Sandbox VM を停止する PowerShell Runbook を作成します。
 
@@ -2408,7 +2341,7 @@ az automation runbook publish \
 echo "Runbook の作成・公開が完了しました"
 ```
 
-### 7.9.5 スケジュールの作成
+### 7.9.8 スケジュールの作成
 
 毎日夜 8 時（20:00 JST）に Runbook を実行するスケジュールを作成します。
 
@@ -2446,7 +2379,7 @@ echo "次回実行予定: 2026-01-09 20:00 (JST)"
 - **対象**: Sandbox Subscription のすべての VM
 - **コスト削減**: 約 12 時間/日 × VM 台数 分のコスト削減
 
-### 7.9.6 Azure Portal での確認
+### 7.9.9 Azure Portal での確認
 
 デプロイ後、Azure Portal で以下を確認します:
 
