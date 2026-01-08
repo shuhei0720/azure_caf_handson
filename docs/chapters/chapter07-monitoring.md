@@ -1996,11 +1996,15 @@ az deployment sub what-if \
 az account set --subscription $SUB_MANAGEMENT_ID
 
 # デプロイ実行
-DEPLOYMENT_OUTPUT=$(az deployment sub create \
+az deployment sub create \
   --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/main.bicep \
-  --parameters infrastructure/bicep/orchestration/main.bicepparam \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+
+# デプロイ結果から出力を取得
+DEPLOYMENT_OUTPUT=$(az deployment sub show \
+  --name $(az deployment sub list --query "[0].name" -o tsv) \
   --query 'properties.outputs' -o json)
 
 # 環境変数に保存
