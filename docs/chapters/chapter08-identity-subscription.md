@@ -170,9 +170,10 @@ az account show --subscription $SUB_IDENTITY_ID --output table
 using '../modules/management-groups/subscription-association.bicep'
 
 param managementGroupName = 'contoso-platform-identity'
-// subscriptionIdは環境変数からCLIで注入
-param subscriptionId = ''
+param subscriptionId = 'YOUR_IDENTITY_SUBSCRIPTION_ID'
 ```
+
+**重要：** `subscriptionId` の値は、前手順で取得した Identity Subscription ID（`$SUB_IDENTITY_ID`）に置き換えてください。
 
 第 6 章で作成した Bicep モジュールを使用します：
 
@@ -182,16 +183,14 @@ az deployment mg what-if \
   --management-group-id contoso-platform-identity \
   --location japaneast \
   --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters infrastructure/bicep/parameters/mg-assoc-identity.bicepparam \
-  --parameters subscriptionId=$SUB_IDENTITY_ID
+  --parameters infrastructure/bicep/parameters/mg-assoc-identity.bicepparam
 
 # 確認後、デプロイ実行
 az deployment mg create \
   --management-group-id contoso-platform-identity \
   --location japaneast \
   --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters infrastructure/bicep/parameters/mg-assoc-identity.bicepparam \
-  --parameters subscriptionId=$SUB_IDENTITY_ID
+  --parameters infrastructure/bicep/parameters/mg-assoc-identity.bicepparam
 
 echo "Identity Subscription が Management Group に割り当てられました"
 ```

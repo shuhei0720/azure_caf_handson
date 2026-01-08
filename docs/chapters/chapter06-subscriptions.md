@@ -321,9 +321,10 @@ output subscriptionId string = subscriptionId
 using '../modules/management-groups/subscription-association.bicep'
 
 param managementGroupName = 'contoso-platform-management'
-// subscriptionIdは環境変数からCLIで注入
-param subscriptionId = ''
+param subscriptionId = 'YOUR_MANAGEMENT_SUBSCRIPTION_ID'
 ```
+
+**重要：** `subscriptionId` の値は、前手順で取得した Management Subscription ID（`$SUB_MANAGEMENT_ID`）に置き換えてください。
 
 デプロイ：
 
@@ -333,16 +334,14 @@ az deployment mg what-if \
   --management-group-id contoso-platform-management \
   --location japaneast \
   --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters infrastructure/bicep/parameters/mg-assoc-management.bicepparam \
-  --parameters subscriptionId=$SUB_MANAGEMENT_ID
+  --parameters infrastructure/bicep/parameters/mg-assoc-management.bicepparam
 
 # 確認後、デプロイ実行
 az deployment mg create \
   --management-group-id contoso-platform-management \
   --location japaneast \
   --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters infrastructure/bicep/parameters/mg-assoc-management.bicepparam \
-  --parameters subscriptionId=$SUB_MANAGEMENT_ID
+  --parameters infrastructure/bicep/parameters/mg-assoc-management.bicepparam
 
 echo "Management Subscription が Management Group に割り当てられました"
 ```

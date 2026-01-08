@@ -1402,8 +1402,7 @@ az deployment group what-if \
   --name "dcr-vm-insights-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep \
-  --parameters infrastructure/bicep/parameters/dcr-diagnostics-vm-insights.bicepparam \
-  --parameters destinationWorkspaceId=$LOG_WORKSPACE_ID
+  --parameters infrastructure/bicep/parameters/dcr-diagnostics-vm-insights.bicepparam
 
 # 確認後、デプロイ実行
 az deployment group create \

@@ -178,9 +178,10 @@ az account show --subscription $SUB_LANDINGZONE_CORP_ID --output table
 using '../modules/management-groups/subscription-association.bicep'
 
 param managementGroupName = 'contoso-landingzones-corp'
-// subscriptionIdは環境変数からCLIで注入
-param subscriptionId = ''
+param subscriptionId = 'YOUR_LANDINGZONE_SUBSCRIPTION_ID'
 ```
+
+**重要：** `subscriptionId` の値は、前手順で取得した Landing Zone Subscription ID（`$SUB_LANDINGZONE_CORP_ID`）に置き換えてください。
 
 第 6 章で作成した Bicep モジュールを使用します：
 
@@ -190,16 +191,14 @@ az deployment mg what-if \
   --management-group-id contoso-landingzones-corp \
   --location japaneast \
   --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters infrastructure/bicep/parameters/mg-assoc-landingzone-corp.bicepparam \
-  --parameters subscriptionId=$SUB_LANDINGZONE_CORP_ID
+  --parameters infrastructure/bicep/parameters/mg-assoc-landingzone-corp.bicepparam
 
 # 確認後、デプロイ実行
 az deployment mg create \
   --management-group-id contoso-landingzones-corp \
   --location japaneast \
   --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters infrastructure/bicep/parameters/mg-assoc-landingzone-corp.bicepparam \
-  --parameters subscriptionId=$SUB_LANDINGZONE_CORP_ID
+  --parameters infrastructure/bicep/parameters/mg-assoc-landingzone-corp.bicepparam
 
 echo "Landing Zone Subscription が Management Group に割り当てられました"
 ```

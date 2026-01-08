@@ -256,8 +256,8 @@ az deployment sub create \
 - Git 管理で履歴追跡可能
 - 完全な再現性を保証
 - 災害時の復旧手順書として機能
-- タイプセーフ（Bicepファイルとの型チェック）
-- IntelliSenseサポート
+- タイプセーフ（Bicep ファイルとの型チェック）
+- IntelliSense サポート
 
 #### ディレクトリ構成
 
@@ -290,7 +290,7 @@ infrastructure/bicep/
 2. **CLI でのパラメーター注入は禁止**: `--parameters param=value` 形式でのパラメーター指定は使用しません
 3. **Git 管理**: すべての `.bicepparam` ファイルは Git 管理下に置き、本番環境の完全なバックアップとして機能させます
 4. **環境固有の値**: 開発者ごとに異なる値（billingScope、subscription ID など）は、各自がパラメーターファイルを編集して使用します
-5. **`.bicepparam` を使用**: Microsoftが推奨する新しいパラメーターファイル形式（Bicep 0.18.4以降）
+5. **`.bicepparam` を使用**: Microsoft が推奨する新しいパラメーターファイル形式（Bicep 0.18.4 以降）
 
 ### 4.5.3 テスト用のリソースグループ作成
 
@@ -519,7 +519,7 @@ mkdir -p infrastructure/bicep/parameters
 
 **common.bicepparam の解説：**
 
-共通パラメータファイル。会社プレフィックス、デフォルトリージョン、共通タグを定義しており、すべての Bicep デプロイで再利用されます。`.bicepparam` 形式は、Bicep 0.18.4以降で推奨される新しいパラメーターファイル形式で、タイプセーフとIntelliSenseをサポートしています。
+共通パラメータファイル。会社プレフィックス、デフォルトリージョン、共通タグを定義しており、すべての Bicep デプロイで再利用されます。`.bicepparam` 形式は、Bicep 0.18.4 以降で推奨される新しいパラメーターファイル形式で、タイプセーフと IntelliSense をサポートしています。
 
 ```bicep
 using '../main.bicep'
