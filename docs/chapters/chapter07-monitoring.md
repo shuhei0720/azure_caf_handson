@@ -2075,6 +2075,14 @@ az deployment sub what-if \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
 ```
 
+**注意:** ロール割り当てのリソース名に `guid()` 関数を使用しているため、What-If 実行時に以下のような警告が表示されます：
+
+```
+Diagnostics (1): [roleAssignment] (Unsupported) Changes to the resource...cannot be analyzed because its resource ID or API version cannot be calculated until the deployment is under way.
+```
+
+これは、マネージドIDの `principalId` が動的に参照されるため、What-If 段階では正確なリソースIDを計算できないことを示す警告です。**実際のデプロイ時には問題なく動作します**ので、この警告は無視して問題ありません。
+
 **デプロイ実行：**
 
 ```bash
