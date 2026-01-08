@@ -2421,9 +2421,11 @@ echo "✅ Automation AccountにSandbox管理グループのVirtual Machine Contr
 
 ### 7.9.7 Runbook の作成（Sandbox VM 自動停止）
 
-すべての Sandbox VM を停止する PowerShell Runbook を作成します。
+すべての Sandbox VM を停止する PowerShell Runbook を Bicep で管理します。
 
-ディレクトリを作成：
+**CAF ベストプラクティス**: Runbook も Infrastructure as Code で管理することで、バージョン管理、復元性、監査性を確保します。
+
+まず、PowerShell スクリプトを作成：
 
 ```bash
 mkdir -p infrastructure/automation/runbooks
@@ -2525,38 +2527,85 @@ catch {
 }
 ```
 
+### 7.9.8 Source Control 統合（GitHub 連携）
+
+**CAF ベストプラクティス**: Runbook を GitHub リポジトリで管理し、Azure Automation の Source Control 統合で自動同期します。これにより、バージョン管理、コードレビュー、CI/CD が可能になります。
+
+#### Source Control 統合の設定
+
 ```bash
-# Runbook を作成
-az automation runbook create \
+# Management Subscription で実行
+az account set --subscription $SUB_MANAGEMENT_ID
+
+# Source Control 統合を作成
+az automation source-control create \
   --resource-group rg-platform-management-prod-jpe-001 \
   --automation-account-name aa-platform-prod-jpe-001 \
-  --name "Stop-SandboxVMs" \
-  --type PowerShell \
-  --location japaneast \
-  --description "Sandbox Subscription のすべての VM を毎晩 20:00 に自動停止"
+  --name "GitHubRunbooks" \
+  --source-type GitHub \
+  --repo-url "https://github.com/<YOUR_GITHUB_USERNAME>/azure_caf_handson.git" \
+  --branch main \
+  --folder-path "/infrastructure/automation/runbooks" \
+  --auto-sync true \
+  --publish-runbook true \
+  --description "Runbook source control integration with GitHub"
 
-# Runbook のスクリプトをアップロード
-az automation runbook replace-content \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --automation-account-name aa-platform-prod-jpe-001 \
-  --name "Stop-SandboxVMs" \
-  --content @infrastructure/automation/runbooks/Stop-SandboxVMs.ps1
-
-# Runbook を公開
-az automation runbook publish \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --automation-account-name aa-platform-prod-jpe-001 \
-  --name "Stop-SandboxVMs"
-
-echo "Runbook の作成・公開が完了しました"
+echo "✅ Source Control統合を作成しました"
 ```
 
-### 7.9.8 スケジュールの作成
+**パラメータ説明**：
+- `--repo-url`: GitHub リポジトリの URL（各自のリポジトリに変更）
+- `--branch main`: 同期するブランチ
+- `--folder-path`: Runbook が格納されているフォルダパス
+- `--auto-sync true`: 自動同期を有効化
+- `--publish-runbook true`: 同期時に自動公開
+
+#### GitHub Personal Access Token の設定
+
+Source Control 統合には GitHub の Personal Access Token が必要です：
+
+1. GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
+2. Generate new token (classic)
+3. Scopes: `repo` (Full control of private repositories) を選択
+4. Generate token をクリックしてトークンをコピー
+
+トークンを Azure Automation に設定：
+
+```bash
+# トークンを環境変数に設定
+read -sp "GitHub Personal Access Token: " GITHUB_TOKEN
+echo
+
+# Source Control にトークンを設定
+az automation source-control update \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --automation-account-name aa-platform-prod-jpe-001 \
+  --name "GitHubRunbooks" \
+  --access-token $GITHUB_TOKEN
+
+echo "✅ GitHub認証を設定しました"
+```
+
+#### 初回同期の実行
+
+```bash
+# 手動で同期を実行
+az automation source-control sync-job create \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --automation-account-name aa-platform-prod-jpe-001 \
+  --source-control-name "GitHubRunbooks"
+
+echo "✅ Runbookを同期しました"
+```
+
+これで、`infrastructure/automation/runbooks/` 配下の PowerShell スクリプトが自動的に Azure Automation に同期され、Runbook として公開されます。
+
+### 7.9.9 スケジュールの作成
 
 毎日夜 8 時（20:00 JST）に Runbook を実行するスケジュールを作成します。
 
 ```bash
-# Management Subscription に戻る
+# Management Subscription で実行
 az account set --subscription $SUB_MANAGEMENT_ID
 
 # 毎日 20:00 のスケジュールを作成
