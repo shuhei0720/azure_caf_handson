@@ -253,7 +253,6 @@ az deployment sub create \
 echo "Resource Group が Bicep で作成されました"
 ```
 
-**重要：** すべてのリソースを Bicep で管理することで、インフラストラクチャのパラメーターシート兼バックアップとして機能します。Resource Group も例外ではありません。
 
 ### 7.3.2 Log Analytics Workspace の作成
 
@@ -306,7 +305,7 @@ output workspaceName string = logAnalyticsWorkspace.name
 output customerId string = logAnalyticsWorkspace.properties.customerId
 ```
 
-**注意：** `totalRetentionInDays` パラメータはワークスペース作成後、Azure Portal で各テーブルのデータ保持ポリシーを設定する際に使用します。Bicep ではワークスペースレベルの `retentionInDays`（Interactive 期間）のみを設定し、Archive 期間は Portal または Azure CLI で個別に設定します。
+**注意：** ワークスペース作成時は Interactive 期間（`retentionInDays`）を設定します。各テーブルの総保持期間（`totalRetentionInDays`）とアーカイブ期間の設定は、次のセクション 7.3.3 で Bicep を使用して実施します。
 
 ファイル `infrastructure/bicep/parameters/log-analytics.bicepparam` を作成し、以下の内容を記述します：
 
