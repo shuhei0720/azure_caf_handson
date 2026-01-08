@@ -334,7 +334,212 @@ graph TB
     style ProdSub fill:#e8f5e9
 ```
 
-### 3.4.3 リソースグループの設計
+### 3.4.3 環境分離の設計（開発・ステージング・本番）
+
+CAF のベストプラクティスでは、開発（Dev）、ステージング（Staging）、本番（Production）環境を明確に分離することが推奨されています。
+
+#### 環境分離の 3 つのアプローチ
+
+```mermaid
+graph TB
+    subgraph "アプローチ1: Subscription分離（推奨）"
+        DevSub1[Dev Subscription<br/>開発者が自由に実験]
+        StgSub1[Staging Subscription<br/>本番同等の環境でテスト]
+        ProdSub1[Production Subscription<br/>本番運用]
+    end
+
+    subgraph "アプローチ2: Resource Group分離"
+        Sub2[Single Subscription]
+        Sub2 --> DevRG2[rg-app-dev]
+        Sub2 --> StgRG2[rg-app-stg]
+        Sub2 --> ProdRG2[rg-app-prod]
+    end
+
+    subgraph "アプローチ3: ハイブリッド"
+        PlatformSub3[Platform Subscription<br/>共通基盤]
+        DevSub3[Dev/Stg Subscription<br/>非本番環境]
+        ProdSub3[Production Subscription<br/>本番環境のみ]
+    end
+
+    style DevSub1 fill:#e3f2fd
+    style StgSub1 fill:#fff8e1
+    style ProdSub1 fill:#e8f5e9
+    style DevRG2 fill:#e3f2fd
+    style StgRG2 fill:#fff8e1
+    style ProdRG2 fill:#e8f5e9
+    style DevSub3 fill:#e3f2fd
+    style ProdSub3 fill:#e8f5e9
+```
+
+#### アプローチ 1: Subscription 分離（推奨）
+
+**メリット**：
+- ✅ **完全な課金分離**: 環境ごとのコストが明確
+- ✅ **強力なアクセス制御**: 本番環境への誤った変更を防止
+- ✅ **独立したクォータ**: 開発環境の負荷が本番に影響しない
+- ✅ **ポリシーの差別化**: 開発は緩く、本番は厳格に設定可能
+- ✅ **ブラストラジアス**: 開発環境の障害が本番に波及しない
+
+**デメリット**：
+- ❌ 管理対象の Subscription が増える
+- ❌ Subscription 間のリソース共有が複雑
+
+**適用シナリオ**：
+- エンタープライズ環境（推奨）
+- 厳格なコンプライアンス要件がある場合
+- 大規模なチーム・プロジェクト
+
+#### アプローチ 2: Resource Group 分離
+
+**メリット**：
+- ✅ 管理が簡単（単一 Subscription）
+- ✅ リソース間の接続が容易（同一 VNet など）
+- ✅ コストが低い（Subscription の最小数）
+
+**デメリット**：
+- ❌ 課金の分離が不十分
+- ❌ 誤操作のリスク（本番 RG を誤って削除など）
+- ❌ クォータの共有（環境間で競合）
+
+**適用シナリオ**：
+- 小規模プロジェクト
+- PoC や検証環境
+- 予算制約が厳しい場合
+
+#### アプローチ 3: ハイブリッド（実践的な推奨）
+
+**構成例**：
+```
+Platform Subscription（共通）
+  ├── Management Subscription: 監視・ログ
+  ├── Connectivity Subscription: Hub Network
+  └── Identity Subscription: ID管理
+
+Non-Production Subscription（非本番）
+  ├── rg-app-dev-jpe-001
+  ├── rg-app-stg-jpe-001
+  └── vnet-nonprod-jpe-001
+
+Production Subscription（本番）
+  ├── rg-app-prod-jpe-001
+  └── vnet-prod-jpe-001
+```
+
+**メリット**：
+- ✅ 本番環境の完全な分離（最も重要）
+- ✅ 開発・ステージングの統合管理（コスト削減）
+- ✅ バランスの取れた管理負荷
+
+**適用シナリオ**：
+- 中規模〜大規模プロジェクト（最も一般的）
+- セキュリティと管理負荷のバランスを重視
+
+#### 環境ごとの設計パターン
+
+| 観点               | Development（開発）        | Staging（ステージング）   | Production（本番）        |
+| ------------------ | -------------------------- | ------------------------- | ------------------------- |
+| **アクセス権限**   | 開発者: Contributor        | 限定メンバー: Contributor | SRE/運用チームのみ: Owner |
+| **ネットワーク**   | 10.10.0.0/16              | 10.20.0.0/16             | 10.0.0.0/16              |
+| **VM サイズ**      | Standard_B2s（小）        | Standard_D4s_v5（中）    | Standard_D8s_v5（大）    |
+| **可用性**         | Single VM                  | Availability Zone（1-2） | Availability Zone（3）   |
+| **バックアップ**   | なし or 週次              | 日次                      | 日次 + GRS               |
+| **診断ログ**       | 7日間                      | 30日間                    | 90日間                    |
+| **Azure Policy**   | Audit（監査のみ）         | Audit + DeployIfNotExists | Deny + 強制               |
+| **コストタグ**     | Environment: Dev          | Environment: Staging     | Environment: Production  |
+| **自動シャットダウン** | 有効（夜間・週末）      | 有効（夜間のみ）         | 無効                      |
+| **スケーリング**   | 手動                       | 手動 or 制限付き自動     | 自動（フル設定）         |
+
+#### 命名規則での環境識別
+
+CAF の命名規則に環境を含める：
+
+```
+形式: {リソースタイプ}-{ワークロード}-{環境}-{リージョン}-{インスタンス}
+
+例:
+  vnet-spoke-dev-jpe-001    # 開発環境の Spoke VNet
+  vnet-spoke-stg-jpe-001    # ステージング環境の Spoke VNet
+  vnet-spoke-prod-jpe-001   # 本番環境の Spoke VNet
+
+  rg-app-dev-jpe-001        # 開発環境の Resource Group
+  rg-app-stg-jpe-001        # ステージング環境の Resource Group
+  rg-app-prod-jpe-001       # 本番環境の Resource Group
+
+  kv-secrets-dev-jpe-001    # 開発環境の Key Vault
+  kv-secrets-prod-jpe-001   # 本番環境の Key Vault
+```
+
+**環境の略語**：
+- `dev`: Development（開発）
+- `stg`: Staging（ステージング）
+- `prod`: Production（本番）
+- `qa`: QA（品質保証）
+- `uat`: UAT（ユーザー受入テスト）
+- `dr`: Disaster Recovery（DR環境）
+- `sandbox`: Sandbox（検証・実験）
+
+#### CI/CD パイプラインでの環境管理
+
+環境ごとに異なるデプロイメント戦略：
+
+```mermaid
+graph LR
+    Code[コード変更] --> PR[Pull Request]
+    PR --> DevDeploy[Dev環境<br/>自動デプロイ]
+    DevDeploy --> DevTest[Dev環境<br/>自動テスト]
+    DevTest --> StagingDeploy[Staging環境<br/>承認後デプロイ]
+    StagingDeploy --> StagingTest[Staging環境<br/>統合テスト]
+    StagingTest --> ProdApproval[本番承認<br/>手動ゲート]
+    ProdApproval --> ProdDeploy[Production環境<br/>Blue-Greenデプロイ]
+
+    style DevDeploy fill:#e3f2fd
+    style StagingDeploy fill:#fff8e1
+    style ProdDeploy fill:#e8f5e9
+```
+
+**デプロイメント戦略**：
+- **Dev**: プッシュごとに自動デプロイ（高頻度）
+- **Staging**: マージ後に自動デプロイ（1日数回）
+- **Production**: 手動承認 + スケジュール（週次・隔週）
+
+#### 環境間のデータ管理
+
+**重要な原則**：
+```
+⚠️ 本番データを開発・ステージング環境にコピーしない
+   → 個人情報保護、コンプライアンス違反のリスク
+```
+
+**推奨アプローチ**：
+1. **合成データ**: 開発・ステージングでは架空のテストデータを使用
+2. **データマスキング**: 必要な場合は本番データを匿名化
+3. **サブセット**: 本番データの一部のみ（匿名化済み）を使用
+
+#### 本ハンズオンでの環境戦略
+
+本ハンズオンでは**単一の Production 環境**のみを構築しますが、実際のエンタープライズ環境では以下のように拡張できます：
+
+**拡張例**：
+```
+Platform Subscriptions（共通）
+  ├── Management Subscription
+  ├── Connectivity Subscription
+  └── Identity Subscription
+
+Landing Zone - Development（開発）
+  ├── sub-landingzone-corp-dev
+  └── 開発者が自由に実験可能
+
+Landing Zone - Staging（ステージング）
+  ├── sub-landingzone-corp-stg
+  └── 本番同等の構成でテスト
+
+Landing Zone - Production（本番）✅
+  ├── sub-landingzone-corp-prod ← 本ハンズオンで構築
+  └── 厳格なアクセス制御
+```
+
+### 3.4.4 リソースグループの設計
 
 リソースグループは、関連するリソースをまとめる論理的なコンテナです。
 
@@ -376,7 +581,7 @@ rg-network-hub-japaneast-001
 rg-monitoring-prod-japaneast-001
 ```
 
-### 3.4.4 命名規則とタグ付け
+### 3.4.5 命名規則とタグ付け
 
 #### 命名規則
 
