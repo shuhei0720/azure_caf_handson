@@ -468,21 +468,14 @@ resource workspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' existin
   name: workspaceName
 }
 
-// 既存のテーブルを参照（schemaを取得するため）
-resource existingTable 'Microsoft.OperationalInsights/workspaces/tables@2022-10-01' existing = [for tableName in tableNames: {
-  parent: workspace
-  name: tableName
-}]
-
 // 複数テーブルの保持期間設定
-resource tableRetention 'Microsoft.OperationalInsights/workspaces/tables@2022-10-01' = [for (tableName, i) in tableNames: {
+resource tableRetention 'Microsoft.OperationalInsights/workspaces/tables@2022-10-01' = [for tableName in tableNames: {
   parent: workspace
   name: tableName
   properties: {
     retentionInDays: retentionInDays
     totalRetentionInDays: totalRetentionInDays
-    plan: existingTable[i].properties.plan
-    schema: existingTable[i].properties.schema
+    plan: 'Analytics'
   }
 }]
 
