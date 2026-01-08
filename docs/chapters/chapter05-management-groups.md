@@ -380,43 +380,124 @@ output sandboxMGId string = sandboxMG.id
 output decommissionedMGId string = decommissionedMG.id
 ```
 
-### 5.3.2 パラメータファイルの作成
+### 5.3.2 オーケストレーションへのパラメータ追記
 
-ファイル `infrastructure/bicep/parameters/management-groups.bicepparam` を作成し、以下の内容を記述します：
+Chapter 4で作成した `orchestration/tenant.bicepparam` に、Management Groups の設定を追記します。
+
+ファイル `infrastructure/bicep/orchestration/tenant.bicepparam` を開き、以下を追記：
 
 ```bicep
-using '../main-mg.bicep'
+// =============================================================================
+// CAF Landing Zone - Tenant Scope Parameters
+// =============================================================================
+// Management Groups関連のパラメータ
 
+using './tenant.bicep'
+
+// =============================================================================
+// Management Groups設定
+// =============================================================================
+
+@description('ルートManagement Groupの表示名')
+param rootManagementGroupDisplayName = 'Contoso'
+
+// 👇 Chapter 5で追記
+@description('会社のプレフィックス')
 param companyPrefix = 'contoso'
+
+@description('Management Groupsのメタデータ')
+param managementGroupMetadata = {
+  platform: {
+    displayName: 'Platform'
+    description: 'プラットフォーム基盤全体を管理'
+  }
+  platformManagement: {
+    displayName: 'Management'
+    description: '監視・ログ・自動化のためのリソース'
+  }
+  platformConnectivity: {
+    displayName: 'Connectivity'
+    description: 'ネットワークHub（Firewall、VPN Gateway等）'
+  }
+  platformIdentity: {
+    displayName: 'Identity'
+    description: 'ID管理（Domain Controller等）'
+  }
+  landingZones: {
+    displayName: 'Landing Zones'
+    description: 'アプリケーションワークロード全体'
+  }
+  landingZonesCorp: {
+    displayName: 'Corp'
+    description: '内部アプリケーション（オンプレ接続あり）'
+  }
+  landingZonesOnline: {
+    displayName: 'Online'
+    description: 'インターネット向けアプリケーション'
+  }
+  sandbox: {
+    displayName: 'Sandbox'
+    description: '検証・実験環境'
+  }
+  decommissioned: {
+    displayName: 'Decommissioned'
+    description: '廃止予定のリソース'
+  }
+}
 ```
 
-### 5.3.3 デプロイ用メイン Bicep ファイルの作成
+### 5.3.3 オーケストレーションへのモジュール追加
 
-ファイル `infrastructure/bicep/main-mg.bicep` を作成し、以下の内容を記述します：
-
-**main-mg.bicep の解説：**
-
-Management Groups デプロイのエントリポイント。テナントスコープでモジュールを呼び出し、すべての Management Groups を一括作成します。
+ファイル `infrastructure/bicep/orchestration/tenant.bicep` を開き、以下を追記：
 
 ```bicep
-// Management Groupsデプロイのメインファイル
+// =============================================================================
+// CAF Landing Zone - Tenant Scope Template (Management Groups)
+// =============================================================================
+
 targetScope = 'tenant'
 
-@description('会社のプレフィックス')
-param companyPrefix string = 'contoso'
+// =============================================================================
+// パラメータ定義
+// =============================================================================
 
-// Management Groupsモジュールを呼び出し
-module managementGroups './modules/management-groups/main.bicep' = {
-  name: 'managementGroupsDeployment'
+@description('ルートManagement Groupの表示名')
+param rootManagementGroupDisplayName string = 'Contoso'
+
+// 👇 Chapter 5で追記
+@description('会社のプレフィックス')
+param companyPrefix string
+
+@description('Management Groupsのメタデータ')
+param managementGroupMetadata object
+
+// =============================================================================
+// Management Groups
+// =============================================================================
+
+// 👇 Chapter 5で追記
+module managementGroups '../modules/management-groups/main.bicep' = {
+  name: 'deploy-management-groups'
   params: {
     companyPrefix: companyPrefix
+    managementGroupMetadata: managementGroupMetadata
   }
 }
 
-// 出力
+// =============================================================================
+// Outputs
+// =============================================================================
+
+output deploymentInfo object = {
+  scope: 'tenant'
+  deployedAt: utcNow()
+}
+
+// 👇 Chapter 5で追記
 output platformMGId string = managementGroups.outputs.platformMGId
 output landingZonesMGId string = managementGroups.outputs.landingZonesMGId
 output sandboxMGId string = managementGroups.outputs.sandboxMGId
+output decommissionedMGId string = managementGroups.outputs.decommissionedMGId
 ```
 
 ---
@@ -498,7 +579,7 @@ az role assignment list \
 
 ```bash
 # Bicepファイルのビルド
-az bicep build --file infrastructure/bicep/main-mg.bicep
+az bicep build --file infrastructure/bicep/orchestration/tenant.bicep
 
 # エラーがなければJSON形式のARMテンプレートが生成される
 ```
@@ -512,8 +593,8 @@ az bicep build --file infrastructure/bicep/main-mg.bicep
 az deployment tenant what-if \
   --name "mg-deployment-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
-  --template-file infrastructure/bicep/main-mg.bicep \
-  --parameters infrastructure/bicep/parameters/management-groups.bicepparam
+  --template-file infrastructure/bicep/orchestration/tenant.bicep \
+  --parameters infrastructure/bicep/orchestration/tenant.bicepparam
 ```
 
 出力例：
@@ -551,8 +632,8 @@ What-If で問題がないことを確認したら、実際にデプロイを実
 az deployment tenant create \
   --name "mg-deployment-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
-  --template-file infrastructure/bicep/main-mg.bicep \
-  --parameters infrastructure/bicep/parameters/management-groups.bicepparam
+  --template-file infrastructure/bicep/orchestration/tenant.bicep \
+  --parameters infrastructure/bicep/orchestration/tenant.bicepparam
 ```
 
 デプロイには数分かかります。
