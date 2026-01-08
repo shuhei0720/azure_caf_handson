@@ -812,6 +812,8 @@ VM Insights 用の DCR を作成します。これにより、VM のパフォー
 ファイル `infrastructure/bicep/modules/monitoring/dcr-vm-insights.bicep` を作成：
 
 ```bicep
+targetScope = 'resourceGroup'
+
 @description('DCRの名前')
 param dcrName string
 
@@ -823,15 +825,6 @@ param workspaceId string
 
 @description('タグ')
 param tags object = {}
-
-@description('リソースグループ名')
-param resourceGroupName string
-
-// 既存のResource Group
-resource resourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
-  scope: subscription()
-  name: resourceGroupName
-}
 
 // Data Collection Rule for VM Insights
 resource dcrVMInsights 'Microsoft.Insights/dataCollectionRules@2022-06-01' = {
@@ -892,7 +885,6 @@ resource dcrVMInsights 'Microsoft.Insights/dataCollectionRules@2022-06-01' = {
       }
     ]
   }
-  scope: resourceGroup
 }
 
 output dcrId string = dcrVMInsights.id
@@ -959,14 +951,15 @@ param monitoring = {
 // Chapter 7: DCR for VM Insights
 module dcrVMInsights '../modules/monitoring/dcr-vm-insights.bicep' = {
   name: 'deploy-dcr-vm-insights'
+  scope: resourceGroup(monitoring.resourceGroup.name)
   params: {
     dcrName: monitoring.dataCollectionRules.vmInsights.name
     location: location
     workspaceId: logAnalytics.outputs.workspaceId
-    resourceGroupName: monitoring.resourceGroup.name
     tags: union(tags, monitoring.dataCollectionRules.vmInsights.tags)
   }
   dependsOn: [
+    managementRG
     logAnalytics
   ]
 }
@@ -1015,6 +1008,8 @@ Windows Event ログと Linux Syslog を収集する DCR を作成します。
 ファイル `infrastructure/bicep/modules/monitoring/dcr-os-logs.bicep` を作成：
 
 ```bicep
+targetScope = 'resourceGroup'
+
 @description('DCRの名前')
 param dcrName string
 
@@ -1026,15 +1021,6 @@ param workspaceId string
 
 @description('タグ')
 param tags object = {}
-
-@description('リソースグループ名')
-param resourceGroupName string
-
-// 既存のResource Group
-resource resourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
-  scope: subscription()
-  name: resourceGroupName
-}
 
 // Data Collection Rule for OS Logs (Windows Events + Syslog)
 resource dcrOSLogs 'Microsoft.Insights/dataCollectionRules@2022-06-01' = {
@@ -1112,7 +1098,6 @@ resource dcrOSLogs 'Microsoft.Insights/dataCollectionRules@2022-06-01' = {
       }
     ]
   }
-  scope: resourceGroup
 }
 
 output dcrId string = dcrOSLogs.id
@@ -1127,14 +1112,15 @@ output dcrName string = dcrOSLogs.name
 // Chapter 7: DCR for OS Logs
 module dcrOSLogs '../modules/monitoring/dcr-os-logs.bicep' = {
   name: 'deploy-dcr-os-logs'
+  scope: resourceGroup(monitoring.resourceGroup.name)
   params: {
     dcrName: monitoring.dataCollectionRules.osLogs.name
     location: location
     workspaceId: logAnalytics.outputs.workspaceId
-    resourceGroupName: monitoring.resourceGroup.name
     tags: union(tags, monitoring.dataCollectionRules.osLogs.tags)
   }
   dependsOn: [
+    managementRG
     logAnalytics
   ]
 }
