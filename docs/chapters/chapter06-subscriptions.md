@@ -236,7 +236,7 @@ echo $BILLING_SCOPE
 
 この値をパラメーターファイルの `billingScope` に設定します。
 
-### 6.3.5 Bicep のデプロイ（10-15 分）
+### 6.3.5 What-If 実行
 
 ```bash
 # デプロイ名を変数に保存（重要：タイムスタンプが変わらないように）
@@ -250,8 +250,14 @@ az deployment tenant what-if \
   --location japaneast \
   --template-file infrastructure/bicep/subscriptions/sub-management.bicep \
   --parameters infrastructure/bicep/parameters/sub-management.bicepparam
+```
 
-# 確認後、デプロイ実行
+### 6.3.6 デプロイ実行（10-15 分）
+
+What-Ifで問題がないことを確認したら、実際にデプロイを実行します。
+
+```bash
+# デプロイ実行
 az deployment tenant create \
   --name "$DEPLOYMENT_NAME" \
   --location japaneast \
@@ -266,7 +272,7 @@ SUB_MANAGEMENT_ID=$(az deployment tenant show \
 echo "Management Subscription ID: $SUB_MANAGEMENT_ID"
 ```
 
-### 6.3.5 Subscription ID の記録
+### 6.3.7 Subscription ID の記録
 
 ```bash
 # .envファイルに追記（既に取得済みの場合はスキップ可）
@@ -346,7 +352,7 @@ echo $SUB_MANAGEMENT_ID
 
 この値をパラメーターファイルの `subscriptionId` に設定します。
 
-デプロイ：
+### 6.4.2 What-If 実行
 
 ```bash
 # 事前確認
@@ -355,8 +361,12 @@ az deployment mg what-if \
   --location japaneast \
   --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
   --parameters infrastructure/bicep/parameters/mg-assoc-management.bicepparam
+```
 
-# 確認後、デプロイ実行
+### 6.4.3 デプロイ実行
+
+```bash
+# デプロイ実行
 az deployment mg create \
   --management-group-id contoso-platform-management \
   --location japaneast \
@@ -366,7 +376,7 @@ az deployment mg create \
 echo "Management Subscription が Management Group に割り当てられました"
 ```
 
-### Azure ポータルでの確認
+### 6.4.4 Azure ポータルでの確認
 
 1. Azure ポータルで「Management groups」を開く
 
