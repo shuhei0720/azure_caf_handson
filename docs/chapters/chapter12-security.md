@@ -368,7 +368,7 @@ output keyVaultUri string = keyVault.properties.vaultUri
 
 #### オーケストレーションへのパラメータ追記
 
-自分のオブジェクトIDを取得：
+自分のオブジェクト ID を取得：
 
 ```bash
 # 自分のオブジェクトIDを取得
@@ -448,7 +448,7 @@ module keyVault '../modules/security/key-vault.bicep' = {
 
 #### デプロイ実行
 
-```bash
+````bash
 # Management Subscription に切り替え
 az account set --subscription $SUB_MANAGEMENT_ID
 
@@ -467,40 +467,6 @@ az deployment sub create \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
 
 echo "✅ Key Vault が orchestration 経由でデプロイされました"
-    },
-    "publicNetworkAccess": {
-      "value": "Disabled"
-    },
-    "subnetId": {
-      "value": "$MANAGEMENT_SUBNET_ID"
-}
-}
-}
-EOF
-
-**What-Ifによる事前確認：**
-
-```bash
-# 事前確認
-
-az deployment group what-if \
- --name "key-vault-deployment-$(date +%Y%m%d-%H%M%S)" \
- --resource-group rg-platform-security-prod-jpe-001 \
- --template-file infrastructure/bicep/modules/security/key-vault.bicep \
- --parameters infrastructure/bicep/parameters/key-vault.parameters.json
-````
-
-**デプロイ実行：**
-
-```bash
-# デプロイ実行
-
-az deployment group create \
- --name "key-vault-deployment-$(date +%Y%m%d-%H%M%S)" \
- --resource-group rg-platform-security-prod-jpe-001 \
- --template-file infrastructure/bicep/modules/security/key-vault.bicep \
- --parameters infrastructure/bicep/parameters/key-vault.parameters.json
-
 ```
 
 ### 12.3.4 Secret の保存テスト
@@ -827,7 +793,7 @@ AzureDiagnostics
 | where TimeGenerated > ago(1h)
 | project TimeGenerated, OperationName, ResultType, CallerIPAddress
 | order by TimeGenerated desc
-````
+```
 
 ---
 

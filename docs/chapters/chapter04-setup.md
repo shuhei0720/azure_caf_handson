@@ -636,35 +636,38 @@ az deployment sub what-if \
 graph TB
     A[Chapter 4-16:<br/>個別モジュール作成] --> B[orchestration/main.bicep:<br/>段階的に構築]
     B --> C[Chapter 17:<br/>CI/CD統合]
-    
+
     A --> D[modules/monitoring/]
     A --> E[modules/networking/]
     A --> F[modules/security/]
-    
+
     D --> B
     E --> B
     F --> B
-    
+
     style A fill:#e8f5e9
     style B fill:#fff9c4
     style C fill:#e1f5fe
 ```
 
 **アプローチ：**
+
 - ✅ 各章でモジュールを作成（学習しながら理解）
 - ✅ パラメータを`main.bicepparam`に追記（一元管理）
 - ✅ `main.bicep`にモジュールを追加（段階的構築）
 - ✅ 各章で`main.bicep`経由でデプロイ（動作確認）
 
 **メリット：**
+
 - Single Source of Truth（パラメータの一元管理）
 - 段階的に学習しながら全体を構築
-- Chapter 17で即座にCI/CD化可能
+- Chapter 17 で即座に CI/CD 化可能
 - 本番運用でそのまま使える
 
 ### 4.8.2 オーケストレーションの骨格作成
 
-オーケストレーションは2つのスコープに分かれます：
+オーケストレーションは 2 つのスコープに分かれます：
+
 - **テナントスコープ**：Management Groups
 - **サブスクリプションスコープ**：リソース（監視、ネットワーク、セキュリティなど）
 
@@ -848,18 +851,21 @@ echo "✅ Orchestration templates are valid"
 各章で以下を実施します：
 
 **Chapter 5（Management Groups）：**
+
 1. `modules/management-groups/` にモジュール作成
 2. `orchestration/tenant.bicepparam` にパラメータ追記
 3. `orchestration/tenant.bicep` にモジュール追加
 4. テナントスコープでデプロイ
 
-**Chapter 7以降（リソース）：**
+**Chapter 7 以降（リソース）：**
+
 1. `modules/` 配下にリソース定義作成
 2. `orchestration/main.bicepparam` にパラメータ追記
 3. `orchestration/main.bicep` にモジュール追加
 4. サブスクリプションスコープでデプロイ
 
 **全体復元時：**
+
 ```bash
 # 1. Management Groupsをデプロイ
 az deployment tenant create \
@@ -874,10 +880,11 @@ az deployment sub create \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
 ```
 
-**重要**：各章でのデプロイは **orchestration経由** で実行します。これにより：
+**重要**：各章でのデプロイは **orchestration 経由** で実行します。これにより：
+
 - パラメータが正しく動作することを確認
 - 段階的にオーケストレーションを構築
-- 全体が消失した場合も2コマンドで復元可能
+- 全体が消失した場合も 2 コマンドで復元可能
 
 ---
 

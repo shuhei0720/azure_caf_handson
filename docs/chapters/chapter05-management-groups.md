@@ -382,7 +382,7 @@ output decommissionedMGId string = decommissionedMG.id
 
 ### 5.3.2 オーケストレーションへのパラメータ追記
 
-Chapter 4で作成した `orchestration/tenant.bicepparam` に、Management Groups の設定を追記します。
+Chapter 4 で作成した `orchestration/tenant.bicepparam` に、Management Groups の設定を追記します。
 
 ファイル `infrastructure/bicep/orchestration/tenant.bicepparam` を開き、以下を追記：
 

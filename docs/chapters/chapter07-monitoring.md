@@ -952,7 +952,8 @@ echo "✅ DCR for VM Insights が orchestration 経由でデプロイされま�
 
 echo "DCR_VM_INSIGHTS_ID=$DCR_VM_INSIGHTS_ID" >> .env
 echo "VM Insights DCR ID: $DCR_VM_INSIGHTS_ID"
-```
+
+````
 
 ### 7.4.2 DCR for Windows Event Logs and Syslog
 
@@ -1065,7 +1066,7 @@ resource dcrOSLogs 'Microsoft.Insights/dataCollectionRules@2022-06-01' = {
 
 output dcrId string = dcrOSLogs.id
 output dcrName string = dcrOSLogs.name
-```
+````
 
 #### オーケストレーションへのモジュール追加
 
