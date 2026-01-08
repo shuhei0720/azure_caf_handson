@@ -1469,30 +1469,26 @@ resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-pre
 }
 ```
 
-### 7.6.2 Management Subscription の診断設定を適用
+### 7.6.2 オーケストレーションへのモジュール追加
 
-ファイル `infrastructure/bicep/parameters/subscription-diagnostics.bicepparam` を作成し、以下の内容を記述します：
+`infrastructure/bicep/orchestration/main.bicep` にサブスクリプション診断設定モジュールを追加します：
 
 ```bicep
-using '../modules/monitoring/subscription-diagnostic-settings.bicep'
-
-param workspaceId = '/subscriptions/YOUR_SUB_ID/resourceGroups/rg-platform-management-prod-jpe-001/providers/Microsoft.OperationalInsights/workspaces/log-platform-prod-jpe-001'
-param diagnosticSettingName = 'send-to-log-analytics'
+// Chapter 7: Subscription Diagnostic Settings
+module subscriptionDiagnostics 'modules/monitoring/subscription-diagnostic-settings.bicep' = {
+  name: 'deploy-subscription-diagnostics'
+  scope: subscription()
+  params: {
+    workspaceId: logAnalytics.outputs.workspaceId
+    diagnosticSettingName: 'send-to-log-analytics'
+  }
+  dependsOn: [
+    logAnalytics
+  ]
+}
 ```
 
-**重要：** `workspaceId` の値を置き換えてください。以下のコマンドで取得した Workspace ID を使用します：
-
-```bash
-# Log Analytics Workspace IDの値を確認（前のセクションで取得済み）
-echo $WORKSPACE_ID
-
-# 出力例：
-# /subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-platform-management-prod-jpe-001/providers/Microsoft.OperationalInsights/workspaces/log-platform-prod-jpe-001
-```
-
-この値をパラメーターファイルの `workspaceId` に設定します。
-
-**What-If による事前確認：**
+### 7.6.3 What-If による事前確認
 
 ```bash
 # Management Subscription で実行
@@ -1500,24 +1496,26 @@ az account set --subscription $SUB_MANAGEMENT_ID
 
 # 事前確認
 az deployment sub what-if \
-  --name "sub-diagnostics-$(date +%Y%m%d-%H%M%S)" \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
-  --template-file infrastructure/bicep/modules/monitoring/subscription-diagnostic-settings.bicep \
-  --parameters infrastructure/bicep/parameters/subscription-diagnostics.bicepparam
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
 ```
 
-**デプロイ実行：**
+### 7.6.4 デプロイ実行
 
 ```bash
 # デプロイ実行
 az deployment sub create \
-  --name "sub-diagnostics-$(date +%Y%m%d-%H%M%S)" \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
-  --template-file infrastructure/bicep/modules/monitoring/subscription-diagnostic-settings.bicep \
-  --parameters infrastructure/bicep/parameters/subscription-diagnostics.bicepparam
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+
+echo "✅ サブスクリプション診断設定が orchestration 経由でデプロイされました"
 ```
 
-### 7.6.3 Azure Portal での確認
+### 7.6.5 Azure Portal での確認
 
 デプロイ後、Azure Portal で以下を確認します:
 
@@ -1534,7 +1532,7 @@ az deployment sub create \
    - Azure Portal → Monitor → Activity Log
    - 最近のサブスクリプション操作が表示されることを確認
 
-### 7.6.4 Activity Log のクエリ例
+### 7.6.6 Activity Log のクエリ例
 
 Log Analytics で Activity Log を検索する KQL クエリ例：
 
