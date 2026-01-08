@@ -66,7 +66,7 @@ graph TB
 
 ### 15.2.1 Resource Group の作成
 
-Landing Zone用のResource GroupをBicepで作成します：
+Landing Zone 用の Resource Group を Bicep で作成します：
 
 ```bash
 # 事前確認

@@ -128,7 +128,7 @@ Spoke 2 VNet:  10.2.0.0/16  (65,536 IP)
 
 ### 13.3.1 Resource Group の作成
 
-Hub Network用のResource GroupをBicepで作成します：
+Hub Network 用の Resource Group を Bicep で作成します：
 
 ```bash
 # 事前確認

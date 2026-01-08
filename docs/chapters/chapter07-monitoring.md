@@ -1002,7 +1002,7 @@ AzureActivity
 
 // リソースの作成・削除操作のみ
 AzureActivity
-| where OperationNameValue has_any ("Microsoft.Resources/subscriptions/resourceGroups/write", 
+| where OperationNameValue has_any ("Microsoft.Resources/subscriptions/resourceGroups/write",
                                      "Microsoft.Resources/subscriptions/resourceGroups/delete")
 | project TimeGenerated, Caller, OperationNameValue, ResourceGroup, ActivityStatusValue
 | order by TimeGenerated desc
@@ -1033,8 +1033,9 @@ AzureActivity
 ```
 
 **Activity Log の活用：**
+
 - **セキュリティ監査**: 誰が機密リソースを削除したか
-- **変更追跡**: RBAC変更の履歴
+- **変更追跡**: RBAC 変更の履歴
 - **トラブルシューティング**: 失敗した操作の原因調査
 - **コンプライアンス**: 管理操作の証跡保存
 
@@ -1084,6 +1085,7 @@ graph LR
 本章では既存の監視リソース（Log Analytics、DCR）に診断設定を適用しましたが、**今後作成するすべてのリソースにも診断設定を適用します**。
 
 診断設定が利用可能なリソース：
+
 - Azure Firewall
 - Key Vault
 - Azure Bastion
@@ -1093,6 +1095,7 @@ graph LR
 - その他の Azure サービス
 
 **実装方針：**
+
 - リソース作成と診断設定を**同じ Bicep ファイル内**で定義
 - すべてのログとメトリクスを Log Analytics Workspace に送信
 - リソース作成時に診断設定も自動的にデプロイ
@@ -1307,7 +1310,7 @@ AzureDiagnostics
 AzureDiagnostics
 | where ResourceType == "VAULTS"
 | where OperationName == "SecretGet"
-| project TimeGenerated, CallerIPAddress, identity_claim_http_schemas_xmlsoap_org_ws_2005_05_identity_claims_upn_s, 
+| project TimeGenerated, CallerIPAddress, identity_claim_http_schemas_xmlsoap_org_ws_2005_05_identity_claims_upn_s,
           Resource, ResultSignature
 | order by TimeGenerated desc
 
@@ -1325,12 +1328,13 @@ AzureDiagnostics
 ```
 
 **診断設定ログの活用シーン：**
+
 - **セキュリティ分析**: Firewall でブロックされた不審なトラフィック
 - **コンプライアンス**: Key Vault のシークレットアクセス履歴
 - **トラブルシューティング**: 接続失敗の原因調査
 - **キャパシティプランニング**: リソース使用状況の傾向分析
 
-**注意：** 上記の Azure Firewall と Key Vault のクエリは、それぞれ第13章（Networking Hub）と第12章（Security）でリソース作成後に実行可能になります。
+**注意：** 上記の Azure Firewall と Key Vault のクエリは、それぞれ第 13 章（Networking Hub）と第 12 章（Security）でリソース作成後に実行可能になります。
 
 ---
 
