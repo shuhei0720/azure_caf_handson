@@ -107,6 +107,15 @@ resource subLandingZoneCorp 'Microsoft.Subscription/aliases@2021-10-01' = {
 output subscriptionId string = subLandingZoneCorp.properties.subscriptionId
 ```
 
+パラメーターファイル `infrastructure/bicep/parameters/sub-landingzone-corp.bicepparam` を作成：
+
+```bicep
+using '../subscriptions/sub-landingzone-corp.bicep'
+
+// billingScopeは環境変数からCLIで注入
+param billingScope = ''
+```
+
 ### 14.2.2 Bicep のデプロイ（10-15 分）
 
 ```bash
@@ -117,6 +126,7 @@ az deployment tenant what-if \
   --name "deploy-sub-landingzone-corp-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/subscriptions/sub-landingzone-corp.bicep \
+  --parameters infrastructure/bicep/parameters/sub-landingzone-corp.bicepparam \
   --parameters billingScope="$BILLING_SCOPE"
 
 # 確認後、デプロイ実行
@@ -124,6 +134,7 @@ az deployment tenant create \
   --name "deploy-sub-landingzone-corp-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/subscriptions/sub-landingzone-corp.bicep \
+  --parameters infrastructure/bicep/parameters/sub-landingzone-corp.bicepparam \
   --parameters billingScope="$BILLING_SCOPE"
 ```
 
@@ -160,6 +171,16 @@ az account show --subscription $SUB_LANDINGZONE_CORP_ID --output table
 
 作成した Landing Zone Subscription を、第 5 章で作成した Management Group「contoso-landingzones-corp」に割り当てます。
 
+パラメーターファイル `infrastructure/bicep/parameters/mg-assoc-landingzone-corp.bicepparam` を作成：
+
+```bicep
+using '../modules/management-groups/subscription-association.bicep'
+
+param managementGroupName = 'contoso-landingzones-corp'
+// subscriptionIdは環境変数からCLIで注入
+param subscriptionId = ''
+```
+
 第 6 章で作成した Bicep モジュールを使用します：
 
 ```bash
@@ -168,18 +189,16 @@ az deployment mg what-if \
   --management-group-id contoso-landingzones-corp \
   --location japaneast \
   --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters \
-    managementGroupName=contoso-landingzones-corp \
-    subscriptionId=$SUB_LANDINGZONE_CORP_ID
+  --parameters infrastructure/bicep/parameters/mg-assoc-landingzone-corp.bicepparam \
+  --parameters subscriptionId=$SUB_LANDINGZONE_CORP_ID
 
 # 確認後、デプロイ実行
 az deployment mg create \
   --management-group-id contoso-landingzones-corp \
   --location japaneast \
   --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters \
-    managementGroupName=contoso-landingzones-corp \
-    subscriptionId=$SUB_LANDINGZONE_CORP_ID
+  --parameters infrastructure/bicep/parameters/mg-assoc-landingzone-corp.bicepparam \
+  --parameters subscriptionId=$SUB_LANDINGZONE_CORP_ID
 
 echo "Landing Zone Subscription が Management Group に割り当てられました"
 ```

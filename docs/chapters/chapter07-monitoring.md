@@ -211,9 +211,28 @@ output resourceGroupName string = resourceGroup.name
 output resourceGroupId string = resourceGroup.id
 ```
 
+パラメーターファイル `infrastructure/bicep/parameters/management-resource-group.bicepparam` を作成：
+
+```bicep
+using '../modules/resource-group/resource-group.bicep'
+
+param resourceGroupName = 'rg-platform-management-prod-jpe-001'
+param location = 'japaneast'
+param tags = {
+  Environment: 'Production'
+  ManagedBy: 'Bicep'
+  Component: 'Management'
+}
+```
+
+**重要：** パラメーターファイルを Git 管理下に置くことで、すべてのリソースを消しても一発で復元できます。
+
 デプロイ：
 
 ```bash
+# パラメーターファイルのディレクトリを作成
+mkdir -p infrastructure/bicep/parameters
+
 # Management Subscription に切り替え（念のため確認）
 az account set --subscription $SUB_MANAGEMENT_ID
 
@@ -222,20 +241,14 @@ az deployment sub what-if \
   --name "rg-management-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
-  --parameters \
-    resourceGroupName=rg-platform-management-prod-jpe-001 \
-    location=japaneast \
-    tags='{"Environment":"Production","ManagedBy":"Bicep","Component":"Management"}'
+  --parameters infrastructure/bicep/parameters/management-resource-group.bicepparam
 
 # 確認後、デプロイ実行
 az deployment sub create \
   --name "rg-management-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
-  --parameters \
-    resourceGroupName=rg-platform-management-prod-jpe-001 \
-    location=japaneast \
-    tags='{"Environment":"Production","ManagedBy":"Bicep","Component":"Management"}'
+  --parameters infrastructure/bicep/parameters/management-resource-group.bicepparam
 
 echo "Resource Group が Bicep で作成されました"
 ```
@@ -266,11 +279,6 @@ param location string
 @maxValue(730)
 param retentionInDays int = 90
 
-@description('総保持期間（日数）- アーカイブを含む全保存期間')
-@minValue(30)
-@maxValue(2556)
-param totalRetentionInDays int = 730
-
 @description('タグ')
 param tags object = {}
 
@@ -284,7 +292,6 @@ resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10
       name: 'PerGB2018'
     }
     retentionInDays: retentionInDays
-    retentionInDaysAsDefault: true
     features: {
       enableLogAccessUsingOnlyResourcePermissions: true
     }
@@ -299,6 +306,23 @@ output workspaceName string = logAnalyticsWorkspace.name
 output customerId string = logAnalyticsWorkspace.properties.customerId
 ```
 
+**注意：** `totalRetentionInDays` パラメータはワークスペース作成後、Azure Portal で各テーブルのデータ保持ポリシーを設定する際に使用します。Bicep ではワークスペースレベルの `retentionInDays`（Interactive 期間）のみを設定し、Archive 期間は Portal または Azure CLI で個別に設定します。
+
+パラメーターファイル `infrastructure/bicep/parameters/log-analytics.bicepparam` を作成：
+
+```bicep
+using '../modules/monitoring/log-analytics.bicep'
+
+param workspaceName = 'log-platform-prod-jpe-001'
+param location = 'japaneast'
+param retentionInDays = 90
+param tags = {
+  Environment: 'Production'
+  ManagedBy: 'Bicep'
+  Component: 'Monitoring'
+}
+```
+
 デプロイ：
 
 ```bash
@@ -307,22 +331,14 @@ az deployment group what-if \
   --name "log-analytics-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/log-analytics.bicep \
-  --parameters \
-    workspaceName=log-platform-prod-jpe-001 \
-    location=japaneast \
-    retentionInDays=90 \
-    totalRetentionInDays=730
+  --parameters infrastructure/bicep/parameters/log-analytics.bicepparam
 
 # 確認後、デプロイ実行
 az deployment group create \
   --name "log-analytics-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/log-analytics.bicep \
-  --parameters \
-    workspaceName=log-platform-prod-jpe-001 \
-    location=japaneast \
-    retentionInDays=90 \
-    totalRetentionInDays=730
+  --parameters infrastructure/bicep/parameters/log-analytics.bicepparam
 
 # Workspace IDを取得して環境変数に保存
 WORKSPACE_ID=$(az monitor log-analytics workspace show \
@@ -334,7 +350,101 @@ echo "WORKSPACE_ID=$WORKSPACE_ID" >> .env
 echo "Log Analytics Workspace ID: $WORKSPACE_ID"
 ```
 
-### 7.3.3 ログ保存期間とアーカイブ戦略
+### 7.3.3 テーブルレベルの保持期間設定
+
+Log Analytics Workspace のテーブルごとに保持期間を設定します。これにより、Interactive 期間（高速アクセス）と Archive 期間（低コスト長期保存）を制御できます。
+
+ファイル `infrastructure/bicep/modules/monitoring/log-analytics-table-retention.bicep` を作成：
+
+```bicep
+@description('Log Analytics Workspace名')
+param workspaceName string
+
+@description('テーブル名')
+param tableName string
+
+@description('対話型分析期間（日数）')
+@minValue(30)
+@maxValue(730)
+param retentionInDays int = 90
+
+@description('総保持期間（日数）- アーカイブを含む')
+@minValue(30)
+@maxValue(2556)
+param totalRetentionInDays int = 730
+
+// 既存のLog Analytics Workspace
+resource workspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing = {
+  name: workspaceName
+}
+
+// テーブルの保持期間設定
+resource tableRetention 'Microsoft.OperationalInsights/workspaces/tables@2022-10-01' = {
+  parent: workspace
+  name: tableName
+  properties: {
+    retentionInDays: retentionInDays
+    totalRetentionInDays: totalRetentionInDays
+  }
+}
+
+output tableName string = tableRetention.name
+output retentionInDays int = tableRetention.properties.retentionInDays
+output totalRetentionInDays int = tableRetention.properties.totalRetentionInDays
+```
+
+パラメーターファイル `infrastructure/bicep/parameters/log-analytics-table-retention.bicepparam` を作成：
+
+```bicep
+using '../modules/monitoring/log-analytics-table-retention.bicep'
+
+param workspaceName = 'log-platform-prod-jpe-001'
+param tableName = 'AzureActivity'  // デプロイ時に上書き
+param retentionInDays = 90
+param totalRetentionInDays = 730
+```
+
+主要なテーブルに保持期間を設定：
+
+```bash
+# 主要テーブルのリスト
+TABLES=(
+  "AzureActivity"           # Activity Log
+  "AzureDiagnostics"        # 診断設定
+  "SigninLogs"              # Entra ID サインイン
+  "AuditLogs"               # Entra ID 監査
+  "Heartbeat"               # VM Insights ハートビート
+  "Perf"                    # VM Insights パフォーマンス
+  "InsightsMetrics"         # VM Insights メトリクス
+  "Syslog"                  # Linux Syslog
+  "Event"                   # Windows Event
+)
+
+# 各テーブルに保持期間を設定
+for TABLE in "${TABLES[@]}"; do
+  echo "Setting retention for table: $TABLE"
+
+  # 事前確認
+  az deployment group what-if \
+    --name "table-retention-${TABLE}-$(date +%Y%m%d-%H%M%S)" \
+    --resource-group rg-platform-management-prod-jpe-001 \
+    --template-file infrastructure/bicep/modules/monitoring/log-analytics-table-retention.bicep \
+    --parameters infrastructure/bicep/parameters/log-analytics-table-retention.bicepparam \
+    --parameters tableName=$TABLE
+
+  # 確認後、デプロイ実行
+  az deployment group create \
+    --name "table-retention-${TABLE}-$(date +%Y%m%d-%H%M%S)" \
+    --resource-group rg-platform-management-prod-jpe-001 \
+    --template-file infrastructure/bicep/modules/monitoring/log-analytics-table-retention.bicep \
+    --parameters infrastructure/bicep/parameters/log-analytics-table-retention.bicepparam \
+    --parameters tableName=$TABLE
+done
+
+echo "すべてのテーブルに保持期間が設定されました"
+```
+
+### 7.3.4 ログ保存期間とアーカイブ戦略
 
 Log Analytics Workspace のデータ保存には 2 つの階層があります。
 
@@ -369,32 +479,40 @@ totalRetentionInDays: 730日 # 総保持期間（アーカイブ含む）
 
 **コスト試算例（1 日 10GB のログ取り込みの場合）:**
 
-- Interactive（90 日）: 10GB × 90 日 × $2.30 = $2,070/月
-- Archive（640 日）: 10GB × 640 日 × $0.10 = $640/月
+- Interactive（90 日）: 10GB × 90 日 × $2.30/GB/月 = $2,070/月
+- Archive（640 日）: 10GB × 640 日 × $0.10/GB/月 = $640/月
 - **合計**: $2,710/月
 
 **アーカイブなしの場合（730 日すべて Interactive）:**
 
-- 10GB × 730 日 × $2.30 = $16,790/月
-- **コスト削減**: 約 84%（$14,080/月の削減）
+- Interactive（730 日）: 10GB × 730 日 × $2.30/GB/月 = $16,790/月
 
-### 7.3.4 Azure Portal での確認
+**節約効果**: Archive 層を活用することで、約 84% のコスト削減（$14,080/月の節約）
 
-デプロイ後、Azure Portal で以下を確認します:
+#### Azure ポータルでの確認
 
-1. **リソースグループの確認**
+1. Log Analytics Workspace に移動
+2. **設定** > **使用量と推定コスト** を選択
+3. **データ保持** タブで、Workspace 全体の保持期間を確認
+4. **設定** > **テーブル** で各テーブルの保持期間を確認：
+   - **Table**: テーブル名（AzureActivity, AzureDiagnostics など）
+   - **Retention (days)**: 対話型分析期間（90 日）
+   - **Total retention (days)**: 総保持期間（730 日）
+   - **Archive (days)**: アーカイブ期間（640 日 = 730 - 90）
 
-   - Azure Portal → Resource groups → `rg-platform-management-prod-jpe-001`
-   - Log Analytics Workspace `log-platform-prod-jpe-001` が存在することを確認
+### 7.3.5 Workspace のクエリと監視
 
-2. **ワークスペースの設定確認**
+Log Analytics Workspace にデータが収集されているか確認します。
 
-   - Workspace を開く → Settings → Usage and estimated costs
-   - Retention: 90 days (Interactive) + Archive until 730 days を確認
+Azure ポータルから、Log Analytics Workspace を開き、**ログ** を選択して KQL クエリを実行できます。
 
-3. **ワークスペース ID の確認**
-   - Workspace を開く → Properties → Workspace ID をコピー
-   - `.env` ファイルの `LOG_WORKSPACE_ID` と一致することを確認
+```kql
+// 過去24時間のログエントリ数をテーブル別に集計
+search *
+| where TimeGenerated > ago(24h)
+| summarize Count = count() by Type
+| order by Count desc
+```
 
 ---
 
@@ -536,6 +654,17 @@ output dcrId string = dcrVMInsights.id
 output dcrName string = dcrVMInsights.name
 ```
 
+パラメーターファイル `infrastructure/bicep/parameters/dcr-vm-insights.bicepparam` を作成：
+
+```bicep
+using '../modules/monitoring/dcr-vm-insights.bicep'
+
+param dcrName = 'dcr-vm-insights-prod-jpe-001'
+param location = 'japaneast'
+// workspaceIdは環境変数から注入するため、CLIで上書き
+param workspaceId = ''
+```
+
 デプロイ：
 
 ```bash
@@ -544,20 +673,16 @@ az deployment group what-if \
   --name "dcr-vm-insights-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-vm-insights.bicep \
-  --parameters \
-    dcrName=dcr-vm-insights-prod-jpe-001 \
-    location=japaneast \
-    workspaceId="$WORKSPACE_ID"
+  --parameters infrastructure/bicep/parameters/dcr-vm-insights.bicepparam \
+  --parameters workspaceId="$WORKSPACE_ID"
 
 # 確認後、デプロイ実行
 az deployment group create \
   --name "dcr-vm-insights-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-vm-insights.bicep \
-  --parameters \
-    dcrName=dcr-vm-insights-prod-jpe-001 \
-    location=japaneast \
-    workspaceId="$WORKSPACE_ID"
+  --parameters infrastructure/bicep/parameters/dcr-vm-insights.bicepparam \
+  --parameters workspaceId="$WORKSPACE_ID"
 
 # DCR IDを取得して保存
 DCR_VM_INSIGHTS_ID=$(az monitor data-collection rule show \
@@ -670,6 +795,17 @@ output dcrId string = dcrOSLogs.id
 output dcrName string = dcrOSLogs.name
 ```
 
+パラメーターファイル `infrastructure/bicep/parameters/dcr-os-logs.bicepparam` を作成：
+
+```bicep
+using '../modules/monitoring/dcr-os-logs.bicep'
+
+param dcrName = 'dcr-os-logs-prod-jpe-001'
+param location = 'japaneast'
+// workspaceIdは環境変数から注入
+param workspaceId = ''
+```
+
 デプロイ：
 
 ```bash
@@ -678,20 +814,16 @@ az deployment group what-if \
   --name "dcr-os-logs-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-os-logs.bicep \
-  --parameters \
-    dcrName=dcr-os-logs-prod-jpe-001 \
-    location=japaneast \
-    workspaceId="$WORKSPACE_ID"
+  --parameters infrastructure/bicep/parameters/dcr-os-logs.bicepparam \
+  --parameters workspaceId="$WORKSPACE_ID"
 
 # 確認後、デプロイ実行
 az deployment group create \
   --name "dcr-os-logs-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-os-logs.bicep \
-  --parameters \
-    dcrName=dcr-os-logs-prod-jpe-001 \
-    location=japaneast \
-    workspaceId="$WORKSPACE_ID"
+  --parameters infrastructure/bicep/parameters/dcr-os-logs.bicepparam \
+  --parameters workspaceId="$WORKSPACE_ID"
 
 # DCR IDを取得して保存
 DCR_OS_LOGS_ID=$(az monitor data-collection rule show \
@@ -951,6 +1083,15 @@ resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-pre
 
 ### 7.6.2 Management Subscription の診断設定を適用
 
+パラメーターファイル `infrastructure/bicep/parameters/subscription-diagnostics.bicepparam` を作成：
+
+```bicep
+using '../modules/monitoring/subscription-diagnostic-settings.bicep'
+
+// workspaceIdは環境変数から注入
+param workspaceId = ''
+```
+
 ```bash
 # Management Subscription で実行
 az account set --subscription $SUB_MANAGEMENT_ID
@@ -960,16 +1101,16 @@ az deployment sub what-if \
   --name "sub-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/modules/monitoring/subscription-diagnostic-settings.bicep \
-  --parameters \
-    workspaceId=$LOG_WORKSPACE_ID
+  --parameters infrastructure/bicep/parameters/subscription-diagnostics.bicepparam \
+  --parameters workspaceId=$LOG_WORKSPACE_ID
 
 # 確認後、デプロイ実行
 az deployment sub create \
   --name "sub-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/modules/monitoring/subscription-diagnostic-settings.bicep \
-  --parameters \
-    workspaceId=$LOG_WORKSPACE_ID
+  --parameters infrastructure/bicep/parameters/subscription-diagnostics.bicepparam \
+  --parameters workspaceId=$LOG_WORKSPACE_ID
 ```
 
 ### 7.6.3 Azure Portal での確認
@@ -1145,6 +1286,16 @@ resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-pre
 output diagnosticSettingId string = diagnosticSetting.id
 ```
 
+パラメーターファイル `infrastructure/bicep/parameters/log-analytics-diagnostics.bicepparam` を作成：
+
+```bicep
+using '../modules/monitoring/log-analytics-diagnostics.bicep'
+
+param workspaceName = 'log-platform-prod-jpe-001'
+// destinationWorkspaceIdは環境変数から注入
+param destinationWorkspaceId = ''
+```
+
 ```bash
 # Log Analytics Workspace の診断設定を適用
 # 事前確認
@@ -1152,18 +1303,16 @@ az deployment group what-if \
   --name "log-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/log-analytics-diagnostics.bicep \
-  --parameters \
-    workspaceName=log-platform-prod-jpe-001 \
-    destinationWorkspaceId=$LOG_WORKSPACE_ID
+  --parameters infrastructure/bicep/parameters/log-analytics-diagnostics.bicepparam \
+  --parameters destinationWorkspaceId=$LOG_WORKSPACE_ID
 
 # 確認後、デプロイ実行
 az deployment group create \
   --name "log-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/log-analytics-diagnostics.bicep \
-  --parameters \
-    workspaceName=log-platform-prod-jpe-001 \
-    destinationWorkspaceId=$LOG_WORKSPACE_ID
+  --parameters infrastructure/bicep/parameters/log-analytics-diagnostics.bicepparam \
+  --parameters destinationWorkspaceId=$LOG_WORKSPACE_ID
 ```
 
 ### 7.7.2 Data Collection Rule の診断設定
@@ -1207,6 +1356,26 @@ resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-pre
 output diagnosticSettingId string = diagnosticSetting.id
 ```
 
+パラメーターファイル `infrastructure/bicep/parameters/dcr-diagnostics-vm-insights.bicepparam` を作成：
+
+```bicep
+using '../modules/monitoring/dcr-diagnostics.bicep'
+
+param dcrName = 'dcr-vm-insights-prod-jpe-001'
+// destinationWorkspaceIdは環境変数から注入
+param destinationWorkspaceId = ''
+```
+
+パラメーターファイル `infrastructure/bicep/parameters/dcr-diagnostics-os-logs.bicepparam` を作成：
+
+```bicep
+using '../modules/monitoring/dcr-diagnostics.bicep'
+
+param dcrName = 'dcr-os-logs-prod-jpe-001'
+// destinationWorkspaceIdは環境変数から注入
+param destinationWorkspaceId = ''
+```
+
 ```bash
 # VM Insights DCR の診断設定
 # 事前確認
@@ -1214,18 +1383,16 @@ az deployment group what-if \
   --name "dcr-vm-insights-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep \
-  --parameters \
-    dcrName=dcr-vm-insights-prod-jpe-001 \
-    destinationWorkspaceId=$LOG_WORKSPACE_ID
+  --parameters infrastructure/bicep/parameters/dcr-diagnostics-vm-insights.bicepparam \
+  --parameters destinationWorkspaceId=$LOG_WORKSPACE_ID
 
 # 確認後、デプロイ実行
 az deployment group create \
   --name "dcr-vm-insights-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep \
-  --parameters \
-    dcrName=dcr-vm-insights-prod-jpe-001 \
-    destinationWorkspaceId=$LOG_WORKSPACE_ID
+  --parameters infrastructure/bicep/parameters/dcr-diagnostics-vm-insights.bicepparam \
+  --parameters destinationWorkspaceId=$LOG_WORKSPACE_ID
 
 # OS Logs DCR の診断設定
 # 事前確認
@@ -1233,18 +1400,16 @@ az deployment group what-if \
   --name "dcr-os-logs-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep \
-  --parameters \
-    dcrName=dcr-os-logs-prod-jpe-001 \
-    destinationWorkspaceId=$LOG_WORKSPACE_ID
+  --parameters infrastructure/bicep/parameters/dcr-diagnostics-os-logs.bicepparam \
+  --parameters destinationWorkspaceId=$LOG_WORKSPACE_ID
 
 # 確認後、デプロイ実行
 az deployment group create \
   --name "dcr-os-logs-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep \
-  --parameters \
-    dcrName=dcr-os-logs-prod-jpe-001 \
-    destinationWorkspaceId=$LOG_WORKSPACE_ID
+  --parameters infrastructure/bicep/parameters/dcr-diagnostics-os-logs.bicepparam \
+  --parameters destinationWorkspaceId=$LOG_WORKSPACE_ID
 ```
 
 **今後のリソース作成ルール：**
@@ -1402,7 +1567,24 @@ output clientId string = managedIdentity.properties.clientId
 
 ### 7.8.2 マネージド ID の作成
 
+パラメーターファイル `infrastructure/bicep/parameters/policy-managed-identity.bicepparam` を作成：
+
+```bicep
+using '../modules/identity/managed-identity.bicep'
+
+param identityName = 'id-policy-assignment-prod-jpe-001'
+param location = 'japaneast'
+param tags = {
+  Environment: 'Production'
+  ManagedBy: 'Bicep'
+  Purpose: 'Policy Assignment'
+}
+```
+
 ```bash
+# ディレクトリ作成
+mkdir -p infrastructure/bicep/modules/identity
+
 # Management Subscription で実行
 az account set --subscription $SUB_MANAGEMENT_ID
 
@@ -1411,18 +1593,14 @@ az deployment group what-if \
   --name "policy-identity-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/identity/managed-identity.bicep \
-  --parameters \
-    identityName=id-policy-assignment-prod-jpe-001 \
-    location=japaneast
+  --parameters infrastructure/bicep/parameters/policy-managed-identity.bicepparam
 
 # 確認後、デプロイ実行
 DEPLOYMENT_OUTPUT=$(az deployment group create \
   --name "policy-identity-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/identity/managed-identity.bicep \
-  --parameters \
-    identityName=id-policy-assignment-prod-jpe-001 \
-    location=japaneast \
+  --parameters infrastructure/bicep/parameters/policy-managed-identity.bicepparam \
   --query 'properties.outputs' -o json)
 
 # 環境変数に保存

@@ -130,26 +130,35 @@ Spoke 2 VNet:  10.2.0.0/16  (65,536 IP)
 
 Hub Network 用の Resource Group を Bicep で作成します：
 
+パラメーターファイル `infrastructure/bicep/parameters/connectivity-resource-group.bicepparam` を作成：
+
+```bicep
+using '../modules/resource-group/resource-group.bicep'
+
+param resourceGroupName = 'rg-platform-connectivity-prod-jpe-001'
+param location = 'japaneast'
+param tags = {
+  Environment: 'Production'
+  ManagedBy: 'Bicep'
+  Project: 'CAF-Landing-Zone'
+  Component: 'Connectivity'
+}
+```
+
 ```bash
 # 事前確認
 az deployment sub what-if \
   --name "rg-connectivity-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
-  --parameters \
-    resourceGroupName=rg-platform-connectivity-prod-jpe-001 \
-    location=japaneast \
-    tags='{"Environment":"Production","ManagedBy":"Bicep","Project":"CAF-Landing-Zone","Component":"Connectivity"}'
+  --parameters infrastructure/bicep/parameters/connectivity-resource-group.bicepparam
 
 # 確認後、デプロイ実行
 az deployment sub create \
   --name "rg-connectivity-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
-  --parameters \
-    resourceGroupName=rg-platform-connectivity-prod-jpe-001 \
-    location=japaneast \
-    tags='{"Environment":"Production","ManagedBy":"Bicep","Project":"CAF-Landing-Zone","Component":"Connectivity"}'
+  --parameters infrastructure/bicep/parameters/connectivity-resource-group.bicepparam
 
 echo "Resource Group が Bicep で作成されました"
 ```

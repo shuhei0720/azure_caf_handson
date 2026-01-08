@@ -104,6 +104,15 @@ resource subConnectivity 'Microsoft.Subscription/aliases@2021-10-01' = {
 output subscriptionId string = subConnectivity.properties.subscriptionId
 ```
 
+パラメーターファイル `infrastructure/bicep/parameters/sub-connectivity.bicepparam` を作成：
+
+```bicep
+using '../subscriptions/sub-connectivity.bicep'
+
+// billingScopeは環境変数からCLIで注入
+param billingScope = ''
+```
+
 ### 11.2.2 Bicep のデプロイ（10-15 分）
 
 ```bash
@@ -114,6 +123,7 @@ az deployment tenant what-if \
   --name "deploy-sub-connectivity-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/subscriptions/sub-connectivity.bicep \
+  --parameters infrastructure/bicep/parameters/sub-connectivity.bicepparam \
   --parameters billingScope="$BILLING_SCOPE"
 
 # 確認後、デプロイ実行
@@ -121,6 +131,7 @@ az deployment tenant create \
   --name "deploy-sub-connectivity-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/subscriptions/sub-connectivity.bicep \
+  --parameters infrastructure/bicep/parameters/sub-connectivity.bicepparam \
   --parameters billingScope="$BILLING_SCOPE"
 ```
 
@@ -157,6 +168,16 @@ az account show --subscription $SUB_CONNECTIVITY_ID --output table
 
 作成した Connectivity Subscription を、第 5 章で作成した Management Group「contoso-platform-connectivity」に割り当てます。
 
+パラメーターファイル `infrastructure/bicep/parameters/mg-assoc-connectivity.bicepparam` を作成：
+
+```bicep
+using '../modules/management-groups/subscription-association.bicep'
+
+param managementGroupName = 'contoso-platform-connectivity'
+// subscriptionIdは環境変数からCLIで注入
+param subscriptionId = ''
+```
+
 第 6 章で作成した Bicep モジュールを使用します：
 
 ```bash
@@ -165,18 +186,16 @@ az deployment mg what-if \
   --management-group-id contoso-platform-connectivity \
   --location japaneast \
   --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters \
-    managementGroupName=contoso-platform-connectivity \
-    subscriptionId=$SUB_CONNECTIVITY_ID
+  --parameters infrastructure/bicep/parameters/mg-assoc-connectivity.bicepparam \
+  --parameters subscriptionId=$SUB_CONNECTIVITY_ID
 
 # 確認後、デプロイ実行
 az deployment mg create \
   --management-group-id contoso-platform-connectivity \
   --location japaneast \
   --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters \
-    managementGroupName=contoso-platform-connectivity \
-    subscriptionId=$SUB_CONNECTIVITY_ID
+  --parameters infrastructure/bicep/parameters/mg-assoc-connectivity.bicepparam \
+  --parameters subscriptionId=$SUB_CONNECTIVITY_ID
 
 echo "Connectivity Subscription が Management Group に割り当てられました"
 ```

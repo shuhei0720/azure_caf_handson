@@ -214,9 +214,21 @@ resource subManagement 'Microsoft.Subscription/aliases@2021-10-01' = {
 output subscriptionId string = subManagement.properties.subscriptionId
 ```
 
+パラメーターファイル `infrastructure/bicep/parameters/sub-management.bicepparam` を作成：
+
+```bicep
+using '../subscriptions/sub-management.bicep'
+
+// billingScopeは環境変数からCLIで注入
+param billingScope = ''
+```
+
 ### 6.3.4 Bicep のデプロイ（10-15 分）
 
 ```bash
+# パラメーターディレクトリ作成
+mkdir -p infrastructure/bicep/parameters
+
 # デプロイ名を変数に保存（重要：タイムスタンプが変わらないように）
 DEPLOYMENT_NAME="deploy-sub-management-$(date +%Y%m%d-%H%M%S)"
 
@@ -227,6 +239,7 @@ az deployment tenant what-if \
   --name "$DEPLOYMENT_NAME" \
   --location japaneast \
   --template-file infrastructure/bicep/subscriptions/sub-management.bicep \
+  --parameters infrastructure/bicep/parameters/sub-management.bicepparam \
   --parameters billingScope="$BILLING_SCOPE"
 
 # 確認後、デプロイ実行
@@ -234,6 +247,7 @@ az deployment tenant create \
   --name "$DEPLOYMENT_NAME" \
   --location japaneast \
   --template-file infrastructure/bicep/subscriptions/sub-management.bicep \
+  --parameters infrastructure/bicep/parameters/sub-management.bicepparam \
   --parameters billingScope="$BILLING_SCOPE"
 
 # デプロイ結果から Subscription ID を取得
@@ -303,6 +317,16 @@ output managementGroupName string = managementGroupName
 output subscriptionId string = subscriptionId
 ```
 
+パラメーターファイル `infrastructure/bicep/parameters/mg-assoc-management.bicepparam` を作成：
+
+```bicep
+using '../modules/management-groups/subscription-association.bicep'
+
+param managementGroupName = 'contoso-platform-management'
+// subscriptionIdは環境変数からCLIで注入
+param subscriptionId = ''
+```
+
 デプロイ：
 
 ```bash
@@ -311,18 +335,16 @@ az deployment mg what-if \
   --management-group-id contoso-platform-management \
   --location japaneast \
   --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters \
-    managementGroupName=contoso-platform-management \
-    subscriptionId=$SUB_MANAGEMENT_ID
+  --parameters infrastructure/bicep/parameters/mg-assoc-management.bicepparam \
+  --parameters subscriptionId=$SUB_MANAGEMENT_ID
 
 # 確認後、デプロイ実行
 az deployment mg create \
   --management-group-id contoso-platform-management \
   --location japaneast \
   --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters \
-    managementGroupName=contoso-platform-management \
-    subscriptionId=$SUB_MANAGEMENT_ID
+  --parameters infrastructure/bicep/parameters/mg-assoc-management.bicepparam \
+  --parameters subscriptionId=$SUB_MANAGEMENT_ID
 
 echo "Management Subscription が Management Group に割り当てられました"
 ```

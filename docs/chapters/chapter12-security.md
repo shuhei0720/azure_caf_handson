@@ -336,73 +336,89 @@ output keyVaultUri string = keyVault.properties.vaultUri
 ```bash
 # 自分のオブジェクトIDを取得
 MY_OBJECT_ID=$(az ad signed-in-user show --query id -o tsv)
+```
 
-# Key Vault用のResource GroupをBicepで作成
+パラメーターファイル `infrastructure/bicep/parameters/security-resource-group.bicepparam` を作成：
+
+```bicep
+using '../modules/resource-group/resource-group.bicep'
+
+param resourceGroupName = 'rg-platform-security-prod-jpe-001'
+param location = 'japaneast'
+param tags = {
+  Environment: 'Production'
+  ManagedBy: 'Bicep'
+  Component: 'Security'
+}
+```
+
+Key Vault 用の Resource Group を Bicep で作成：
+
+```bash
 # 事前確認
 az deployment sub what-if \
   --name "rg-security-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
-  --parameters \
-    resourceGroupName=rg-platform-security-prod-jpe-001 \
-    location=japaneast \
-    tags='{"Environment":"Production","ManagedBy":"Bicep","Component":"Security"}'
+  --parameters infrastructure/bicep/parameters/security-resource-group.bicepparam
 
 # 確認後、デプロイ実行
 az deployment sub create \
   --name "rg-security-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
-  --parameters \
-    resourceGroupName=rg-platform-security-prod-jpe-001 \
-    location=japaneast \
-    tags='{"Environment":"Production","ManagedBy":"Bicep","Component":"Security"}'
+  --parameters infrastructure/bicep/parameters/security-resource-group.bicepparam
 
-# Management SubnetのIDを取得
+# Management Subnet の ID を取得
+
 MANAGEMENT_SUBNET_ID=$(az network vnet subnet show \
-  --vnet-name vnet-hub-prod-jpe-001 \
-  --name ManagementSubnet \
-  --resource-group rg-platform-connectivity-prod-jpe-001 \
-  --query id -o tsv)
+ --vnet-name vnet-hub-prod-jpe-001 \
+ --name ManagementSubnet \
+ --resource-group rg-platform-connectivity-prod-jpe-001 \
+ --query id -o tsv)
 
 # パラメータファイルを作成
+
 cat << EOF > infrastructure/bicep/parameters/key-vault.parameters.json
 {
-  "\$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
-  "contentVersion": "1.0.0.0",
-  "parameters": {
-    "keyVaultName": {
-      "value": "kv-hub-prod-jpe-001"
-    },
-    "location": {
-      "value": "japaneast"
-    },
-    "administratorObjectId": {
-      "value": "$MY_OBJECT_ID"
+"\$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+"contentVersion": "1.0.0.0",
+"parameters": {
+"keyVaultName": {
+"value": "kv-hub-prod-jpe-001"
+},
+"location": {
+"value": "japaneast"
+},
+"administratorObjectId": {
+"value": "$MY_OBJECT_ID"
     },
     "publicNetworkAccess": {
       "value": "Disabled"
     },
     "subnetId": {
       "value": "$MANAGEMENT_SUBNET_ID"
-    }
-  }
+}
+}
 }
 EOF
 
 # 事前確認
+
 az deployment group what-if \
-  --name "key-vault-deployment-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-security-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/security/key-vault.bicep \
-  --parameters infrastructure/bicep/parameters/key-vault.parameters.json
+ --name "key-vault-deployment-$(date +%Y%m%d-%H%M%S)" \
+ --resource-group rg-platform-security-prod-jpe-001 \
+ --template-file infrastructure/bicep/modules/security/key-vault.bicep \
+ --parameters infrastructure/bicep/parameters/key-vault.parameters.json
 
 # 確認後、デプロイ実行
+
 az deployment group create \
-  --name "key-vault-deployment-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-security-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/security/key-vault.bicep \
-  --parameters infrastructure/bicep/parameters/key-vault.parameters.json
+ --name "key-vault-deployment-$(date +%Y%m%d-%H%M%S)" \
+ --resource-group rg-platform-security-prod-jpe-001 \
+ --template-file infrastructure/bicep/modules/security/key-vault.bicep \
+ --parameters infrastructure/bicep/parameters/key-vault.parameters.json
+
 ```
 
 ### 12.3.4 Secret の保存テスト

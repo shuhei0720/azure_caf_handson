@@ -99,6 +99,15 @@ resource subIdentity 'Microsoft.Subscription/aliases@2021-10-01' = {
 output subscriptionId string = subIdentity.properties.subscriptionId
 ```
 
+パラメーターファイル `infrastructure/bicep/parameters/sub-identity.bicepparam` を作成：
+
+```bicep
+using '../subscriptions/sub-identity.bicep'
+
+// billingScopeは環境変数からCLIで注入
+param billingScope = ''
+```
+
 ### 8.2.2 Bicep のデプロイ（10-15 分）
 
 ```bash
@@ -109,6 +118,7 @@ az deployment tenant what-if \
   --name "deploy-sub-identity-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/subscriptions/sub-identity.bicep \
+  --parameters infrastructure/bicep/parameters/sub-identity.bicepparam \
   --parameters billingScope="$BILLING_SCOPE"
 
 # 確認後、デプロイ実行
@@ -116,6 +126,7 @@ az deployment tenant create \
   --name "deploy-sub-identity-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/subscriptions/sub-identity.bicep \
+  --parameters infrastructure/bicep/parameters/sub-identity.bicepparam \
   --parameters billingScope="$BILLING_SCOPE"
 ```
 
@@ -152,6 +163,16 @@ az account show --subscription $SUB_IDENTITY_ID --output table
 
 作成した Identity Subscription を、第 5 章で作成した Management Group「contoso-platform-identity」に割り当てます。
 
+パラメーターファイル `infrastructure/bicep/parameters/mg-assoc-identity.bicepparam` を作成：
+
+```bicep
+using '../modules/management-groups/subscription-association.bicep'
+
+param managementGroupName = 'contoso-platform-identity'
+// subscriptionIdは環境変数からCLIで注入
+param subscriptionId = ''
+```
+
 第 6 章で作成した Bicep モジュールを使用します：
 
 ```bash
@@ -160,18 +181,16 @@ az deployment mg what-if \
   --management-group-id contoso-platform-identity \
   --location japaneast \
   --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters \
-    managementGroupName=contoso-platform-identity \
-    subscriptionId=$SUB_IDENTITY_ID
+  --parameters infrastructure/bicep/parameters/mg-assoc-identity.bicepparam \
+  --parameters subscriptionId=$SUB_IDENTITY_ID
 
 # 確認後、デプロイ実行
 az deployment mg create \
   --management-group-id contoso-platform-identity \
   --location japaneast \
   --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters \
-    managementGroupName=contoso-platform-identity \
-    subscriptionId=$SUB_IDENTITY_ID
+  --parameters infrastructure/bicep/parameters/mg-assoc-identity.bicepparam \
+  --parameters subscriptionId=$SUB_IDENTITY_ID
 
 echo "Identity Subscription が Management Group に割り当てられました"
 ```

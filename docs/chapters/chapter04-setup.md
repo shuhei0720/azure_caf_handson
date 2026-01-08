@@ -219,7 +219,67 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
 output storageAccountId string = storageAccount.id
 ```
 
-### 4.5.2 テスト用のリソースグループ作成
+### 4.5.2 Bicep パラメーター管理の設計原則
+
+**なぜ `.bicepparam` ファイルが必要か？**
+
+Bicep で Infrastructure as Code を実践する最大の理由は、**すべてのリソースを消しても一発で復元できる**ことです。
+
+#### ❌ 間違ったアプローチ
+
+```bash
+# パラメーターをCLIで直接指定
+az deployment sub create \
+  --template-file main.bicep \
+  --parameters resourceGroupName=rg-test location=japaneast
+```
+
+**問題点:**
+
+- パラメーター値がコマンド履歴にしか残らない
+- 災害復旧時に値を思い出せない
+- チームメンバーと共有できない
+- 環境の再現性がない
+
+#### ✅ 正しいアプローチ
+
+```bash
+# パラメーターファイルを使用
+az deployment sub create \
+  --template-file main.bicep \
+  --parameters main.bicepparam
+```
+
+**メリット:**
+
+- すべてのパラメーター値がファイルとして記録
+- Git 管理で履歴追跡可能
+- 完全な再現性を保証
+- 災害時の復旧手順書として機能
+
+#### ディレクトリ構成
+
+本教科書では、以下の構成を採用します：
+
+```
+infrastructure/bicep/
+├── modules/          # Bicep テンプレート（再利用可能）
+│   ├── resource-group/
+│   │   └── resource-group.bicep
+│   ├── monitoring/
+│   │   ├── log-analytics.bicep
+│   │   └── dcr-vm-insights.bicep
+│   └── identity/
+│       └── managed-identity.bicep
+└── parameters/       # パラメーターファイル（環境固有の値）
+    ├── management-resource-group.bicepparam
+    ├── log-analytics.bicepparam
+    └── dcr-vm-insights.bicepparam
+```
+
+**重要:** すべての `.bicepparam` ファイルは Git 管理下に置き、本番環境の完全なバックアップとして機能させます。
+
+### 4.5.3 テスト用のリソースグループ作成
 
 まず、簡単なリソースグループを作成して Bicep の動作を確認します。
 
@@ -266,7 +326,22 @@ output resourceGroupId string = resourceGroup.id
 output resourceGroupName string = resourceGroup.name
 ```
 
-### 4.5.3 Bicep ファイルの検証
+パラメーターファイル `infrastructure/bicep/test/test-rg.bicepparam` を作成：
+
+```bicep
+using './test-rg.bicep'
+
+param resourceGroupName = 'rg-caf-handson-test'
+param location = 'japaneast'
+param tags = {
+  Environment: 'Test'
+  Project: 'CAF-Handson'
+  ManagedBy: 'Bicep'
+  CreatedDate: utcNow('yyyy-MM-dd')
+}
+```
+
+### 4.5.4 Bicep ファイルの検証
 
 デプロイ前に、構文エラーをチェックします。
 
@@ -280,7 +355,7 @@ cat infrastructure/bicep/test/test-rg.json
 
 エラーがなければ、test-rg.json ファイルが生成されます。
 
-### 4.5.4 What-If 実行（プレビュー）
+### 4.5.5 What-If 実行（プレビュー）
 
 実際にデプロイする前に、何が作成されるか確認します。
 
@@ -289,7 +364,7 @@ cat infrastructure/bicep/test/test-rg.json
 az deployment sub what-if \
   --location japaneast \
   --template-file infrastructure/bicep/test/test-rg.bicep \
-  --parameters resourceGroupName=rg-caf-handson-test
+  --parameters infrastructure/bicep/test/test-rg.bicepparam
 ```
 
 出力例：
@@ -310,7 +385,7 @@ Scope: /subscriptions/12345678-1234-1234-1234-123456789abc
       ManagedBy: "Bicep"
 ```
 
-### 4.5.5 デプロイの実行
+### 4.5.6 デプロイの実行
 
 ```bash
 # 確認後、デプロイ実行
@@ -318,7 +393,7 @@ az deployment sub create \
   --name "test-rg-deployment-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/test/test-rg.bicep \
-  --parameters resourceGroupName=rg-caf-handson-test
+  --parameters infrastructure/bicep/test/test-rg.bicepparam
 ```
 
 デプロイには数秒かかります。
