@@ -123,6 +123,15 @@ module identitySubscriptionAssociation '../modules/management-groups/subscriptio
     managementGroups
   ]
 }
+
+// =============================================================================
+// 出力（Chapter 8で追加）
+// =============================================================================
+
+output identitySubscription object = {
+  subscriptionId: identitySubscription.?outputs.?subscriptionId ?? ''
+  subscriptionName: identitySubscription.?outputs.?subscriptionName ?? ''
+}
 ```
 
 ### 8.2.2 What-If 実行

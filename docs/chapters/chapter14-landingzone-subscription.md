@@ -141,6 +141,15 @@ module landingZoneCorpSubscriptionAssociation '../modules/management-groups/subs
     managementGroups
   ]
 }
+
+// =============================================================================
+// 出力（Chapter 14で追加）
+// =============================================================================
+
+output landingZoneCorpSubscription object = {
+  subscriptionId: landingZoneCorpSubscription.?outputs.?subscriptionId ?? ''
+  subscriptionName: landingZoneCorpSubscription.?outputs.?subscriptionName ?? ''
+}
 ```
 
 ### 14.2.2 What-If 実行

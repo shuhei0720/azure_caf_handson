@@ -133,6 +133,15 @@ module connectivitySubscriptionAssociation '../modules/management-groups/subscri
     managementGroups
   ]
 }
+
+// =============================================================================
+// 出力（Chapter 11で追加）
+// =============================================================================
+
+output connectivitySubscription object = {
+  subscriptionId: connectivitySubscription.?outputs.?subscriptionId ?? ''
+  subscriptionName: connectivitySubscription.?outputs.?subscriptionName ?? ''
+}
 ```
 
 ### 11.2.2 What-If 実行

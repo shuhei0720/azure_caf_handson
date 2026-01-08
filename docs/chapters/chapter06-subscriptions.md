@@ -289,6 +289,15 @@ module managementSubscriptionAssociation '../modules/management-groups/subscript
     managementGroups  // Management Groups作成後に実行
   ]
 }
+
+// =============================================================================
+// 出力（Chapter 6で追加）
+// =============================================================================
+
+output managementSubscription object = {
+  subscriptionId: managementSubscription.?outputs.?subscriptionId ?? ''
+  subscriptionName: managementSubscription.?outputs.?subscriptionName ?? ''
+}
 ```
 
 **orchestration/tenant.bicepparam を開き**、以下を追記：
