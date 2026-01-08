@@ -2059,8 +2059,6 @@ output roleAssignmentId string = roleAssignment.id
 
 ロール割り当ては管理グループスコープで行うため、`tenant.bicep` から呼び出します。
 
-まず、`tenant.bicep` にパラメータを追加：
-
 ファイル `infrastructure/bicep/orchestration/tenant.bicep` に以下を追記：
 
 ```bicep
@@ -2088,77 +2086,43 @@ module policyIdentityOwnerRole '../modules/identity/role-assignment-owner.bicep'
 output policyIdentityRoleAssignmentId string = policyIdentityOwnerRole.?outputs.?roleAssignmentId ?? ''
 ```
 
-次に、`tenant.bicepparam` にパラメータを追加：
-
 ファイル `infrastructure/bicep/orchestration/tenant.bicepparam` に以下を追記：
 
 ```bicep
 // =============================================================================
-// Chapter 7: Policy Identity Principal ID (main.bicepから手動で取得して設定)
+// Chapter 7: Policy Identity Principal ID
 // =============================================================================
 
-// デプロイ後、以下のコマンドで取得した値を設定してください：
-// az deployment sub show --name <deployment-name> --query 'properties.outputs.policyIdentityPrincipalId.value' -o tsv
-param policyIdentityPrincipalId = ''  // 初回デプロイ後に設定
+// 7.8.4で.envに保存した値を以下に設定：
+// source .env && echo $POLICY_IDENTITY_PRINCIPAL_ID
+param policyIdentityPrincipalId = 'YOUR_POLICY_IDENTITY_PRINCIPAL_ID_HERE'
 ```
 
-#### 2 段階デプロイ手順
+#### デプロイ手順
 
-**手順 1: マネージド ID を作成（main.bicep）**
+7.8.4で.envに保存した値を確認して、tenant.bicepparamに設定します：
 
 ```bash
-# Management Subscriptionに切り替え
-az account set --subscription $SUB_MANAGEMENT_ID
+# .envを読み込み
+source .env
 
-# デプロイ名を変数に保存
-DEPLOYMENT_NAME="main-deployment-$(date +%Y%m%d-%H%M%S)"
-
-# main.bicepでマネージドIDを作成
-az deployment sub create \
-  --name "$DEPLOYMENT_NAME" \
-  --location japaneast \
-  --template-file infrastructure/bicep/orchestration/main.bicep \
-  --parameters infrastructure/bicep/orchestration/main.bicepparam
-
-echo "Deployment name: $DEPLOYMENT_NAME"
+# Principal IDを確認（この値をtenant.bicepparamに設定）
+echo $POLICY_IDENTITY_PRINCIPAL_ID
 ```
 
-**手順 2: Principal ID を取得して tenant.bicepparam に設定**
+上記コマンドで出力された値を`tenant.bicepparam`の`policyIdentityPrincipalId`に設定してください。
+
+デプロイ実行：
 
 ```bash
-# Principal IDを取得
-POLICY_IDENTITY_PRINCIPAL_ID=$(az deployment sub show \
-  --name "$DEPLOYMENT_NAME" \
-  --query 'properties.outputs.policyIdentityPrincipalId.value' -o tsv)
-
-echo "Policy Identity Principal ID: $POLICY_IDENTITY_PRINCIPAL_ID"
-
-# .envに保存
-grep -q "POLICY_IDENTITY_PRINCIPAL_ID=" .env || echo "POLICY_IDENTITY_PRINCIPAL_ID=$POLICY_IDENTITY_PRINCIPAL_ID" >> .env
-```
-
-tenant.bicepparam を開いて、取得した値を設定：
-
-```bicep
-param policyIdentityPrincipalId = '<取得したPrincipal ID>'
-```
-
-**手順 3: ロール割り当てを実行（tenant.bicep）**
-
-```bash
-# テナントスコープでロール割り当て
-TENANT_DEPLOYMENT_NAME="tenant-deployment-$(date +%Y%m%d-%H%M%S)"
-
+# デプロイ実行
 az deployment tenant create \
-  --name "$TENANT_DEPLOYMENT_NAME" \
+  --name "tenant-deployment-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/tenant.bicep \
   --parameters infrastructure/bicep/orchestration/tenant.bicepparam
 
-echo "Tenant Deployment name: $TENANT_DEPLOYMENT_NAME"
-  --parameters infrastructure/bicep/orchestration/main.bicepparam
-
-echo "マネージドIDにOwner権限を付与しました"
+echo "✅ マネージドIDにOwner権限を付与しました"
 ```
 
 ### 7.8.6 Azure Portal での確認
