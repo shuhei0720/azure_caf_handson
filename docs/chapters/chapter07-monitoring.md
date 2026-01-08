@@ -2286,12 +2286,21 @@ az deployment sub what-if \
 ### 7.9.5 デプロイ実行
 
 ```bash
+# Management Subscription で実行
+az account set --subscription $SUB_MANAGEMENT_ID
+
 # デプロイ実行
-DEPLOYMENT_OUTPUT=$(az deployment sub create \
-  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+DEPLOYMENT_NAME="main-deployment-$(date +%Y%m%d-%H%M%S)"
+az deployment sub create \
+  --name $DEPLOYMENT_NAME \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/main.bicep \
-  --parameters infrastructure/bicep/orchestration/main.bicepparam \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+
+# デプロイ結果から出力を取得
+echo "=== デプロイ出力を取得中 ==="
+DEPLOYMENT_OUTPUT=$(az deployment sub show \
+  --name $DEPLOYMENT_NAME \
   --query 'properties.outputs' -o json)
 
 # Principal ID を環境変数に保存（重複防止）
@@ -2368,7 +2377,7 @@ param automationPrincipalId = 'YOUR_AUTOMATION_PRINCIPAL_ID_HERE'
 
 #### デプロイ手順
 
-7.9.5で.envに保存した値を確認して、tenant.bicepparamに設定します：
+7.9.5 で.env に保存した値を確認して、tenant.bicepparam に設定します：
 
 ```bash
 # .envを読み込み
