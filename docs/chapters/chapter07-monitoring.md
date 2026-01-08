@@ -475,6 +475,7 @@ resource tableRetention 'Microsoft.OperationalInsights/workspaces/tables@2022-10
   properties: {
     retentionInDays: retentionInDays
     totalRetentionInDays: totalRetentionInDays
+    plan: 'Analytics'  // プランを明示的に指定
   }
 }]
 
@@ -1100,7 +1101,7 @@ resource dcrOSLogs 'Microsoft.Insights/dataCollectionRules@2022-06-01' = {
 
 output dcrId string = dcrOSLogs.id
 output dcrName string = dcrOSLogs.name
-````
+```
 
 #### オーケストレーションへのモジュール追加
 
