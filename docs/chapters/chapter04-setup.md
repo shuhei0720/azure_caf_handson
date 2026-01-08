@@ -157,35 +157,27 @@ az role assignment list \
 
 ## 4.4 プロジェクトの初期化
 
-### 4.4.1 環境変数ファイルの準備
+### 4.4.1 環境変数の設定
 
-機密情報を環境変数で管理します。
+現在のAzure環境情報を確認し、環境変数を設定します。
 
 ※ この時点では、現在 Azure アカウントで使用できるサブスクリプション（無料トライアルまたは既存のサブスクリプション）を使用します。専用のサブスクリプション（management、connectivity など）は第 6 章で作成します。
 
 ```bash
-# .envファイルを作成（このファイルはGitにコミットしません）
-cat << EOF > .env
-# Azure環境情報
-AZURE_TENANT_ID=$(az account show --query tenantId -o tsv)
-AZURE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-AZURE_LOCATION=japaneast
-
-# 命名規則
-ENVIRONMENT=dev
-COMPANY_PREFIX=contoso
-EOF
-
-# 確認
-cat .env
-
-# 環境変数を読み込む
-source .env
+# Azure環境情報を環境変数に設定
+export AZURE_TENANT_ID=$(az account show --query tenantId -o tsv)
+export AZURE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+export AZURE_LOCATION=japaneast
+export ENVIRONMENT=dev
+export COMPANY_PREFIX=contoso
 
 # 確認
 echo "Tenant ID: $AZURE_TENANT_ID"
 echo "Subscription ID: $AZURE_SUBSCRIPTION_ID"
+echo "Location: $AZURE_LOCATION"
 ```
+
+> **💡 Note:** 本ハンズオンでは、Subscription IDなどの情報は`tenant.bicepparam`や`main.bicepparam`などのパラメータファイルで一元管理します。第 6 章以降では、これらのファイルにSubscription IDを記載していくため、`.env`ファイルは使用しません。
 
 ---
 
@@ -920,10 +912,8 @@ az group delete --name rg-platform-management-prod-jpe-001 --yes --no-wait
 # 数日後：Chapter 8から再開
 # ============================================================
 
-# 環境変数を再読み込み
-source .env
-
 # Management Subscriptionに切り替え
+# Subscription IDはtenant.bicepparamで管理されています
 az account set --subscription $SUB_MANAGEMENT_ID
 
 # ✅ orchestration経由で1コマンド復元
