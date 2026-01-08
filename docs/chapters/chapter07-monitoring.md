@@ -131,7 +131,7 @@ graph LR
 
 ---
 
-## 7.3 Log Analytics Workspace と DCR の構築
+## 7.3 Log Analytics Workspace の構築
 
 ### 7.3.1 Resource Group の作成
 
@@ -170,10 +170,15 @@ param workspaceName string
 @description('デプロイ先のリージョン')
 param location string
 
-@description('データ保持期間（日数）')
+@description('対話型分析期間（日数）- この期間はKQLで高速アクセス可能')
 @minValue(30)
 @maxValue(730)
 param retentionInDays int = 90
+
+@description('総保持期間（日数）- アーカイブを含む全保存期間')
+@minValue(30)
+@maxValue(2556)
+param totalRetentionInDays int = 730
 
 @description('タグ')
 param tags object = {}
@@ -188,6 +193,7 @@ resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10
       name: 'PerGB2018'
     }
     retentionInDays: retentionInDays
+    retentionInDaysAsDefault: true
     features: {
       enableLogAccessUsingOnlyResourcePermissions: true
     }
@@ -213,7 +219,8 @@ az deployment group what-if \
   --parameters \
     workspaceName=log-platform-prod-jpe-001 \
     location=japaneast \
-    retentionInDays=90
+    retentionInDays=90 \
+    totalRetentionInDays=730
 
 # 確認後、デプロイ実行
 az deployment group create \
@@ -223,7 +230,8 @@ az deployment group create \
   --parameters \
     workspaceName=log-platform-prod-jpe-001 \
     location=japaneast \
-    retentionInDays=90
+    retentionInDays=90 \
+    totalRetentionInDays=730
 
 # Workspace IDを取得して環境変数に保存
 WORKSPACE_ID=$(az monitor log-analytics workspace show \
@@ -235,7 +243,57 @@ echo "WORKSPACE_ID=$WORKSPACE_ID" >> .env
 echo "Log Analytics Workspace ID: $WORKSPACE_ID"
 ```
 
-### 7.3.3 Data Collection Rule (DCR) for VM Insights
+### 7.3.3 ログ保存期間とアーカイブ戦略
+
+Log Analytics Workspace のデータ保存には 2 つの階層があります。
+
+#### Interactive Analytics 層（対話型分析）
+
+- **期間**: 90 日（`retentionInDays`）
+- **特徴**: KQL クエリで高速アクセス可能
+- **コスト**: 約 $2.30/GB/月
+- **用途**: 日常的なセキュリティ調査、トラブルシューティング、パフォーマンス分析
+
+#### Archive 層（アーカイブ）
+
+- **期間**: 91 日目〜730 日目（`totalRetentionInDays - retentionInDays`）
+- **特徴**: 低コストの長期保存、クエリは遅い
+- **コスト**: 約 $0.10/GB/月（約 95%削減）
+- **用途**: コンプライアンス、監査証跡、長期トレンド分析
+
+#### CAF ベストプラクティスに基づく推奨設定
+
+| 要件レベル | Interactive | Total Retention | 用途                         |
+| ---------- | ----------- | --------------- | ---------------------------- |
+| **標準**   | 90 日       | 730 日（2 年）  | 一般的な企業、GDPR/SOC2 対応 |
+| **金融**   | 90 日       | 2555 日（7 年） | 金融機関、厳格な監査要件     |
+| **医療**   | 90 日       | 1825 日（5 年） | 医療機関、HIPAA 対応         |
+
+**今回の実装:**
+
+```yaml
+retentionInDays: 90日 # Interactive期間
+totalRetentionInDays: 730日 # 総保持期間（アーカイブ含む）
+```
+
+**コスト試算例（1 日 10GB のログ取り込みの場合）:**
+
+- Interactive（90 日）: 10GB × 90 日 × $2.30 = $2,070/月
+- Archive（640 日）: 10GB × 640 日 × $0.10 = $640/月
+- **合計**: $2,710/月
+
+**アーカイブなしの場合（730 日すべて Interactive）:**
+
+- 10GB × 730 日 × $2.30 = $16,790/月
+- **コスト削減**: 約 84%（$14,080/月の削減）
+
+---
+
+## 7.4 Data Collection Rules (DCR) の構築
+
+Data Collection Rule (DCR) は、監視エージェントが収集するデータを定義します。VM Insights と OS ログ用の DCR を作成します。
+
+### 7.4.1 DCR for VM Insights
 
 VM Insights 用の DCR を作成します。これにより、VM のパフォーマンスメトリクスとプロセス情報を収集できます。
 
@@ -352,7 +410,7 @@ echo "DCR_VM_INSIGHTS_ID=$DCR_VM_INSIGHTS_ID" >> .env
 echo "VM Insights DCR ID: $DCR_VM_INSIGHTS_ID"
 ```
 
-### 7.3.4 Data Collection Rule (DCR) for Windows Event Logs and Syslog
+### 7.4.2 DCR for Windows Event Logs and Syslog
 
 Windows Event ログと Linux Syslog を収集する DCR を作成します。
 
@@ -486,7 +544,7 @@ echo "DCR_OS_LOGS_ID=$DCR_OS_LOGS_ID" >> .env
 echo "OS Logs DCR ID: $DCR_OS_LOGS_ID"
 ```
 
-### 7.3.5 DCR の役割と今後の活用
+### 7.4.3 DCR の役割と今後の活用
 
 作成した DCR は、後の章で **Azure Policy** と組み合わせることで、環境全体の VM に自動的に適用されます。
 
@@ -499,11 +557,11 @@ echo "OS Logs DCR ID: $DCR_OS_LOGS_ID"
 
 ---
 
-## 7.4 Entra ID の監査ログ収集
+## 7.5 Entra ID の監査ログ収集
 
 Entra ID（Azure Active Directory）のサインインログと監査ログを Log Analytics Workspace に送信します。ユーザーの認証履歴やディレクトリ変更を一元的に監視できます。
 
-### 7.4.1 Entra ID 診断設定の特徴
+### 7.5.1 Entra ID 診断設定の特徴
 
 Entra ID の診断設定は **テナントレベル** のリソースであり、通常の Bicep デプロイでは設定できません。Azure CLI の `az monitor diagnostic-settings` コマンドを使用します。
 
@@ -513,10 +571,10 @@ Entra ID の診断設定は **テナントレベル** のリソースであり�
 - **SignInLogs**: 対話型サインイン
 - **NonInteractiveUserSignInLogs**: 非対話型サインイン
 - **ServicePrincipalSignInLogs**: サービスプリンシパルのサインイン
-- **ManagedIdentitySignInLogs**: マネージドIDのサインイン
+- **ManagedIdentitySignInLogs**: マネージド ID のサインイン
 - **ProvisioningLogs**: プロビジョニングログ
 
-### 7.4.2 診断設定の適用
+### 7.5.2 診断設定の適用
 
 ```bash
 # Entra ID の診断設定を作成
@@ -538,10 +596,10 @@ echo "Entra ID のログが Log Analytics に送信されるようになりま�
 
 **注意事項：**
 
-- Entra ID P1/P2 ライセンスが必要な場合があります（SignInLogs等）
+- Entra ID P1/P2 ライセンスが必要な場合があります（SignInLogs 等）
 - 診断設定の確認：Azure Portal → Entra ID → Diagnostic settings
 
-### 7.4.3 KQL クエリ例
+### 7.5.3 KQL クエリ例
 
 ```kql
 // 最近のサインインログ（成功のみ）
@@ -568,11 +626,11 @@ AuditLogs
 
 ---
 
-## 7.5 サブスクリプションのアクティビティログ収集
+## 7.6 サブスクリプションのアクティビティログ収集
 
 作成したサブスクリプションのアクティビティログ（管理操作の履歴）を Log Analytics Workspace に送信します。
 
-### 7.5.1 診断設定 Bicep モジュール
+### 7.6.1 診断設定 Bicep モジュール
 
 ファイル `infrastructure/bicep/modules/monitoring/subscription-diagnostic-settings.bicep` を作成します：
 
@@ -608,7 +666,7 @@ resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-pre
 }
 ```
 
-### 7.5.2 Management Subscription の診断設定を適用
+### 7.6.2 Management Subscription の診断設定を適用
 
 ```bash
 # Management Subscription で実行
@@ -633,15 +691,15 @@ az deployment sub create \
 
 ---
 
-## 7.6 Azure Policy 用ユーザー割り当てマネージド ID
+## 7.7 Azure Policy 用ユーザー割り当てマネージド ID
 
 第 10 章で Azure Policy の DeployIfNotExists/Modify 効果を使う際に必要となるマネージド ID を事前に作成します。
 
-### 7.6.1 マネージド ID の配置場所
+### 7.7.1 マネージド ID の配置場所
 
 CAF のベストプラクティスに従い、ポリシー実行用のマネージド ID は **Management Subscription** に配置します。これにより、複数のサブスクリプションにまたがるポリシー割り当てを一元管理できます。
 
-### 7.6.2 マネージド ID Bicep モジュール
+### 7.7.2 マネージド ID Bicep モジュール
 
 ファイル `infrastructure/bicep/modules/identity/managed-identity.bicep` を作成します：
 
@@ -667,7 +725,7 @@ output principalId string = managedIdentity.properties.principalId
 output clientId string = managedIdentity.properties.clientId
 ```
 
-### 7.6.3 マネージド ID の作成
+### 7.7.3 マネージド ID の作成
 
 ```bash
 # Management Subscription で実行
@@ -703,7 +761,7 @@ echo "Policy用マネージドID: $POLICY_IDENTITY_ID"
 echo "Principal ID: $POLICY_IDENTITY_PRINCIPAL_ID"
 ```
 
-### 7.6.4 マネージド ID への権限付与
+### 7.7.4 マネージド ID への権限付与
 
 Azure Policy の DeployIfNotExists/Modify 効果（特に Defender for Cloud の適用）には **Owner** 権限が必要です。Management Subscription に対して Owner ロールを付与します。
 
@@ -754,11 +812,11 @@ echo "マネージドIDにOwner権限を付与しました"
 
 ---
 
-## 7.7 既存リソースの診断設定
+## 7.8 既存リソースの診断設定
 
 すでに作成した Log Analytics Workspace と DCR に対して診断設定を適用し、これらのリソース自体の操作ログも収集します。
 
-### 7.7.1 Log Analytics Workspace の診断設定
+### 7.8.1 Log Analytics Workspace の診断設定
 
 ファイル `infrastructure/bicep/modules/monitoring/log-analytics-diagnostics.bicep` を作成します：
 
@@ -820,7 +878,7 @@ az deployment group create \
     destinationWorkspaceId=$LOG_WORKSPACE_ID
 ```
 
-### 7.7.2 Data Collection Rule の診断設定
+### 7.8.2 Data Collection Rule の診断設定
 
 ファイル `infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep` を作成します：
 
@@ -907,9 +965,9 @@ az deployment group create \
 
 ---
 
-## 7.8 Azure Automation の構築
+## 7.9 Azure Automation の構築
 
-### 7.8.1 Azure Automation とは
+### 7.9.1 Azure Automation とは
 
 **Azure Automation**は、定期的なタスクを自動化するサービスです。
 
@@ -920,7 +978,7 @@ az deployment group create \
 - コンプライアンスレポートの生成
 - パッチ管理
 
-### 7.8.2 Automation Account の作成
+### 7.9.2 Automation Account の作成
 
 ファイル `infrastructure/bicep/modules/automation/automation-account.bicep` を作成し、以下の内容を記述します：
 
@@ -992,7 +1050,7 @@ az deployment group create \
     location=japaneast
 ```
 
-### 7.8.3 Runbook の例（VM の自動起動・停止）
+### 7.9.3 Runbook の例（VM の自動起動・停止）
 
 ```bash
 cat << 'EOF' > infrastructure/automation/runbooks/Start-AzureVMs.ps1
@@ -1041,7 +1099,7 @@ az automation runbook publish \
   --name "Start-AzureVMs"
 ```
 
-### 7.8.4 スケジュールの作成
+### 7.9.4 スケジュールの作成
 
 ```bash
 # 平日の朝8時にVMを起動するスケジュール
@@ -1065,16 +1123,16 @@ az automation job-schedule create \
 
 ---
 
-## 7.9 Azure Portal での確認
+## 7.10 Azure Portal での確認
 
-### 7.9.1 Azure Monitor の確認
+### 7.10.1 Azure Monitor の確認
 
 1. Azure ポータルで「Monitor」を検索
 2. 「Metrics」でリソースのメトリクスをグラフ化
 3. 「Logs」で Log Analytics クエリを実行
 4. 「Alerts」でアラートルールを確認
 
-### 7.9.2 アラートのテスト
+### 7.10.2 アラートのテスト
 
 ```bash
 # Key Vaultに意図的に失敗したアクセスを実行（アラート発火テスト）
@@ -1087,9 +1145,9 @@ az keyvault secret show \
 
 ---
 
-## 7.10 コスト管理
+## 7.11 コスト管理
 
-### 7.10.1 リソース別のコスト
+### 7.11.1 リソース別のコスト
 
 | リソース             | 概算月額コスト（東日本）                |
 | -------------------- | --------------------------------------- |
@@ -1098,7 +1156,7 @@ az keyvault secret show \
 | Automation Account   | 実行時間により変動（500 分/月まで無料） |
 | アラート             | アラート数により変動                    |
 
-### 7.10.2 コスト削減のヒント
+### 7.11.2 コスト削減のヒント
 
 - Log Analytics の保持期間を適切に設定
 - 不要なログの収集を停止
@@ -1107,7 +1165,7 @@ az keyvault secret show \
 
 ---
 
-## 7.11 Git へのコミット
+## 7.12 Git へのコミット
 
 ```bash
 git add .
@@ -1127,7 +1185,7 @@ git push origin main
 
 ---
 
-## 7.12 章のまとめ
+## 7.13 章のまとめ
 
 本章で構築したもの：
 
