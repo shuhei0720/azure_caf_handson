@@ -399,10 +399,8 @@ using './tenant.bicep'
 // =============================================================================
 
 // 👇 Chapter 5で追記
-@description('会社のプレフィックス')
 param companyPrefix = 'contoso'
 
-@description('Management Groupsのメタデータ')
 param managementGroupMetadata = {
   platform: {
     displayName: 'Platform'
