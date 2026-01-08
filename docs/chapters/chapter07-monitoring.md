@@ -1303,21 +1303,24 @@ Entra ID の診断設定は **テナントレベル** のリソースであり�
 ### 7.5.2 診断設定の適用
 
 ```bash
-# Entra ID の診断設定を作成
-az monitor diagnostic-settings create \
-  --name "entra-id-to-log-analytics" \
-  --resource "/providers/microsoft.aadiam/tenants/$AZURE_TENANT_ID" \
-  --workspace "$WORKSPACE_ID" \
-  --logs '[
-    {"category": "AuditLogs", "enabled": true},
-    {"category": "SignInLogs", "enabled": true},
-    {"category": "NonInteractiveUserSignInLogs", "enabled": true},
-    {"category": "ServicePrincipalSignInLogs", "enabled": true},
-    {"category": "ManagedIdentitySignInLogs", "enabled": true},
-    {"category": "ProvisioningLogs", "enabled": true}
-  ]'
+# Entra ID の診断設定を作成（REST API経由）
+az rest --method PUT \
+  --uri "https://management.azure.com/providers/Microsoft.AADIAM/diagnosticSettings/entra-id-to-log-analytics?api-version=2017-04-01" \
+  --body "{
+    \"properties\": {
+      \"workspaceId\": \"$WORKSPACE_ID\",
+      \"logs\": [
+        {\"category\": \"AuditLogs\", \"enabled\": true},
+        {\"category\": \"SignInLogs\", \"enabled\": true},
+        {\"category\": \"NonInteractiveUserSignInLogs\", \"enabled\": true},
+        {\"category\": \"ServicePrincipalSignInLogs\", \"enabled\": true},
+        {\"category\": \"ManagedIdentitySignInLogs\", \"enabled\": true},
+        {\"category\": \"ProvisioningLogs\", \"enabled\": true}
+      ]
+    }
+  }"
 
-echo "Entra ID のログが Log Analytics に送信されるようになりました"
+echo "✅ Entra ID のログが Log Analytics に送信されるようになりました"
 ```
 
 **注意事項：**
