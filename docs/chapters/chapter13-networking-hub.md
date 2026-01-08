@@ -162,6 +162,8 @@ param tags = {
 }
 ```
 
+**What-If による事前確認：**
+
 ```bash
 # 事前確認
 az deployment sub what-if \
@@ -169,8 +171,12 @@ az deployment sub what-if \
   --location japaneast \
   --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
   --parameters infrastructure/bicep/parameters/connectivity-resource-group.bicepparam
+```
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# デプロイ実行
 az deployment sub create \
   --name "rg-connectivity-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
@@ -310,7 +316,7 @@ output managementSubnetId string = hubVNet.properties.subnets[3].id
 
 ### 8.3.3 Hub VNet のデプロイ
 
-```bash
+````bash
 # パラメータファイルを作成
 cat << 'EOF' > infrastructure/bicep/parameters/hub-vnet.parameters.json
 {
@@ -337,14 +343,21 @@ cat << 'EOF' > infrastructure/bicep/parameters/hub-vnet.parameters.json
 }
 EOF
 
+**What-Ifによる事前確認：**
+
+```bash
 # 事前確認
 az deployment group what-if \
   --name "hub-vnet-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-connectivity-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/networking/hub-vnet.bicep \
   --parameters infrastructure/bicep/parameters/hub-vnet.parameters.json
+````
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# デプロイ実行
 az deployment group create \
   --name "hub-vnet-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-connectivity-prod-jpe-001 \
@@ -561,7 +574,7 @@ output firewallPolicyId string = firewallPolicy.id
 
 ### 8.4.3 Firewall のデプロイ
 
-```bash
+````bash
 # VNet IDを取得
 VNET_ID=$(az network vnet show \
   --name vnet-hub-prod-jpe-001 \
@@ -592,14 +605,21 @@ cat << EOF > infrastructure/bicep/parameters/firewall.parameters.json
 }
 EOF
 
+**What-Ifによる事前確認：**
+
+```bash
 # 事前確認
 az deployment group what-if \
   --name "firewall-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-connectivity-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/networking/firewall.bicep \
   --parameters infrastructure/bicep/parameters/firewall.parameters.json
+````
 
-# 確認後、デプロイ実行（10-15分かかります）
+**デプロイ実行（10-15 分）：**
+
+```bash
+# デプロイ実行（10-15分かかります）
 az deployment group create \
   --name "firewall-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-connectivity-prod-jpe-001 \
@@ -699,7 +719,7 @@ output bastionPublicIP string = bastionPublicIP.properties.ipAddress
 
 ### 8.5.3 Bastion のデプロイ
 
-```bash
+````bash
 BASTION_SUBNET_ID="${VNET_ID}/subnets/AzureBastionSubnet"
 
 # パラメータファイルを作成
@@ -724,14 +744,21 @@ cat << EOF > infrastructure/bicep/parameters/bastion.parameters.json
 }
 EOF
 
+**What-Ifによる事前確認：**
+
+```bash
 # 事前確認
 az deployment group what-if \
   --name "bastion-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-connectivity-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/networking/bastion.bicep \
   --parameters infrastructure/bicep/parameters/bastion.parameters.json
+````
 
-# 確認後、デプロイ実行（5-10分かかります）
+**デプロイ実行（5-10 分）：**
+
+```bash
+# デプロイ実行（5-10分かかります）
 az deployment group create \
   --name "bastion-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-connectivity-prod-jpe-001 \

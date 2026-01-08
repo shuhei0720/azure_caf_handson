@@ -836,7 +836,7 @@ EOF
 
 ### 16.7.3 Container App のデプロイ
 
-```bash
+````bash
 # Redis Primary Keyを取得
 REDIS_PASSWORD=$(az redis list-keys \
   --name redis-app1-prod-jpe-001 \
@@ -849,6 +849,9 @@ CAE_ID=$(az containerapp env show \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
   --query id -o tsv)
 
+**What-Ifによる事前確認：**
+
+```bash
 # 事前確認
 az deployment group what-if \
   --name "container-app-deployment-$(date +%Y%m%d-%H%M%S)" \
@@ -867,8 +870,12 @@ az deployment group what-if \
       {\"name\":\"REDIS_PASSWORD\",\"value\":\"$REDIS_PASSWORD\"},
       {\"name\":\"REDIS_TLS\",\"value\":\"true\"}
     ]"
+````
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# デプロイ実行
 az deployment group create \
   --name "container-app-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-landingzone-app1-prod-jpe-001 \

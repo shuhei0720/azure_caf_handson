@@ -101,6 +101,8 @@ param tags = {
 }
 ```
 
+**What-If による事前確認：**
+
 ```bash
 # 事前確認
 az deployment sub what-if \
@@ -108,8 +110,12 @@ az deployment sub what-if \
   --location japaneast \
   --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
   --parameters infrastructure/bicep/parameters/landingzone-app1-resource-group.bicepparam
+```
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# デプロイ実行
 az deployment sub create \
   --name "rg-landingzone-app1-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
@@ -369,7 +375,7 @@ EOF
 
 ### 15.2.4 Spoke VNet のデプロイ
 
-```bash
+````bash
 # Hub VNet IDを取得
 HUB_VNET_ID=$(az network vnet show \
   --name vnet-hub-prod-jpe-001 \
@@ -407,14 +413,21 @@ cat << EOF > infrastructure/bicep/parameters/spoke-vnet.parameters.json
 }
 EOF
 
+**What-Ifによる事前確認：**
+
+```bash
 # 事前確認
 az deployment group what-if \
   --name "spoke-vnet-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/networking/spoke-vnet.bicep \
   --parameters infrastructure/bicep/parameters/spoke-vnet.parameters.json
+````
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+````bash
+# デプロイ実行
 az deployment group create \
   --name "spoke-vnet-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
@@ -427,6 +440,9 @@ SPOKE_VNET_ID=$(az network vnet show \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
   --query id -o tsv)
 
+**What-Ifによる事前確認：**
+
+```bash
 # 事前確認
 az deployment group what-if \
   --name "hub-to-spoke-peering-$(date +%Y%m%d-%H%M%S)" \
@@ -436,8 +452,12 @@ az deployment group what-if \
     hubVNetName=vnet-hub-prod-jpe-001 \
     spokeVNetId="$SPOKE_VNET_ID" \
     peeringName=hub-to-spoke-app1
+````
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# デプロイ実行
 az deployment group create \
   --name "hub-to-spoke-peering-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-connectivity-prod-jpe-001 \
@@ -454,7 +474,7 @@ az deployment group create \
 
 ### 15.3.1 Container Apps Environment の作成
 
-```bash
+````bash
 cat << 'EOF' > infrastructure/bicep/modules/compute/container-apps-environment.bicep
 @description('Container Apps Environmentの名前')
 param environmentName string
@@ -511,6 +531,9 @@ APP_SUBNET_ID=$(az network vnet subnet show \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
   --query id -o tsv)
 
+**What-Ifによる事前確認：**
+
+```bash
 # 事前確認
 az deployment group what-if \
   --name "container-apps-env-deployment-$(date +%Y%m%d-%H%M%S)" \
@@ -521,8 +544,12 @@ az deployment group what-if \
     location=japaneast \
     logAnalyticsWorkspaceId="$LOG_WORKSPACE_ID" \
     infrastructureSubnetId="$APP_SUBNET_ID"
+````
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# デプロイ実行
 az deployment group create \
   --name "container-apps-env-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
@@ -629,7 +656,7 @@ EOF
 
 ### 15.4.2 Private DNS Zone の作成
 
-```bash
+````bash
 cat << 'EOF' > infrastructure/bicep/modules/networking/private-dns-zone.bicep
 @description('Private DNS Zoneの名前')
 param zoneName string
@@ -663,6 +690,9 @@ resource vnetLinks 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-0
 output privateDnsZoneId string = privateDnsZone.id
 EOF
 
+**What-Ifによる事前確認：**
+
+```bash
 # 事前確認
 az deployment group what-if \
   --name "postgres-private-dns-$(date +%Y%m%d-%H%M%S)" \
@@ -671,8 +701,12 @@ az deployment group what-if \
   --parameters \
     zoneName=privatelink.postgres.database.azure.com \
     vnetIds="[\"$SPOKE_VNET_ID\",\"$HUB_VNET_ID\"]"
+````
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# デプロイ実行
 az deployment group create \
   --name "postgres-private-dns-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
@@ -684,7 +718,7 @@ az deployment group create \
 
 ### 15.4.3 PostgreSQL のデプロイ
 
-```bash
+````bash
 # Data SubnetのIDを取得
 DATA_SUBNET_ID=$(az network vnet subnet show \
   --vnet-name vnet-spoke-app1-prod-jpe-001 \
@@ -698,6 +732,9 @@ POSTGRES_DNS_ZONE_ID=$(az network private-dns zone show \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
   --query id -o tsv)
 
+**What-Ifによる事前確認：**
+
+```bash
 # 事前確認
 az deployment group what-if \
   --name "postgresql-deployment-$(date +%Y%m%d-%H%M%S)" \
@@ -713,8 +750,12 @@ az deployment group what-if \
     postgresqlVersion=16 \
     skuName=Standard_B1ms \
     storageSizeGB=32
+````
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# デプロイ実行
 az deployment group create \
   --name "postgresql-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
@@ -739,7 +780,7 @@ az deployment group create \
 
 ### 15.5.1 Redis Cache Bicep モジュール
 
-```bash
+````bash
 cat << 'EOF' > infrastructure/bicep/modules/data/redis-cache.bicep
 @description('Redis Cacheの名前')
 param redisCacheName string
@@ -804,19 +845,26 @@ resource redisCache 'Microsoft.Cache/redis@2023-08-01' = {
   }
 }
 
-// 出力
-output redisId string = redisCache.id
-output redisName string = redisCache.name
-output redisHostName string = redisCache.properties.hostName
-output redisPort int = redisCache.properties.sslPort
-EOF
+**What-Ifによる事前確認：**
 
+```bash
 # 事前確認
 az deployment group what-if \
   --name "redis-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/data/redis-cache.bicep \
   --parameters \
+    redisCacheName=redis-app1-prod-jpe-001 \
+    location=japaneast \
+    skuName=Standard \
+    skuFamily=C \
+    skuCapacity=1
+````
+
+**デプロイ実行：**
+
+```bash
+# rameters \
     redisCacheName=redis-app1-prod-jpe-001 \
     location=japaneast \
     skuName=Standard \
@@ -889,7 +937,7 @@ az network private-endpoint dns-zone-group create \
 
 ### 15.6.1 ACR Bicep モジュール
 
-```bash
+````bash
 cat << 'EOF' > infrastructure/bicep/modules/compute/container-registry.bicep
 @description('Container Registryの名前')
 param registryName string
@@ -923,17 +971,24 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' =
     zoneRedundancy: 'Disabled'
   }
 }
+**What-Ifによる事前確認：**
 
-// 出力
-output registryId string = containerRegistry.id
-output registryName string = containerRegistry.name
-output loginServer string = containerRegistry.properties.loginServer
-EOF
-
+```bash
 # 事前確認
 az deployment group what-if \
   --name "acr-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/compute/container-registry.bicep \
+  --parameters \
+    registryName=acrcafapp1prodjpe001 \
+    location=japaneast \
+    skuName=Premium
+````
+
+**デプロイ実行：**
+
+```bash
+# source-group rg-landingzone-app1-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/compute/container-registry.bicep \
   --parameters \
     registryName=acrcafapp1prodjpe001 \
