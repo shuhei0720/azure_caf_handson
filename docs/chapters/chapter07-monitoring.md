@@ -304,6 +304,8 @@ mkdir -p infrastructure/bicep/modules/monitoring
 ファイル `infrastructure/bicep/modules/monitoring/log-analytics.bicep` を作成：
 
 ```bicep
+targetScope = 'resourceGroup'
+
 @description('Log Analytics Workspaceの名前')
 param workspaceName string
 
@@ -317,15 +319,6 @@ param retentionInDays int = 90
 
 @description('タグ')
 param tags object = {}
-
-@description('リソースグループ名')
-param resourceGroupName string
-
-// 既存のResource Group
-resource resourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
-  scope: subscription()
-  name: resourceGroupName
-}
 
 // Log Analytics Workspace
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
@@ -343,7 +336,6 @@ resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10
     publicNetworkAccessForIngestion: 'Enabled'
     publicNetworkAccessForQuery: 'Enabled'
   }
-  scope: resourceGroup
 }
 
 // 出力
@@ -389,11 +381,11 @@ param monitoring = {
 // Chapter 7: Log Analytics Workspace
 module logAnalytics '../modules/monitoring/log-analytics.bicep' = {
   name: 'deploy-log-analytics'
+  scope: resourceGroup(monitoring.resourceGroup.name)
   params: {
     workspaceName: monitoring.logAnalytics.workspaceName
     location: location
     retentionInDays: monitoring.logAnalytics.retentionInDays
-    resourceGroupName: monitoring.resourceGroup.name
     tags: union(tags, monitoring.logAnalytics.tags)
   }
   dependsOn: [
