@@ -511,7 +511,7 @@ param monitoring = {
   }
   // 👇 7.3.3で追記（テーブル名は以下のスクリプトで自動生成）
   tableRetention: {
-    enabled: false  // 初回設定後はfalseにしてWhat-If警告を回避
+    enabled: true  // 初回デプロイ時はtrue、設定完了後にfalseに変更
     retentionInDays: 90
     totalRetentionInDays: 730
     tableNames: [
@@ -557,7 +557,7 @@ grep -A 50 'tableNames:' infrastructure/bicep/orchestration/main.bicepparam | he
 
 ```bicep
 // Chapter 7: Log Analytics Table Retention
-module tableRetention '../modules/monitoring/log-analytics-table-retention.bicep' = if (monitoring.tableRetention.enabled) {
+module tableRetention '../modules/monitoring/log-analytics-table-retention.bicep' = if (contains(monitoring.tableRetention, 'enabled') ? monitoring.tableRetention.enabled : false) {
   name: 'deploy-table-retention'
   scope: resourceGroup(monitoring.resourceGroup.name)
   params: {
@@ -601,6 +601,7 @@ echo "✅ すべてのテーブルに保持期間が orchestration 経由で設�
 > テーブル保持期間設定は、Log Analytics のテーブルリソースに `schema` などの読み取り専用プロパティがあるため、Bicep で毎回デプロイすると What-If で 630 個のテーブル変更が警告として表示されます。
 >
 > **対応方法:**
+>
 > 1. **初回デプロイ時**: `tableRetention.enabled: true` に設定してデプロイ実行
 > 2. **設定完了後**: 手動で `tableRetention.enabled: false` に変更
 > 3. **以降のデプロイ**: `enabled: false` のままにしておく（What-If 警告が表示されなくなる）
