@@ -440,9 +440,9 @@ module keyVault '../modules/security/key-vault.bicep' = {
 }
 ```
 
-#### What-Ifによる事前確認
+#### What-If による事前確認
 
-````bash
+`````bash
 # Management Subscription に切り替え
 az account set --subscription $SUB_MANAGEMENT_ID
 
@@ -757,7 +757,7 @@ output storageAccountId string = storageAccount.id
 output storageAccountName string = storageAccount.name
 ```
 
-````
+`````
 
 ---
 

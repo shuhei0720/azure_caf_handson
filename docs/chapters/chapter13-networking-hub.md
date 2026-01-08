@@ -380,7 +380,7 @@ module hubVNet '../modules/networking/hub-vnet.bicep' = {
 }
 ```
 
-#### What-Ifによる事前確認
+#### What-If による事前確認
 
 **重要**: Connectivity Subscription に切り替えてからデプロイします。
 
@@ -666,7 +666,7 @@ module firewall '../modules/networking/firewall.bicep' = {
 }
 ```
 
-#### What-Ifによる事前確認
+#### What-If による事前確認
 
 ```bash
 # Connectivity Subscriptionに切り替え
@@ -829,7 +829,7 @@ module bastion '../modules/networking/bastion.bicep' = {
 }
 ```
 
-#### What-Ifによる事前確認
+#### What-If による事前確認
 
 ```bash
 # Connectivity Subscriptionに切り替え
@@ -967,7 +967,7 @@ module routeTable '../modules/networking/route-table.bicep' = {
 }
 ```
 
-#### What-Ifによる事前確認
+#### What-If による事前確認
 
 ```bash
 # Connectivity Subscriptionに切り替え

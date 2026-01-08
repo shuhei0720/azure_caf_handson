@@ -564,9 +564,6 @@ module tableRetention '../modules/monitoring/log-analytics-table-retention.bicep
     retentionInDays: monitoring.tableRetention.retentionInDays
     totalRetentionInDays: monitoring.tableRetention.totalRetentionInDays
   }
-  dependsOn: [
-    logAnalytics
-  ]
 }
 ```
 
