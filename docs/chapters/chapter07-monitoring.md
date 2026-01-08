@@ -404,35 +404,38 @@ param retentionInDays = 90
 param totalRetentionInDays = 730
 ```
 
-主要なテーブルに保持期間を設定：
+**すべてのテーブルに保持期間を設定：**
+
+Log Analytics Workspace内のすべてのテーブルに対して、一律の保持期間を設定します。
 
 ```bash
-# 主要テーブルのリストと個別パラメーターファイル作成
-TABLES=(
-  "AzureActivity"           # Activity Log
-  "AzureDiagnostics"        # 診断設定
-  "SigninLogs"              # Entra ID サインイン
-  "AuditLogs"               # Entra ID 監査
-  "Heartbeat"               # VM Insights ハートビート
-  "Perf"                    # VM Insights パフォーマンス
-  "InsightsMetrics"         # VM Insights メトリクス
-  "Syslog"                  # Linux Syslog
-  "Event"                   # Windows Event
-)
+# Log Analytics Workspaceのすべてのテーブルを取得
+TABLES=$(az monitor log-analytics workspace table list \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --workspace-name log-platform-prod-jpe-001 \
+  --query "[].name" -o tsv)
+
+echo "取得されたテーブル数: $(echo "$TABLES" | wc -l)"
+echo "テーブル一覧:"
+echo "$TABLES"
 
 # 各テーブル用のパラメーターファイルを作成
-for TABLE in "${TABLES[@]}"; do
-  # パラメーターファイル作成（エディタで手動作成も可）
-  echo "using '../modules/monitoring/log-analytics-table-retention.bicep'
+for TABLE in $TABLES; do
+  echo "Creating parameter file for table: $TABLE"
+  
+  # パラメーターファイル作成
+  cat > "infrastructure/bicep/parameters/log-analytics-table-retention-${TABLE}.bicepparam" << EOF
+using '../modules/monitoring/log-analytics-table-retention.bicep'
 
 param workspaceName = 'log-platform-prod-jpe-001'
 param tableName = '${TABLE}'
 param retentionInDays = 90
-param totalRetentionInDays = 730" > "infrastructure/bicep/parameters/log-analytics-table-retention-${TABLE}.bicepparam"
+param totalRetentionInDays = 730
+EOF
 done
 
 # 各テーブルに保持期間を設定
-for TABLE in "${TABLES[@]}"; do
+for TABLE in $TABLES; do
   echo "Setting retention for table: $TABLE"
 
   # 事前確認
@@ -452,6 +455,26 @@ done
 
 echo "すべてのテーブルに保持期間が設定されました"
 ```
+
+**重要な注意事項：**
+
+- **カスタムテーブル**: Log Analytics にカスタムテーブルがある場合も自動的に対象となります
+- **システムテーブル**: 一部のシステムテーブル（_CL で終わるカスタムログテーブルなど）は保持期間設定がサポートされない場合があります
+- **エラーハンドリング**: デプロイ中にエラーが発生したテーブルはスキップし、次のテーブルに進みます
+- **再実行**: 新しいテーブルが追加された場合、このスクリプトを再実行することで新規テーブルにも保持期間を設定できます
+
+**主要なテーブルの例：**
+
+- `AzureActivity`: Activity Log
+- `AzureDiagnostics`: 診断設定
+- `SigninLogs`: Entra ID サインイン
+- `AuditLogs`: Entra ID 監査
+- `Heartbeat`: VM Insights ハートビート
+- `Perf`: VM Insights パフォーマンス
+- `InsightsMetrics`: VM Insights メトリクス
+- `Syslog`: Linux Syslog
+- `Event`: Windows Event
+- その他、Workspace内のすべてのテーブル
 
 ### 7.3.4 ログ保存期間とアーカイブ戦略
 
