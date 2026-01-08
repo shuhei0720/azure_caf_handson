@@ -286,6 +286,8 @@ echo "✅ Defender for Cloud が orchestration 経由でデプロイされまし
 Azure Key Vault を構築し、RBAC 認証、Soft Delete、Purge Protection を有効化します。本ハンズオンでは簡略化のため Public Access を有効にしていますが、Chapter 13 で Hub VNet を作成後に Private Endpoint を追加できます。
 
 ```bicep
+targetScope = 'resourceGroup'
+
 @description('Key Vaultの名前（グローバルで一意）')
 @minLength(3)
 @maxLength(24)
@@ -307,15 +309,6 @@ param softDeleteRetentionInDays int = 90
 
 @description('タグ')
 param tags object = {}
-
-@description('リソースグループ名')
-param resourceGroupName string
-
-// 既存のResource Group
-resource resourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
-  scope: subscription()
-  name: resourceGroupName
-}
 
 // Key Vault
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
@@ -341,7 +334,6 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
       defaultAction: 'Allow'
     }
   }
-  scope: resourceGroup
 }
 
 // Key Vault管理者ロールの割り当て

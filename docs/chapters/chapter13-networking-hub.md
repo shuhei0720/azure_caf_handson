@@ -213,6 +213,8 @@ mkdir -p infrastructure/bicep/modules/networking
 Hub VNet を作成し、GatewaySubnet、AzureFirewallSubnet、AzureBastionSubnet、ManagementSubnet の 4 つのサブネットを定義します。Management Subnet 用の NSG では、Bastion からの RDP/SSH アクセスのみを許可します。
 
 ```bicep
+targetScope = 'resourceGroup'
+
 @description('Hub VNetの名前')
 param vnetName string
 
@@ -224,59 +226,6 @@ param addressPrefix string = '10.0.0.0/16'
 
 @description('タグ')
 param tags object = {}
-
-@description('リソースグループ名')
-param resourceGroupName string
-
-// 既存のResource Group
-resource resourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
-  scope: subscription()
-  name: resourceGroupName
-}
-
-// Hub VNetの作成
-resource hubVNet 'Microsoft.Network/virtualNetworks@2023-05-01' = {
-  name: vnetName
-  location: location
-  tags: tags
-  properties: {
-    addressSpace: {
-      addressPrefixes: [
-        addressPrefix
-      ]
-    }
-    subnets: [
-      {
-        name: 'GatewaySubnet'
-        properties: {
-          addressPrefix: '10.0.0.0/24'
-        }
-      }
-      {
-        name: 'AzureFirewallSubnet'
-        properties: {
-          addressPrefix: '10.0.1.0/24'
-        }
-      }
-      {
-        name: 'AzureBastionSubnet'
-        properties: {
-          addressPrefix: '10.0.2.0/24'
-        }
-      }
-      {
-        name: 'ManagementSubnet'
-        properties: {
-          addressPrefix: '10.0.3.0/24'
-          networkSecurityGroup: {
-            id: managementNsg.id
-          }
-        }
-      }
-    ]
-  }
-  scope: resourceGroup
-}
 
 // Management Subnet用のNSG
 resource managementNsg 'Microsoft.Network/networkSecurityGroups@2023-05-01' = {
@@ -326,7 +275,49 @@ resource managementNsg 'Microsoft.Network/networkSecurityGroups@2023-05-01' = {
       }
     ]
   }
-  scope: resourceGroup
+}
+
+// Hub VNetの作成
+resource hubVNet 'Microsoft.Network/virtualNetworks@2023-05-01' = {
+  name: vnetName
+  location: location
+  tags: tags
+  properties: {
+    addressSpace: {
+      addressPrefixes: [
+        addressPrefix
+      ]
+    }
+    subnets: [
+      {
+        name: 'GatewaySubnet'
+        properties: {
+          addressPrefix: '10.0.0.0/24'
+        }
+      }
+      {
+        name: 'AzureFirewallSubnet'
+        properties: {
+          addressPrefix: '10.0.1.0/24'
+        }
+      }
+      {
+        name: 'AzureBastionSubnet'
+        properties: {
+          addressPrefix: '10.0.2.0/24'
+        }
+      }
+      {
+        name: 'ManagementSubnet'
+        properties: {
+          addressPrefix: '10.0.3.0/24'
+          networkSecurityGroup: {
+            id: managementNsg.id
+          }
+        }
+      }
+    ]
+  }
 }
 
 // 出力
@@ -442,6 +433,8 @@ echo "✅ Hub VNet が orchestration 経由でデプロイされました"
 Azure Firewall を構築し、Firewall Policy を作成、Network Rule（HTTP/HTTPS、DNS）と Application Rule（Azure サービスへのアクセス）を設定します。脅威インテリジェンス機能を有効化し、Public IP を割り当てます。
 
 ```bicep
+targetScope = 'resourceGroup'
+
 @description('Azure Firewallの名前')
 param firewallName string
 
@@ -461,15 +454,6 @@ param skuTier string = 'Standard'
 @description('タグ')
 param tags object = {}
 
-@description('リソースグループ名')
-param resourceGroupName string
-
-// 既存のResource Group
-resource resourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
-  scope: subscription()
-  name: resourceGroupName
-}
-
 // Public IP (Firewall用)
 resource firewallPublicIP 'Microsoft.Network/publicIPAddresses@2023-05-01' = {
   name: '${firewallName}-pip'
@@ -482,7 +466,6 @@ resource firewallPublicIP 'Microsoft.Network/publicIPAddresses@2023-05-01' = {
     publicIPAllocationMethod: 'Static'
     publicIPAddressVersion: 'IPv4'
   }
-  scope: resourceGroup
 }
 
 // Firewall Policy
@@ -499,7 +482,6 @@ resource firewallPolicy 'Microsoft.Network/firewallPolicies@2023-05-01' = {
       mode: 'Alert'
     } : null
   }
-  scope: resourceGroup
 }
 
 // Network Rule Collection Group
@@ -729,6 +711,8 @@ echo "✅ Azure Firewall が orchestration 経由でデプロイされました"
 Azure Bastion を構築し、ブラウザベースの安全な RDP/SSH アクセスを提供します。Standard SKU を使用し、Public IP を割り当て、Bastion Subnet にデプロイします。
 
 ```bicep
+targetScope = 'resourceGroup'
+
 @description('Azure Bastionの名前')
 param bastionName string
 
@@ -748,15 +732,6 @@ param skuName string = 'Standard'
 @description('タグ')
 param tags object = {}
 
-@description('リソースグループ名')
-param resourceGroupName string
-
-// 既存のResource Group
-resource resourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
-  scope: subscription()
-  name: resourceGroupName
-}
-
 // Public IP (Bastion用)
 resource bastionPublicIP 'Microsoft.Network/publicIPAddresses@2023-05-01' = {
   name: '${bastionName}-pip'
@@ -769,7 +744,6 @@ resource bastionPublicIP 'Microsoft.Network/publicIPAddresses@2023-05-01' = {
     publicIPAllocationMethod: 'Static'
     publicIPAddressVersion: 'IPv4'
   }
-  scope: resourceGroup
 }
 
 // Azure Bastion
@@ -795,7 +769,6 @@ resource bastion 'Microsoft.Network/bastionHosts@2023-05-01' = {
       }
     ]
   }
-  scope: resourceGroup
 }
 
 // 出力
@@ -886,6 +859,8 @@ echo "✅ Azure Bastion が orchestration 経由でデプロイされました"
 Route Table を作成し、デフォルトルート（0.0.0.0/0）と Spoke VNet へのルートを設定します。すべてのトラフィックが Azure Firewall を経由するように、nextHopType を VirtualAppliance に設定します。
 
 ```bicep
+targetScope = 'resourceGroup'
+
 @description('Route Tableの名前')
 param routeTableName string
 
@@ -897,15 +872,6 @@ param firewallPrivateIP string
 
 @description('タグ')
 param tags object = {}
-
-@description('リソースグループ名')
-param resourceGroupName string
-
-// 既存のResource Group
-resource resourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
-  scope: subscription()
-  name: resourceGroupName
-}
 
 // Route Table
 resource routeTable 'Microsoft.Network/routeTables@2023-05-01' = {
@@ -940,7 +906,6 @@ resource routeTable 'Microsoft.Network/routeTables@2023-05-01' = {
       }
     ]
   }
-  scope: resourceGroup
 }
 
 // 出力
