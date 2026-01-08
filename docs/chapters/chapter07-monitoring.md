@@ -2300,27 +2300,103 @@ grep -q "AUTOMATION_PRINCIPAL_ID=" .env || echo "AUTOMATION_PRINCIPAL_ID=$AUTOMA
 echo "Automation Account Principal ID: $AUTOMATION_PRINCIPAL_ID"
 ```
 
-### 7.9.6 Sandbox Subscription への権限付与
+### 7.9.6 Sandbox 管理グループへの権限付与
 
-Automation Account の Managed Identity に対して、Sandbox Subscription の **Contributor** 権限を付与します。これにより、Runbook が VM を停止できるようになります。
+Automation Account の Managed Identity に対して、**Sandbox 管理グループ**に **Virtual Machine Contributor** 権限を付与します。これにより、Runbook が Sandbox 配下のすべての VM を停止できるようになります。
+
+#### role-assignment-vm-contributor モジュールの作成
+
+ファイル `infrastructure/bicep/modules/identity/role-assignment-vm-contributor.bicep` を作成：
+
+```bicep
+targetScope = 'managementGroup'
+
+@description('マネージドIDのPrincipal ID')
+param principalId string
+
+@description('ロール定義ID（Virtual Machine Contributor）')
+param roleDefinitionId string = '9980e02c-c2be-4d73-94e8-173b1dc7cf3c' // Virtual Machine Contributor
+
+// Virtual Machine Contributor権限の付与
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(managementGroup().id, principalId, roleDefinitionId)
+  properties: {
+    roleDefinitionId: tenantResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionId)
+    principalId: principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+output roleAssignmentId string = roleAssignment.id
+```
+
+#### tenant.bicep へのロール割り当て追加
+
+ファイル `infrastructure/bicep/orchestration/tenant.bicep` に以下を追記：
+
+```bicep
+// =============================================================================
+// Chapter 7: Automation Identity (追記)
+// =============================================================================
+
+@description('Automation Account Principal ID')
+param automationPrincipalId string = ''
+
+// Automation Account VM Contributor Role Assignment (Sandbox管理グループに割り当て)
+module automationVMContributorRole '../modules/identity/role-assignment-vm-contributor.bicep' = if (!empty(automationPrincipalId)) {
+  name: 'deploy-automation-vm-contributor'
+  scope: managementGroup('${companyPrefix}-sandbox')
+  params: {
+    principalId: automationPrincipalId
+  }
+}
+
+output automationRoleAssignmentId string = automationVMContributorRole.?outputs.?roleAssignmentId ?? ''
+```
+
+ファイル `infrastructure/bicep/orchestration/tenant.bicepparam` に以下を追記：
+
+```bicep
+// =============================================================================
+// Chapter 7: Automation Account Principal ID
+// =============================================================================
+
+// 7.9.5で.envに保存した値を以下に設定：
+// source .env && echo $AUTOMATION_PRINCIPAL_ID
+param automationPrincipalId = 'YOUR_AUTOMATION_PRINCIPAL_ID_HERE'
+```
+
+#### デプロイ手順
+
+7.9.5で.envに保存した値を確認して、tenant.bicepparamに設定します：
 
 ```bash
-# Sandbox Subscription に切り替え
-az account set --subscription $SUB_SANDBOX_ID
+# .envを読み込み
+source .env
 
-# Contributor ロールを付与
-az role assignment create \
-  --assignee $AUTOMATION_PRINCIPAL_ID \
-  --role "Contributor" \
-  --scope "/subscriptions/$SUB_SANDBOX_ID"
+# Principal IDを確認（この値をtenant.bicepparamに設定）
+echo $AUTOMATION_PRINCIPAL_ID
+```
 
-echo "Automation Account に Sandbox Subscription の Contributor 権限を付与しました"
+上記コマンドで出力された値を`tenant.bicepparam`の`automationPrincipalId`に設定してください。
+
+デプロイ実行：
+
+```bash
+# デプロイ実行
+az deployment tenant create \
+  --name "tenant-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/tenant.bicep \
+  --parameters infrastructure/bicep/orchestration/tenant.bicepparam
+
+echo "✅ Automation AccountにSandbox管理グループのVirtual Machine Contributor権限を付与しました"
 ```
 
 **権限の範囲：**
 
-- **Contributor**: VM の起動・停止が可能
-- **Scope**: Sandbox Subscription 全体
+- **Virtual Machine Contributor**: VM の起動・停止のみ可能（最小権限）
+- **Scope**: Sandbox 管理グループ（配下の全サブスクリプションに適用）
 - **用途**: 夜間の自動シャットダウン
 
 ### 7.9.7 Runbook の作成（Sandbox VM 自動停止）
