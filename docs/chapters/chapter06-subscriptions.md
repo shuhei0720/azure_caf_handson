@@ -283,10 +283,11 @@ module managementSubscriptionAssociation '../modules/management-groups/subscript
   name: 'deploy-mg-assoc-management'
   params: {
     managementGroupId: '${companyPrefix}-platform-management'
-    subscriptionId: managementSubscription.outputs.subscriptionId
+    subscriptionId: contains(subscriptions, 'management') ? managementSubscription.outputs.subscriptionId : ''
   }
   dependsOn: [
     managementGroups  // Management Groups作成後に実行
+    managementSubscription  // Subscription作成後に実行
   ]
 }
 ```

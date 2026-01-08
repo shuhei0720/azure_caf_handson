@@ -117,10 +117,11 @@ module identitySubscriptionAssociation '../modules/management-groups/subscriptio
   name: 'deploy-mg-assoc-identity'
   params: {
     managementGroupId: '${companyPrefix}-platform-identity'
-    subscriptionId: identitySubscription.outputs.subscriptionId
+    subscriptionId: contains(subscriptions, 'identity') ? identitySubscription.outputs.subscriptionId : ''
   }
   dependsOn: [
     managementGroups
+    identitySubscription
   ]
 }
 ```
