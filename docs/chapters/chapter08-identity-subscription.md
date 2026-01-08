@@ -101,27 +101,23 @@ param subscriptions = {
 **orchestration/tenant.bicep を開き**、Identity Subscription モジュールを追記：
 
 ```bicep
-// 条件を変数で定義
-var hasIdentitySubscription = contains(subscriptions, 'identity')
-
-// Identity Subscription作成（モジュールは常にデプロイ、リソース作成は条件付き）
-module identitySubscription '../modules/subscriptions/subscription.bicep' = {
+// Identity Subscription作成
+module identitySubscription '../modules/subscriptions/subscription.bicep' = if (contains(subscriptions, 'identity')) {
   name: 'deploy-subscription-identity'
   params: {
-    subscriptionAliasName: hasIdentitySubscription ? subscriptions.identity.aliasName : 'placeholder'
-    subscriptionDisplayName: hasIdentitySubscription ? subscriptions.identity.displayName : 'placeholder'
-    billingScope: hasIdentitySubscription ? billingScope : ''
-    workload: hasIdentitySubscription ? subscriptions.identity.workload : 'Production'
+    subscriptionAliasName: subscriptions.identity.aliasName
+    subscriptionDisplayName: subscriptions.identity.displayName
+    billingScope: billingScope
+    workload: subscriptions.identity.workload
   }
 }
 
 // Identity SubscriptionをManagement Groupに紐づけ
-// モジュール自体は常にデプロイ、リソース作成は条件付き
-module identitySubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = {
+module identitySubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = if (contains(subscriptions, 'identity')) {
   name: 'deploy-mg-assoc-identity'
   params: {
     managementGroupId: '${companyPrefix}-platform-identity'
-    subscriptionId: identitySubscription.outputs.subscriptionId
+    subscriptionId: identitySubscription.outputs.subscriptionId!
   }
   dependsOn: [
     managementGroups

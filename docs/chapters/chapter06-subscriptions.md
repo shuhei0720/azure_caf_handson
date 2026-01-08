@@ -210,15 +210,14 @@ param subscriptionAliasName string
 @description('Subscription display name')
 param subscriptionDisplayName string
 
-@description('Billing Scope (空の場合はスキップ)')
+@description('Billing Scope')
 param billingScope string
 
 @description('Workload type (Production or DevTest)')
 @allowed(['Production', 'DevTest'])
 param workload string = 'Production'
 
-// billingScope が空でない場合のみ作成
-resource subscription 'Microsoft.Subscription/aliases@2021-10-01' = if (!empty(billingScope)) {
+resource subscription 'Microsoft.Subscription/aliases@2021-10-01' = {
   name: subscriptionAliasName
   properties: {
     workload: workload
@@ -227,8 +226,7 @@ resource subscription 'Microsoft.Subscription/aliases@2021-10-01' = if (!empty(b
   }
 }
 
-// 既存のSubscriptionを参照する場合に備えて、条件付き出力
-output subscriptionId string = !empty(billingScope) ? subscription.properties.subscriptionId : ''
+output subscriptionId string = subscription.properties.subscriptionId
 output subscriptionName string = subscriptionDisplayName
 ```
 
@@ -242,11 +240,10 @@ targetScope = 'tenant'
 @description('Management Group ID')
 param managementGroupId string
 
-@description('Subscription ID (空文字列の場合はスキップ)')
+@description('Subscription ID')
 param subscriptionId string
 
-// subscriptionIdが空でない場合のみリソースを作成
-resource subscriptionAssociation 'Microsoft.Management/managementGroups/subscriptions@2021-04-01' = if (!empty(subscriptionId)) {
+resource subscriptionAssociation 'Microsoft.Management/managementGroups/subscriptions@2021-04-01' = {
   scope: tenant()
   name: '${managementGroupId}/${subscriptionId}'
 }
@@ -270,27 +267,23 @@ param billingScope string = ''
 @description('Subscriptions設定')
 param subscriptions object = {}
 
-// 条件を変数で定義
-var hasManagementSubscription = contains(subscriptions, 'management')
-
-// Management Subscription作成（モジュールは常にデプロイ、リソース作成は条件付き）
-module managementSubscription '../modules/subscriptions/subscription.bicep' = {
+// Management Subscription作成
+module managementSubscription '../modules/subscriptions/subscription.bicep' = if (contains(subscriptions, 'management')) {
   name: 'deploy-subscription-management'
   params: {
-    subscriptionAliasName: hasManagementSubscription ? subscriptions.management.aliasName : 'placeholder'
-    subscriptionDisplayName: hasManagementSubscription ? subscriptions.management.displayName : 'placeholder'
-    billingScope: hasManagementSubscription ? billingScope : ''
-    workload: hasManagementSubscription ? subscriptions.management.workload : 'Production'
+    subscriptionAliasName: subscriptions.management.aliasName
+    subscriptionDisplayName: subscriptions.management.displayName
+    billingScope: billingScope
+    workload: subscriptions.management.workload
   }
 }
 
 // Management SubscriptionをManagement Groupに紐づけ
-// モジュール自体は常にデプロイ、リソース作成は条件付き
-module managementSubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = {
+module managementSubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = if (contains(subscriptions, 'management')) {
   name: 'deploy-mg-assoc-management'
   params: {
     managementGroupId: '${companyPrefix}-platform-management'
-    subscriptionId: managementSubscription.outputs.subscriptionId
+    subscriptionId: managementSubscription.outputs.subscriptionId!
   }
   dependsOn: [
     managementGroups  // Management Groups作成後に実行

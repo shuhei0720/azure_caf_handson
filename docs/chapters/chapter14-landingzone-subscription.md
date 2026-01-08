@@ -119,27 +119,23 @@ param subscriptions = {
 **orchestration/tenant.bicep を開き**、Landing Zone Subscription モジュールを追記：
 
 ```bicep
-// 条件を変数で定義
-var hasLandingZoneCorpSubscription = contains(subscriptions, 'landingZoneCorp')
-
-// Landing Zone Corp Subscription作成（モジュールは常にデプロイ、リソース作成は条件付き）
-module landingZoneCorpSubscription '../modules/subscriptions/subscription.bicep' = {
+// Landing Zone Corp Subscription作成
+module landingZoneCorpSubscription '../modules/subscriptions/subscription.bicep' = if (contains(subscriptions, 'landingZoneCorp')) {
   name: 'deploy-subscription-landingzone-corp'
   params: {
-    subscriptionAliasName: hasLandingZoneCorpSubscription ? subscriptions.landingZoneCorp.aliasName : 'placeholder'
-    subscriptionDisplayName: hasLandingZoneCorpSubscription ? subscriptions.landingZoneCorp.displayName : 'placeholder'
-    billingScope: hasLandingZoneCorpSubscription ? billingScope : ''
-    workload: hasLandingZoneCorpSubscription ? subscriptions.landingZoneCorp.workload : 'Production'
+    subscriptionAliasName: subscriptions.landingZoneCorp.aliasName
+    subscriptionDisplayName: subscriptions.landingZoneCorp.displayName
+    billingScope: billingScope
+    workload: subscriptions.landingZoneCorp.workload
   }
 }
 
 // Landing Zone Corp SubscriptionをManagement Groupに紐づけ
-// モジュール自体は常にデプロイ、リソース作成は条件付き
-module landingZoneCorpSubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = {
+module landingZoneCorpSubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = if (contains(subscriptions, 'landingZoneCorp')) {
   name: 'deploy-mg-assoc-landingzone-corp'
   params: {
     managementGroupId: '${companyPrefix}-landingzones-corp'
-    subscriptionId: landingZoneCorpSubscription.outputs.subscriptionId
+    subscriptionId: landingZoneCorpSubscription.outputs.subscriptionId!
   }
   dependsOn: [
     managementGroups

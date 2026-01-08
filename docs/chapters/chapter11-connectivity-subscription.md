@@ -111,27 +111,23 @@ param subscriptions = {
 **orchestration/tenant.bicep を開き**、Connectivity Subscription モジュールを追記：
 
 ```bicep
-// 条件を変数で定義
-var hasConnectivitySubscription = contains(subscriptions, 'connectivity')
-
-// Connectivity Subscription作成（モジュールは常にデプロイ、リソース作成は条件付き）
-module connectivitySubscription '../modules/subscriptions/subscription.bicep' = {
+// Connectivity Subscription作成
+module connectivitySubscription '../modules/subscriptions/subscription.bicep' = if (contains(subscriptions, 'connectivity')) {
   name: 'deploy-subscription-connectivity'
   params: {
-    subscriptionAliasName: hasConnectivitySubscription ? subscriptions.connectivity.aliasName : 'placeholder'
-    subscriptionDisplayName: hasConnectivitySubscription ? subscriptions.connectivity.displayName : 'placeholder'
-    billingScope: hasConnectivitySubscription ? billingScope : ''
-    workload: hasConnectivitySubscription ? subscriptions.connectivity.workload : 'Production'
+    subscriptionAliasName: subscriptions.connectivity.aliasName
+    subscriptionDisplayName: subscriptions.connectivity.displayName
+    billingScope: billingScope
+    workload: subscriptions.connectivity.workload
   }
 }
 
 // Connectivity SubscriptionをManagement Groupに紐づけ
-// モジュール自体は常にデプロイ、リソース作成は条件付き
-module connectivitySubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = {
+module connectivitySubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = if (contains(subscriptions, 'connectivity')) {
   name: 'deploy-mg-assoc-connectivity'
   params: {
     managementGroupId: '${companyPrefix}-platform-connectivity'
-    subscriptionId: connectivitySubscription.outputs.subscriptionId
+    subscriptionId: connectivitySubscription.outputs.subscriptionId!
   }
   dependsOn: [
     managementGroups
