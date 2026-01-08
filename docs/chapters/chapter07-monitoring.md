@@ -180,6 +180,8 @@ Log Analytics Workspace は、Azure 全体のログとメトリクスを集約�
 
 監視リソース用の Resource Group を Bicep で作成します。
 
+#### モジュールの作成
+
 ディレクトリを作成：
 
 ```bash
@@ -211,51 +213,84 @@ output resourceGroupName string = resourceGroup.name
 output resourceGroupId string = resourceGroup.id
 ```
 
-ファイル `infrastructure/bicep/parameters/management-resource-group.bicepparam` を作成し、以下の内容を記述します：
+#### オーケストレーションへのパラメータ追記
+
+ファイル `infrastructure/bicep/orchestration/main.bicepparam` を開き、以下を追記：
 
 ```bicep
-using '../modules/resource-group/resource-group.bicep'
+// =============================================================================
+// Chapter 7: Monitoring
+// =============================================================================
 
-param resourceGroupName = 'rg-platform-management-prod-jpe-001'
-param location = 'japaneast'
-param tags = {
-  Environment: 'Production'
-  ManagedBy: 'Bicep'
-  Component: 'Management'
+@description('Monitoring設定')
+param monitoring = {
+  resourceGroup: {
+    name: 'rg-platform-management-prod-jpe-001'
+    tags: {
+      Environment: 'Production'
+      ManagedBy: 'Bicep'
+      Component: 'Management'
+    }
+  }
+  // 7.3.2以降で追記予定
 }
 ```
 
-**What-If による事前確認：**
+#### オーケストレーションへのモジュール追加
+
+ファイル `infrastructure/bicep/orchestration/main.bicep` を開き、以下を追記：
+
+```bicep
+// =============================================================================
+// パラメータ定義（既存のセクションに追加）
+// =============================================================================
+
+@description('Monitoring設定')
+param monitoring object
+
+// =============================================================================
+// モジュールデプロイ（既存のセクションに追加）
+// =============================================================================
+
+// Chapter 7: Management Resource Group
+module managementRG '../modules/resource-group/resource-group.bicep' = {
+  name: 'deploy-management-rg'
+  params: {
+    resourceGroupName: monitoring.resourceGroup.name
+    location: location
+    tags: union(tags, monitoring.resourceGroup.tags)
+  }
+}
+```
+
+#### デプロイ実行
 
 ```bash
-
 # Management Subscription に切り替え（念のため確認）
 az account set --subscription $SUB_MANAGEMENT_ID
 
-# 事前確認
+# What-If実行
 az deployment sub what-if \
-  --name "rg-management-$(date +%Y%m%d-%H%M%S)" \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
-  --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
-  --parameters infrastructure/bicep/parameters/management-resource-group.bicepparam
-```
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
 
-**デプロイ実行：**
-
-```bash
 # デプロイ実行
 az deployment sub create \
-  --name "rg-management-$(date +%Y%m%d-%H%M%S)" \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
-  --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
-  --parameters infrastructure/bicep/parameters/management-resource-group.bicepparam
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
 
-echo "Resource Group が Bicep で作成されました"
+echo "✅ Resource Group が orchestration 経由でデプロイされました"
 ```
 
 ### 7.3.2 Log Analytics Workspace の作成
 
 すべてのログとメトリクスを集約する中央ログストアとして、Log Analytics Workspace を作成します。
+
+#### モジュールの作成
 
 ディレクトリを作成：
 
@@ -280,6 +315,15 @@ param retentionInDays int = 90
 @description('タグ')
 param tags object = {}
 
+@description('リソースグループ名')
+param resourceGroupName string
+
+// 既存のResource Group
+resource resourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
+  scope: subscription()
+  name: resourceGroupName
+}
+
 // Log Analytics Workspace
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: workspaceName
@@ -296,6 +340,7 @@ resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10
     publicNetworkAccessForIngestion: 'Enabled'
     publicNetworkAccessForQuery: 'Enabled'
   }
+  scope: resourceGroup
 }
 
 // 出力
@@ -306,41 +351,71 @@ output customerId string = logAnalyticsWorkspace.properties.customerId
 
 **注意：** ワークスペース作成時は Interactive 期間（`retentionInDays`）を設定します。各テーブルの総保持期間（`totalRetentionInDays`）とアーカイブ期間の設定は、次のセクション 7.3.3 で Bicep を使用して実施します。
 
-ファイル `infrastructure/bicep/parameters/log-analytics.bicepparam` を作成し、以下の内容を記述します：
+#### オーケストレーションへのパラメータ追記
+
+ファイル `infrastructure/bicep/orchestration/main.bicepparam` を開き、`monitoring` セクションに追記：
 
 ```bicep
-using '../modules/monitoring/log-analytics.bicep'
-
-param workspaceName = 'log-platform-prod-jpe-001'
-param location = 'japaneast'
-param retentionInDays = 90
-param tags = {
-  Environment: 'Production'
-  ManagedBy: 'Bicep'
-  Component: 'Monitoring'
+@description('Monitoring設定')
+param monitoring = {
+  resourceGroup: {
+    name: 'rg-platform-management-prod-jpe-001'
+    tags: {
+      Environment: 'Production'
+      ManagedBy: 'Bicep'
+      Component: 'Management'
+    }
+  }
+  // 👇 7.3.2で追記
+  logAnalytics: {
+    workspaceName: 'log-platform-prod-jpe-001'
+    retentionInDays: 90
+    tags: {
+      Environment: 'Production'
+      ManagedBy: 'Bicep'
+      Component: 'Monitoring'
+    }
+  }
 }
 ```
 
-**What-If による事前確認：**
+#### オーケストレーションへのモジュール追加
 
-```bash
-# 事前確認
-az deployment group what-if \
-  --name "log-analytics-deployment-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/monitoring/log-analytics.bicep \
-  --parameters infrastructure/bicep/parameters/log-analytics.bicepparam
+ファイル `infrastructure/bicep/orchestration/main.bicep` を開き、以下を追記：
+
+```bicep
+// Chapter 7: Log Analytics Workspace
+module logAnalytics '../modules/monitoring/log-analytics.bicep' = {
+  name: 'deploy-log-analytics'
+  params: {
+    workspaceName: monitoring.logAnalytics.workspaceName
+    location: location
+    retentionInDays: monitoring.logAnalytics.retentionInDays
+    resourceGroupName: monitoring.resourceGroup.name
+    tags: union(tags, monitoring.logAnalytics.tags)
+  }
+  dependsOn: [
+    managementRG
+  ]
+}
 ```
 
-**デプロイ実行：**
+#### デプロイ実行
 
 ```bash
+# What-If実行
+az deployment sub what-if \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+
 # デプロイ実行
-az deployment group create \
-  --name "log-analytics-deployment-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/monitoring/log-analytics.bicep \
-  --parameters infrastructure/bicep/parameters/log-analytics.bicepparam
+az deployment sub create \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
 
 # Workspace IDを取得して環境変数に保存
 WORKSPACE_ID=$(az monitor log-analytics workspace show \
@@ -350,6 +425,8 @@ WORKSPACE_ID=$(az monitor log-analytics workspace show \
 
 echo "WORKSPACE_ID=$WORKSPACE_ID" >> .env
 echo "Log Analytics Workspace ID: $WORKSPACE_ID"
+
+echo "✅ Log Analytics Workspace が orchestration 経由でデプロイされました"
 ```
 
 **Azure ポータルでの確認：**
@@ -685,6 +762,8 @@ DCR は、Azure Monitor Agent が**どのデータを収集するか**を定義�
 
 VM Insights 用の DCR を作成します。これにより、VM のパフォーマンスメトリクスとプロセス情報を収集できます。
 
+#### モジュールの作成
+
 ファイル `infrastructure/bicep/modules/monitoring/dcr-vm-insights.bicep` を作成：
 
 ```bicep
@@ -699,6 +778,15 @@ param workspaceId string
 
 @description('タグ')
 param tags object = {}
+
+@description('リソースグループ名')
+param resourceGroupName string
+
+// 既存のResource Group
+resource resourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
+  scope: subscription()
+  name: resourceGroupName
+}
 
 // Data Collection Rule for VM Insights
 resource dcrVMInsights 'Microsoft.Insights/dataCollectionRules@2022-06-01' = {
@@ -759,68 +847,108 @@ resource dcrVMInsights 'Microsoft.Insights/dataCollectionRules@2022-06-01' = {
       }
     ]
   }
+  scope: resourceGroup
 }
 
 output dcrId string = dcrVMInsights.id
 output dcrName string = dcrVMInsights.name
 ```
 
-ファイル `infrastructure/bicep/parameters/dcr-vm-insights.bicepparam` を作成し、以下の内容を記述します：
+#### オーケストレーションへのパラメータ追記
+
+ファイル `infrastructure/bicep/orchestration/main.bicepparam` を開き、`monitoring` セクションに追記：
 
 ```bicep
-using '../modules/monitoring/dcr-vm-insights.bicep'
-
-param dcrName = 'dcr-vm-insights-prod-jpe-001'
-param location = 'japaneast'
-param workspaceId = '/subscriptions/YOUR_SUB_ID/resourceGroups/rg-platform-management-prod-jpe-001/providers/Microsoft.OperationalInsights/workspaces/log-platform-prod-jpe-001'
-param tags = {
-  Environment: 'Production'
-  ManagedBy: 'Bicep'
-  Component: 'Monitoring'
+@description('Monitoring設定')
+param monitoring = {
+  resourceGroup: {
+    name: 'rg-platform-management-prod-jpe-001'
+    tags: {
+      Environment: 'Production'
+      ManagedBy: 'Bicep'
+      Component: 'Management'
+    }
+  }
+  logAnalytics: {
+    workspaceName: 'log-platform-prod-jpe-001'
+    retentionInDays: 90
+    tags: {
+      Environment: 'Production'
+      ManagedBy: 'Bicep'
+      Component: 'Monitoring'
+    }
+  }
+  // 👇 7.4.1で追記
+  dataCollectionRules: {
+    vmInsights: {
+      name: 'dcr-vm-insights-prod-jpe-001'
+      tags: {
+        Environment: 'Production'
+        ManagedBy: 'Bicep'
+        Component: 'Monitoring'
+      }
+    }
+    osLogs: {
+      name: 'dcr-os-logs-prod-jpe-001'
+      tags: {
+        Environment: 'Production'
+        ManagedBy: 'Bicep'
+        Component: 'Monitoring'
+      }
+    }
+  }
 }
 ```
 
-**重要：** `workspaceId` の値を置き換えてください。以下のコマンドで取得した Workspace ID を使用します：
+#### オーケストレーションへのモジュール追加
 
-```bash
-# Log Analytics Workspace IDの値を確認（前のセクションで取得済み）
-echo $WORKSPACE_ID
+ファイル `infrastructure/bicep/orchestration/main.bicep` を開き、以下を追記：
 
-# 出力例：
-# /subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-platform-management-prod-jpe-001/providers/Microsoft.OperationalInsights/workspaces/log-platform-prod-jpe-001
+```bicep
+// Chapter 7: DCR for VM Insights
+module dcrVMInsights '../modules/monitoring/dcr-vm-insights.bicep' = {
+  name: 'deploy-dcr-vm-insights'
+  params: {
+    dcrName: monitoring.dataCollectionRules.vmInsights.name
+    location: location
+    workspaceId: logAnalytics.outputs.workspaceId
+    resourceGroupName: monitoring.resourceGroup.name
+    tags: union(tags, monitoring.dataCollectionRules.vmInsights.tags)
+  }
+  dependsOn: [
+    logAnalytics
+  ]
+}
 ```
 
-この値をパラメーターファイルの `workspaceId` に設定します。
-
-**What-If による事前確認：**
+#### デプロイ実行
 
 ```bash
-# 事前確認
-az deployment group what-if \
-  --name "dcr-vm-insights-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/monitoring/dcr-vm-insights.bicep \
-  --parameters infrastructure/bicep/parameters/dcr-vm-insights.bicepparam
-```
-
-**デプロイ実行：**
-
-```bash
-# デプロイ名を変数に保存
-DEPLOYMENT_NAME="dcr-vm-insights-$(date +%Y%m%d-%H%M%S)"
+# What-If実行
+az deployment sub what-if \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
 
 # デプロイ実行
-az deployment group create \
-  --name "$DEPLOYMENT_NAME" \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/monitoring/dcr-vm-insights.bicep \
-  --parameters infrastructure/bicep/parameters/dcr-vm-insights.bicepparam
+az deployment sub create \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
 
 # DCR IDを取得
-DCR_VM_INSIGHTS_ID=$(az deployment group show \
-  --name "$DEPLOYMENT_NAME" \
+DCR_VM_INSIGHTS_ID=$(az monitor data-collection rule show \
+  --name dcr-vm-insights-prod-jpe-001 \
   --resource-group rg-platform-management-prod-jpe-001 \
-  --query properties.outputs.dcrId.value -o tsv)
+  --query id -o tsv)
+
+echo "DCR_VM_INSIGHTS_ID=$DCR_VM_INSIGHTS_ID" >> .env
+echo "VM Insights DCR ID: $DCR_VM_INSIGHTS_ID"
+
+echo "✅ DCR for VM Insights が orchestration 経由でデプロイされました"
+```
 
 echo "DCR_VM_INSIGHTS_ID=$DCR_VM_INSIGHTS_ID" >> .env
 echo "VM Insights DCR ID: $DCR_VM_INSIGHTS_ID"
@@ -828,7 +956,9 @@ echo "VM Insights DCR ID: $DCR_VM_INSIGHTS_ID"
 
 ### 7.4.2 DCR for Windows Event Logs and Syslog
 
-Windows Event ログと Linux Syslog を収集する DCR を作成します.
+Windows Event ログと Linux Syslog を収集する DCR を作成します。
+
+#### モジュールの作成
 
 ファイル `infrastructure/bicep/modules/monitoring/dcr-os-logs.bicep` を作成：
 
@@ -844,6 +974,15 @@ param workspaceId string
 
 @description('タグ')
 param tags object = {}
+
+@description('リソースグループ名')
+param resourceGroupName string
+
+// 既存のResource Group
+resource resourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
+  scope: subscription()
+  name: resourceGroupName
+}
 
 // Data Collection Rule for OS Logs (Windows Events + Syslog)
 resource dcrOSLogs 'Microsoft.Insights/dataCollectionRules@2022-06-01' = {
@@ -921,71 +1060,61 @@ resource dcrOSLogs 'Microsoft.Insights/dataCollectionRules@2022-06-01' = {
       }
     ]
   }
+  scope: resourceGroup
 }
 
 output dcrId string = dcrOSLogs.id
 output dcrName string = dcrOSLogs.name
 ```
 
-ファイル `infrastructure/bicep/parameters/dcr-os-logs.bicepparam` を作成し、以下の内容を記述します：
+#### オーケストレーションへのモジュール追加
+
+ファイル `infrastructure/bicep/orchestration/main.bicep` を開き、以下を追記：
 
 ```bicep
-using '../modules/monitoring/dcr-os-logs.bicep'
-
-param dcrName = 'dcr-os-logs-prod-jpe-001'
-param location = 'japaneast'
-param workspaceId = '/subscriptions/YOUR_SUB_ID/resourceGroups/rg-platform-management-prod-jpe-001/providers/Microsoft.OperationalInsights/workspaces/log-platform-prod-jpe-001'
-param tags = {
-  Environment: 'Production'
-  ManagedBy: 'Bicep'
-  Component: 'Monitoring'
+// Chapter 7: DCR for OS Logs
+module dcrOSLogs '../modules/monitoring/dcr-os-logs.bicep' = {
+  name: 'deploy-dcr-os-logs'
+  params: {
+    dcrName: monitoring.dataCollectionRules.osLogs.name
+    location: location
+    workspaceId: logAnalytics.outputs.workspaceId
+    resourceGroupName: monitoring.resourceGroup.name
+    tags: union(tags, monitoring.dataCollectionRules.osLogs.tags)
+  }
+  dependsOn: [
+    logAnalytics
+  ]
 }
 ```
 
-**重要：** `workspaceId` の値を置き換えてください。以下のコマンドで取得した Workspace ID を使用します：
+#### デプロイ実行
 
 ```bash
-# Log Analytics Workspace IDの値を確認（前のセクションで取得済み）
-echo $WORKSPACE_ID
-
-# 出力例：
-# /subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-platform-management-prod-jpe-001/providers/Microsoft.OperationalInsights/workspaces/log-platform-prod-jpe-001
-```
-
-この値をパラメーターファイルの `workspaceId` に設定します。
-
-**What-If による事前確認：**
-
-```bash
-# 事前確認
-az deployment group what-if \
-  --name "dcr-os-logs-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/monitoring/dcr-os-logs.bicep \
-  --parameters infrastructure/bicep/parameters/dcr-os-logs.bicepparam
-```
-
-**デプロイ実行：**
-
-```bash
-# デプロイ名を変数に保存
-DEPLOYMENT_NAME="dcr-os-logs-$(date +%Y%m%d-%H%M%S)"
+# What-If実行
+az deployment sub what-if \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
 
 # デプロイ実行
-az deployment group create \
-  --name "$DEPLOYMENT_NAME" \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/monitoring/dcr-os-logs.bicep \
-  --parameters infrastructure/bicep/parameters/dcr-os-logs.bicepparam
+az deployment sub create \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
 
 # DCR IDを取得
-DCR_OS_LOGS_ID=$(az deployment group show \
-  --name "$DEPLOYMENT_NAME" \
+DCR_OS_LOGS_ID=$(az monitor data-collection rule show \
+  --name dcr-os-logs-prod-jpe-001 \
   --resource-group rg-platform-management-prod-jpe-001 \
-  --query properties.outputs.dcrId.value -o tsv)
+  --query id -o tsv)
 
 echo "DCR_OS_LOGS_ID=$DCR_OS_LOGS_ID" >> .env
 echo "OS Logs DCR ID: $DCR_OS_LOGS_ID"
+
+echo "✅ DCR for OS Logs が orchestration 経由でデプロイされました"
 ```
 
 ### 7.4.3 DCR の役割と今後の活用
