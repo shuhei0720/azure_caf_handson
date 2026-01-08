@@ -485,9 +485,9 @@ output configuredTables array = [for (tableName, i) in tableNames: {
 }]
 ```
 
-**パラメーターファイルの自動生成：**
+**テーブル名の自動取得と main.bicepparam への追加：**
 
-Workspace に存在するすべてのテーブルを自動取得し、パラメーターファイルを生成します：
+Workspace に存在するすべてのテーブルを自動取得し、`main.bicepparam` に追記します：
 
 ```bash
 # Log Analytics Workspaceのすべてのテーブルを取得
@@ -498,10 +498,10 @@ TABLES=$(az monitor log-analytics workspace table list \
 
 echo "取得されたテーブル数: $(echo "$TABLES" | wc -l)"
 
-# パラメーターファイルを生成
-cat > infrastructure/bicep/parameters/log-analytics-table-retention.bicepparam << 'EOF'
-using '../modules/monitoring/log-analytics-table-retention.bicep'
+# main.bicepparamにテーブル名配列を追加
+cat >> infrastructure/bicep/parameters/main.bicepparam << 'EOF'
 
+// ===== 7章: Log Analytics テーブル保持期間設定 =====
 param workspaceName = 'log-platform-prod-jpe-001'
 param retentionInDays = 90
 param totalRetentionInDays = 730
@@ -511,36 +511,36 @@ EOF
 
 # すべてのテーブル名を配列形式で追加
 for TABLE in $TABLES; do
-  echo "  '$TABLE'" >> infrastructure/bicep/parameters/log-analytics-table-retention.bicepparam
+  echo "  '$TABLE'" >> infrastructure/bicep/parameters/main.bicepparam
 done
 
 # 配列の閉じ括弧を追加
-echo "]" >> infrastructure/bicep/parameters/log-analytics-table-retention.bicepparam
+echo "]" >> infrastructure/bicep/parameters/main.bicepparam
 
-echo "パラメーターファイルが生成されました"
-cat infrastructure/bicep/parameters/log-analytics-table-retention.bicepparam
+echo "main.bicepparamにテーブル名が追加されました"
+tail -n 20 infrastructure/bicep/parameters/main.bicepparam
 ```
 
 **What-If による事前確認：**
 
 ```bash
-# 事前確認
+# 事前確認（main.bicepparamを使用）
 az deployment group what-if \
   --name "table-retention-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/log-analytics-table-retention.bicep \
-  --parameters infrastructure/bicep/parameters/log-analytics-table-retention.bicepparam
+  --parameters infrastructure/bicep/parameters/main.bicepparam
 ```
 
 **デプロイ実行：**
 
 ```bash
-# デプロイ実行
+# デプロイ実行（main.bicepparamを使用）
 az deployment group create \
   --name "table-retention-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/log-analytics-table-retention.bicep \
-  --parameters infrastructure/bicep/parameters/log-analytics-table-retention.bicepparam
+  --parameters infrastructure/bicep/parameters/main.bicepparam
 
 echo "すべてのテーブルに保持期間が設定されました"
 ```
