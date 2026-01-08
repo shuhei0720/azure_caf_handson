@@ -995,16 +995,9 @@ echo "✅ DCR for VM Insights が orchestration 経由でデプロイされま�
 #### DCR ID の取得と保存
 
 ```bash
-# デプロイ結果からDCR IDを取得
-DCR_VM_INSIGHTS_ID=$(az deployment sub show \
-  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
-  --query properties.outputs.dcrVMInsightsId.value -o tsv)
-
-# または、最新のデプロイから取得
+# 最新のデプロイからDCR IDを取得
 DCR_VM_INSIGHTS_ID=$(az deployment sub list \
-  --query "[?name starts_with(@, 'main-deployment-')].{name:name, time:properties.timestamp}" \
-  --output json | jq -r 'sort_by(.time) | last | .name' | \
-  xargs -I {} az deployment sub show --name {} --query properties.outputs.dcrVMInsightsId.value -o tsv)
+  --query "sort_by([?starts_with(name, 'main-deployment-')], &properties.timestamp)[-1].properties.outputs.dcrVMInsightsId.value" -o tsv)
 
 echo "DCR_VM_INSIGHTS_ID=$DCR_VM_INSIGHTS_ID" >> .env
 echo "VM Insights DCR ID: $DCR_VM_INSIGHTS_ID"
@@ -1166,12 +1159,9 @@ echo "✅ DCR for OS Logs が orchestration 経由でデプロイされました
 #### DCR ID の取得と保存
 
 ```bash
-# デプロイ結果からDCR IDを取得
-# または、最新のデプロイから取得
+# 最新のデプロイからDCR IDを取得
 DCR_OS_LOGS_ID=$(az deployment sub list \
-  --query "[?name starts_with(@, 'main-deployment-')].{name:name, time:properties.timestamp}" \
-  --output json | jq -r 'sort_by(.time) | last | .name' | \
-  xargs -I {} az deployment sub show --name {} --query properties.outputs.dcrOSLogsId.value -o tsv)
+  --query "sort_by([?starts_with(name, 'main-deployment-')], &properties.timestamp)[-1].properties.outputs.dcrOSLogsId.value" -o tsv)
 
 echo "DCR_OS_LOGS_ID=$DCR_OS_LOGS_ID" >> .env
 echo "OS Logs DCR ID: $DCR_OS_LOGS_ID"
