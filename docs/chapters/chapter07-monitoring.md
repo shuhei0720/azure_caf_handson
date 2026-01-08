@@ -532,18 +532,18 @@ TABLES=$(az monitor log-analytics workspace table list \
 
 echo "取得されたテーブル数: $(echo "$TABLES" | wc -l)"
 
-# main.bicepparamのtableNames配列を更新
-# まず、既存のtableNames配列を探して、その部分を置換します
-sed -i '/tableNames: \[/,/\]/c\
-    tableNames: [' infrastructure/bicep/orchestration/main.bicepparam
-
-# テーブル名を1つずつ追加
+# テーブル名配列を一時ファイルに生成
+TEMP_FILE=$(mktemp)
+echo "    tableNames: [" > $TEMP_FILE
 for TABLE in $TABLES; do
-  sed -i "/tableNames: \[/a\      '$TABLE'" infrastructure/bicep/orchestration/main.bicepparam
+  echo "      '$TABLE'" >> $TEMP_FILE
 done
+echo "    ]" >> $TEMP_FILE
 
-# 最後の行にカンマを削除（最終要素にはカンマ不要）
-sed -i "s/\('.*'\)$/\1/g" infrastructure/bicep/orchestration/main.bicepparam
+# main.bicepparamの既存のtableNames配列を置換
+sed -i '/tableNames: \[/,/^[[:space:]]*\]/c\' infrastructure/bicep/orchestration/main.bicepparam
+sed -i '/tableRetention: {/r '$TEMP_FILE infrastructure/bicep/orchestration/main.bicepparam
+rm $TEMP_FILE
 
 echo "orchestration/main.bicepparamにテーブル名が追加されました"
 grep -A 50 'tableNames:' infrastructure/bicep/orchestration/main.bicepparam | head -n 55
