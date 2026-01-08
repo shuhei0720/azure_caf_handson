@@ -235,20 +235,15 @@ output subscriptionName string = subscriptionDisplayName
 ファイル `infrastructure/bicep/modules/management-groups/subscription-association.bicep` を作成：
 
 ```bicep
-targetScope = 'tenant'
-
-@description('Management Group ID')
-param managementGroupId string
+targetScope = 'managementGroup'
 
 @description('Subscription ID')
 param subscriptionId string
 
 resource subscriptionAssociation 'Microsoft.Management/managementGroups/subscriptions@2021-04-01' = {
-  scope: tenant()
-  name: '${managementGroupId}/${subscriptionId}'
+  name: subscriptionId
 }
 
-output managementGroupId string = managementGroupId
 output subscriptionId string = subscriptionId
 ```
 
@@ -281,8 +276,8 @@ module managementSubscription '../modules/subscriptions/subscription.bicep' = if
 // Management SubscriptionをManagement Groupに紐づけ
 module managementSubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = if (contains(subscriptions, 'management')) {
   name: 'deploy-mg-assoc-management'
+  scope: managementGroup('${companyPrefix}-platform-management')
   params: {
-    managementGroupId: '${companyPrefix}-platform-management'
     subscriptionId: managementSubscription.?outputs.?subscriptionId ?? ''
   }
   dependsOn: [
