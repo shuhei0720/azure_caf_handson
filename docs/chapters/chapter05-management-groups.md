@@ -384,6 +384,15 @@ output decommissionedMGId string = decommissionedMG.id
 
 ファイル `infrastructure/bicep/parameters/management-groups.parameters.json` を作成し、以下の内容を記述します：
 
+**注意：このファイルはなぜ .parameters.json 形式なのか**
+
+Management Groups のような複雑なネスト構造を持つリソースでは、`.parameters.json` 形式の方が適している場合があります：
+
+- **シンプルなパラメーター**: `.bicepparam` 形式を推奨（型安全性、IntelliSense）
+- **複雑なネスト構造**: `.parameters.json` 形式が適切（オブジェクト階層の記述が容易）
+
+この章では、会社プレフィックスのみをパラメーターとして受け取るため、実際にはどちらの形式でも問題ありませんが、複雑な構造の例として `.parameters.json` を使用しています。
+
 **management-groups.parameters.json の解説：**
 
 Management Groups デプロイ用のパラメータファイル。会社プレフィックスを指定し、この値がすべての Management Group 名に使用されます。
