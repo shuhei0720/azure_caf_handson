@@ -17,9 +17,6 @@
 作業を開始する前に、必ず適切なサブスクリプションを選択してください：
 
 ```bash
-# 環境変数を読み込み
-source .env
-
 # Management Subscriptionに切り替え
 az account set --subscription $SUB_MANAGEMENT_ID
 
@@ -414,15 +411,6 @@ az deployment sub create \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
-
-# Workspace IDを取得して環境変数に保存
-WORKSPACE_ID=$(az monitor log-analytics workspace show \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --workspace-name log-platform-prod-jpe-001 \
-  --query id -o tsv)
-
-echo "WORKSPACE_ID=$WORKSPACE_ID" >> .env
-echo "Log Analytics Workspace ID: $WORKSPACE_ID"
 
 echo "✅ Log Analytics Workspace が orchestration 経由でデプロイされました"
 ```
@@ -1025,15 +1013,12 @@ echo "✅ DCR for VM Insights が orchestration 経由でデプロイされま�
 #### DCR ID の取得と保存
 
 ```bash
-# リソースから直接DCR IDを取得
-DCR_VM_INSIGHTS_ID=$(az resource show \
+# 必要に応じてDCR IDを確認
+az resource show \
   --name dcr-vm-insights-prod-jpe-001 \
   --resource-group rg-platform-management-prod-jpe-001 \
   --resource-type "Microsoft.Insights/dataCollectionRules" \
-  --query id -o tsv)
-
-echo "DCR_VM_INSIGHTS_ID=$DCR_VM_INSIGHTS_ID" >> .env
-echo "VM Insights DCR ID: $DCR_VM_INSIGHTS_ID"
+  --query id -o tsv
 ```
 
 ### 7.4.2 DCR for Windows Event Logs and Syslog
@@ -1192,15 +1177,12 @@ echo "✅ DCR for OS Logs が orchestration 経由でデプロイされました
 #### DCR ID の取得と保存
 
 ```bash
-# リソースから直接DCR IDを取得
-DCR_OS_LOGS_ID=$(az resource show \
+# 必要に応じてDCR IDを確認
+az resource show \
   --name dcr-os-logs-prod-jpe-001 \
   --resource-group rg-platform-management-prod-jpe-001 \
   --resource-type "Microsoft.Insights/dataCollectionRules" \
-  --query id -o tsv)
-
-echo "DCR_OS_LOGS_ID=$DCR_OS_LOGS_ID" >> .env
-echo "OS Logs DCR ID: $DCR_OS_LOGS_ID"
+  --query id -o tsv
 ```
 
 ### 7.4.3 DCR の役割と今後の活用
