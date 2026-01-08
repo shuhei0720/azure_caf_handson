@@ -963,6 +963,9 @@ module dcrVMInsights '../modules/monitoring/dcr-vm-insights.bicep' = {
     managementRG
   ]
 }
+
+// Chapter 7: DCR Outputs
+output dcrVMInsightsId string = dcrVMInsights.outputs.dcrId
 ```
 
 #### What-If による事前確認
@@ -992,11 +995,16 @@ echo "✅ DCR for VM Insights が orchestration 経由でデプロイされま�
 #### DCR ID の取得と保存
 
 ```bash
-# DCR IDを取得
-DCR_VM_INSIGHTS_ID=$(az monitor data-collection rule show \
-  --name dcr-vm-insights-prod-jpe-001 \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --query id -o tsv)
+# デプロイ結果からDCR IDを取得
+DCR_VM_INSIGHTS_ID=$(az deployment sub show \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --query properties.outputs.dcrVMInsightsId.value -o tsv)
+
+# または、最新のデプロイから取得
+DCR_VM_INSIGHTS_ID=$(az deployment sub list \
+  --query "[?name starts_with(@, 'main-deployment-')].{name:name, time:properties.timestamp}" \
+  --output json | jq -r 'sort_by(.time) | last | .name' | \
+  xargs -I {} az deployment sub show --name {} --query properties.outputs.dcrVMInsightsId.value -o tsv)
 
 echo "DCR_VM_INSIGHTS_ID=$DCR_VM_INSIGHTS_ID" >> .env
 echo "VM Insights DCR ID: $DCR_VM_INSIGHTS_ID"
@@ -1126,6 +1134,9 @@ module dcrOSLogs '../modules/monitoring/dcr-os-logs.bicep' = {
     managementRG
   ]
 }
+
+// Chapter 7: DCR Outputs
+output dcrOSLogsId string = dcrOSLogs.outputs.dcrId
 ```
 
 #### What-If による事前確認
@@ -1155,11 +1166,12 @@ echo "✅ DCR for OS Logs が orchestration 経由でデプロイされました
 #### DCR ID の取得と保存
 
 ```bash
-# DCR IDを取得
-DCR_OS_LOGS_ID=$(az monitor data-collection rule show \
-  --name dcr-os-logs-prod-jpe-001 \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --query id -o tsv)
+# デプロイ結果からDCR IDを取得
+# または、最新のデプロイから取得
+DCR_OS_LOGS_ID=$(az deployment sub list \
+  --query "[?name starts_with(@, 'main-deployment-')].{name:name, time:properties.timestamp}" \
+  --output json | jq -r 'sort_by(.time) | last | .name' | \
+  xargs -I {} az deployment sub show --name {} --query properties.outputs.dcrOSLogsId.value -o tsv)
 
 echo "DCR_OS_LOGS_ID=$DCR_OS_LOGS_ID" >> .env
 echo "OS Logs DCR ID: $DCR_OS_LOGS_ID"
