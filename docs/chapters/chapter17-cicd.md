@@ -154,13 +154,14 @@ jobs:
             az bicep build --file $file
           done
 
-      - name: Bicep What-If (Hub VNet)
-        id: whatif-hubvnet
+      - name: Bicep What-If (Orchestration)
+        id: whatif-orchestration
         run: |
-          az deployment group what-if \
-            --resource-group rg-platform-connectivity-prod-jpe-001 \
-            --template-file infrastructure/bicep/modules/networking/hub-vnet.bicep \
-            --parameters infrastructure/bicep/parameters/hub-vnet.parameters.json \
+          az deployment sub what-if \
+            --name "main-deployment-whatif-$(date +%Y%m%d-%H%M%S)" \
+            --location japaneast \
+            --template-file infrastructure/bicep/orchestration/main.bicep \
+            --parameters infrastructure/bicep/orchestration/main.bicepparam \
             --result-format FullResourcePayloads
 
       - name: Comment PR
@@ -175,7 +176,7 @@ jobs:
             <details><summary>What-If Results</summary>
 
             \`\`\`
-            ${{ steps.whatif-hubvnet.outputs.stdout }}
+            ${{ steps.whatif-orchestration.outputs.stdout }}
             \`\`\`
 
             </details>
@@ -214,8 +215,8 @@ permissions:
   id-token: write
 
 jobs:
-  deploy-hub:
-    name: Deploy Hub Network
+  deploy-orchestration:
+    name: Deploy All Infrastructure via Orchestration
     runs-on: ubuntu-latest
     environment: production
 
@@ -228,105 +229,24 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy Hub VNet
-        id: deploy-hubvnet
+      - name: Deploy Orchestration (All Resources)
+        id: deploy-orchestration
         run: |
-          az deployment group create \
-            --name "hub-vnet-deployment-$(date +%Y%m%d-%H%M%S)" \
-            --resource-group rg-platform-connectivity-prod-jpe-001 \
-            --template-file infrastructure/bicep/modules/networking/hub-vnet.bicep \
-            --parameters infrastructure/bicep/parameters/hub-vnet.parameters.json
+          echo "✨ Deploying all resources via orchestration/main.bicep"
 
-      - name: Deploy Azure Firewall
-        id: deploy-firewall
-        run: |
-          FIREWALL_SUBNET_ID=$(az network vnet subnet show \
-            --vnet-name vnet-hub-prod-jpe-001 \
-            --name AzureFirewallSubnet \
-            --resource-group rg-platform-connectivity-prod-jpe-001 \
-            --query id -o tsv)
-
-          az deployment group create \
-            --name "firewall-deployment-$(date +%Y%m%d-%H%M%S)" \
-            --resource-group rg-platform-connectivity-prod-jpe-001 \
-            --template-file infrastructure/bicep/modules/networking/firewall.bicep \
-            --parameters \
-              firewallName=afw-hub-prod-jpe-001 \
-              location=japaneast \
-              firewallSubnetId="$FIREWALL_SUBNET_ID" \
-              skuTier=Standard
-
-      - name: Deploy Azure Bastion
-        id: deploy-bastion
-        run: |
-          BASTION_SUBNET_ID=$(az network vnet subnet show \
-            --vnet-name vnet-hub-prod-jpe-001 \
-            --name AzureBastionSubnet \
-            --resource-group rg-platform-connectivity-prod-jpe-001 \
-            --query id -o tsv)
-
-          az deployment group create \
-            --name "bastion-deployment-$(date +%Y%m%d-%H%M%S)" \
-            --resource-group rg-platform-connectivity-prod-jpe-001 \
-            --template-file infrastructure/bicep/modules/networking/bastion.bicep \
-            --parameters \
-              bastionName=bas-hub-prod-jpe-001 \
-              location=japaneast \
-              bastionSubnetId="$BASTION_SUBNET_ID" \
-              skuName=Standard
+          az deployment sub create \
+            --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+            --location japaneast \
+            --template-file infrastructure/bicep/orchestration/main.bicep \
+            --parameters infrastructure/bicep/orchestration/main.bicepparam
 
       - name: Deployment Summary
         run: |
-          echo "✅ Hub Network deployment completed"
-          echo "- Hub VNet: vnet-hub-prod-jpe-001"
-          echo "- Azure Firewall: afw-hub-prod-jpe-001"
-          echo "- Azure Bastion: bas-hub-prod-jpe-001"
-
-  deploy-security:
-    name: Deploy Security Resources
-    runs-on: ubuntu-latest
-    needs: deploy-hub
-    environment: production
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Azure Login
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Deploy Key Vault
-        run: |
-          MY_OBJECT_ID=$(az ad signed-in-user show --query id -o tsv)
-          MANAGEMENT_SUBNET_ID=$(az network vnet subnet show \
-            --vnet-name vnet-hub-prod-jpe-001 \
-            --name ManagementSubnet \
-            --resource-group rg-platform-connectivity-prod-jpe-001 \
-            --query id -o tsv)
-
-          az deployment group create \
-            --name "key-vault-deployment-$(date +%Y%m%d-%H%M%S)" \
-            --resource-group rg-platform-security-prod-jpe-001 \
-            --template-file infrastructure/bicep/modules/security/key-vault.bicep \
-            --parameters \
-              keyVaultName=kv-hub-prod-jpe-001 \
-              location=japaneast \
-              administratorObjectId="$MY_OBJECT_ID" \
-              publicNetworkAccess=Disabled \
-              subnetId="$MANAGEMENT_SUBNET_ID"
-
-      - name: Deploy Log Analytics
-        run: |
-          az deployment group create \
-            --name "log-analytics-deployment-$(date +%Y%m%d-%H%M%S)" \
-            --resource-group rg-platform-management-prod-jpe-001 \
-            --template-file infrastructure/bicep/modules/monitoring/log-analytics.bicep \
-            --parameters \
-              workspaceName=log-platform-prod-jpe-001 \
-              location=japaneast \
-              retentionInDays=90
+          echo "✅ Infrastructure deployment completed via orchestration"
+          echo "Deployed resources:"
+          echo "- Management: Log Analytics, Data Collection Rules"
+          echo "- Security: Key Vault, Defender for Cloud"
+          echo "- Connectivity: Hub VNet, Azure Firewall, Azure Bastion, Route Table"
 EOF
 ```
 
