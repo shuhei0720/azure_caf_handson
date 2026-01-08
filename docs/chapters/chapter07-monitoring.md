@@ -222,7 +222,6 @@ output resourceGroupId string = resourceGroup.id
 // Chapter 7: Monitoring
 // =============================================================================
 
-@description('Monitoring設定')
 param monitoring = {
   resourceGroup: {
     name: 'rg-platform-management-prod-jpe-001'
@@ -356,7 +355,6 @@ output customerId string = logAnalyticsWorkspace.properties.customerId
 ファイル `infrastructure/bicep/orchestration/main.bicepparam` を開き、`monitoring` セクションに追記：
 
 ```bicep
-@description('Monitoring設定')
 param monitoring = {
   resourceGroup: {
     name: 'rg-platform-management-prod-jpe-001'
@@ -859,7 +857,6 @@ output dcrName string = dcrVMInsights.name
 ファイル `infrastructure/bicep/orchestration/main.bicepparam` を開き、`monitoring` セクションに追記：
 
 ```bicep
-@description('Monitoring設定')
 param monitoring = {
   resourceGroup: {
     name: 'rg-platform-management-prod-jpe-001'

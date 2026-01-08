@@ -156,7 +156,6 @@ Hub Network 用の Resource Group を Bicep で作成します。
 // Chapter 13: Networking Hub
 // =============================================================================
 
-@description('Networking設定')
 param networking = {
   resourceGroup: {
     name: 'rg-platform-connectivity-prod-jpe-001'
@@ -346,7 +345,6 @@ output managementSubnetId string = hubVNet.properties.subnets[3].id
 ファイル `infrastructure/bicep/orchestration/main.bicepparam` を開き、`networking` セクションに追記：
 
 ```bicep
-@description('Networking設定')
 param networking = {
   resourceGroup: {
     name: 'rg-platform-connectivity-prod-jpe-001'
@@ -645,7 +643,6 @@ output firewallPolicyId string = firewallPolicy.id
 ファイル `infrastructure/bicep/orchestration/main.bicepparam` を開き、`networking` セクションに追記：
 
 ```bicep
-@description('Networking設定')
 param networking = {
   // ... 既存の設定 ...
   // 👇 13.4.3で追記
@@ -814,7 +811,6 @@ output bastionPublicIP string = bastionPublicIP.properties.ipAddress
 ファイル `infrastructure/bicep/orchestration/main.bicepparam` を開き、`networking` セクションに追記：
 
 ```bicep
-@description('Networking設定')
 param networking = {
   // ... 既存の設定 ...
   // 👇 13.5.3で追記
@@ -959,7 +955,6 @@ output routeTableName string = routeTable.name
 ファイル `infrastructure/bicep/orchestration/main.bicepparam` を開き、`networking` セクションに追記：
 
 ```bicep
-@description('Networking設定')
 param networking = {
   // ... 既存の設定 ...
   // 👇 13.6.2で追記

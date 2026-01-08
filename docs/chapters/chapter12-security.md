@@ -197,7 +197,6 @@ output securityContactEmail string = securityContactEmail
 // Chapter 12: Security
 // =============================================================================
 
-@description('Security設定')
 param security = {
   defender: {
     plans: [
@@ -379,7 +378,6 @@ echo "My Object ID: $MY_OBJECT_ID"
 ファイル `infrastructure/bicep/orchestration/main.bicepparam` を開き、`security` セクションに追記：
 
 ```bicep
-@description('Security設定')
 param security = {
   defender: {
     plans: [
