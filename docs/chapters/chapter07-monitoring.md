@@ -557,7 +557,7 @@ grep -A 50 'tableNames:' infrastructure/bicep/orchestration/main.bicepparam | he
 
 ```bicep
 // Chapter 7: Log Analytics Table Retention
-module tableRetention '../modules/monitoring/log-analytics-table-retention.bicep' = if (contains(monitoring.tableRetention, 'enabled') ? monitoring.tableRetention.enabled : false) {
+module tableRetention '../modules/monitoring/log-analytics-table-retention.bicep' = if (monitoring.tableRetention.enabled) {
   name: 'deploy-table-retention'
   scope: resourceGroup(monitoring.resourceGroup.name)
   params: {
