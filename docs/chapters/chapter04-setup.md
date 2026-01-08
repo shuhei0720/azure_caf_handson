@@ -319,12 +319,15 @@ param resourceGroupName string = 'rg-caf-handson-test'
 @description('デプロイ先のリージョン')
 param location string = 'japaneast'
 
+@description('作成日（自動生成）')
+param createdDate string = utcNow('yyyy-MM-dd')
+
 @description('タグ')
 param tags object = {
   Environment: 'Test'
   Project: 'CAF-Handson'
   ManagedBy: 'Bicep'
-  CreatedDate: utcNow('yyyy-MM-dd')
+  CreatedDate: createdDate
 }
 
 // リソースグループの作成
@@ -692,8 +695,8 @@ targetScope = 'tenant'
 // パラメータ定義
 // =============================================================================
 
-@description('ルートManagement Groupの表示名')
-param rootManagementGroupDisplayName string = 'Contoso'
+@description('デプロイ日時（自動生成）')
+param deployedAt string = utcNow()
 
 // Chapter 5で追加予定:
 // - Management Groups階層定義
@@ -709,7 +712,7 @@ param rootManagementGroupDisplayName string = 'Contoso'
 
 output deploymentInfo object = {
   scope: 'tenant'
-  deployedAt: utcNow()
+  deployedAt: deployedAt
 }
 ```
 
@@ -726,9 +729,6 @@ using './tenant.bicep'
 // =============================================================================
 // Management Groups設定
 // =============================================================================
-
-@description('ルートManagement Groupの表示名')
-param rootManagementGroupDisplayName = 'Contoso'
 
 // Chapter 5で追記予定:
 // param managementGroups = { ... }
@@ -759,6 +759,9 @@ param environment string
 @description('共通タグ')
 param tags object
 
+@description('デプロイ日時（自動生成）')
+param deployedAt string = utcNow()
+
 // 以降、各章でパラメータを追加予定:
 // - Chapter 7: Monitoring (monitoring object)
 // - Chapter 12: Security (security object)
@@ -777,7 +780,7 @@ param tags object
 output deploymentInfo object = {
   location: location
   environment: environment
-  deployedAt: utcNow()
+  deployedAt: deployedAt
 }
 ```
 
