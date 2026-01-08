@@ -623,12 +623,19 @@ Scope: /
 What-If で問題がないことを確認したら、実際にデプロイを実行します。
 
 ```bash
+# デプロイ名を変数に保存（重要：タイムスタンプが変わらないように）
+DEPLOYMENT_NAME="mg-deployment-$(date +%Y%m%d-%H%M%S)"
+
+echo "Deploying Management Groups..."
+
 # デプロイ実行
 az deployment tenant create \
-  --name "mg-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --name "$DEPLOYMENT_NAME" \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/tenant.bicep \
   --parameters infrastructure/bicep/orchestration/tenant.bicepparam
+
+echo "Deployment name: $DEPLOYMENT_NAME"
 ```
 
 デプロイには数分かかります。
@@ -640,11 +647,22 @@ az deployment tenant create \
 ```bash
 # デプロイの状態を確認
 az deployment tenant show \
-  --name mg-deployment-20260107-120000 \
+  --name "$DEPLOYMENT_NAME" \
   --query properties.provisioningState
+
+# 出力: "Succeeded"
 ```
 
 「Succeeded」と表示されればデプロイ成功です。
+
+**代替方法**: デプロイから時間が経過している場合は、以下のコマンドで最新のデプロイを確認できます：
+
+```bash
+# 最新のテナントレベルデプロイを確認
+az deployment tenant list \
+  --query "[?contains(name, 'mg-deployment')].{Name:name, State:properties.provisioningState, Time:properties.timestamp}" \
+  --output table | head -5
+```
 
 ---
 
