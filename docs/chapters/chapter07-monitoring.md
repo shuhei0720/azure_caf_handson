@@ -2152,40 +2152,9 @@ echo "✅ マネージドIDにOwner権限を付与しました"
 
 ---
 
-## 7.9 Azure Automation の構築
+## 7.9 Key Vault の構築
 
-```mermaid
-graph LR
-    subgraph "スケジュール"
-        S[毎日 20:00<br/>JST]
-    end
-
-    subgraph "Automation Account"
-        R[Runbook:<br/>Stop-SandboxVMs]
-        MI[System-assigned<br/>Managed Identity]
-    end
-
-    subgraph "Sandbox Subscription"
-        VM1[VM: sandbox-vm-001]
-        VM2[VM: sandbox-vm-002]
-        VM3[VM: sandbox-vm-003]
-    end
-
-    S -->|トリガー| R
-    R -->|認証| MI
-    MI -->|Contributor権限| VM1
-    MI -->|Contributor権限| VM2
-    MI -->|Contributor権限| VM3
-
-    VM1 -->|シャットダウン| D[Deallocated]
-    VM2 -->|シャットダウン| D
-    VM3 -->|シャットダウン| D
-
-    style R fill:#ffe6cc
-    style D fill:#ffcccc
-```
-
-### 7.9.1 Key Vault の作成
+### 7.9.1 Key Vault とは
 
 **Azure Key Vault** は、シークレット、暗号化キー、証明書を安全に保管・管理するサービスです。Automation の GitHub Personal Access Token を Key Vault に保管します。
 
@@ -2279,7 +2248,7 @@ output keyVaultName string = keyVault.outputs.keyVaultName
 
 **注意**: Key Vault 名（`kv-mgmt-prod-jpe-001`）はグローバルで一意である必要があります。既に使用されている場合は別の名前に変更してください。
 
-#### Key Vault のデプロイ
+### 7.9.2 Key Vault のデプロイ
 
 ```bash
 # Management Subscription にデプロイ
@@ -2312,7 +2281,7 @@ KEY_VAULT_NAME=$(az deployment sub show \
 echo "Key Vault Name: $KEY_VAULT_NAME"
 ```
 
-#### 自分に Key Vault Secrets Officer ロールを付与
+### 7.9.3 Key Vault Secrets Officer ロールの付与
 
 ```bash
 # 自分のオブジェクトIDを取得
@@ -2333,7 +2302,42 @@ echo "✅ Key Vault Secrets Officer権限を付与しました"
 - **Key Vault Secrets Officer**: シークレットの読み書きが可能
 - Automation Account には後でシークレット読み取り権限を付与
 
-### 7.9.2 Azure Automation とは
+---
+
+## 7.10 Azure Automation の構築
+
+```mermaid
+graph LR
+    subgraph "スケジュール"
+        S[毎日 20:00<br/>JST]
+    end
+
+    subgraph "Automation Account"
+        R[Runbook:<br/>Stop-SandboxVMs]
+        MI[System-assigned<br/>Managed Identity]
+    end
+
+    subgraph "Sandbox Subscription"
+        VM1[VM: sandbox-vm-001]
+        VM2[VM: sandbox-vm-002]
+        VM3[VM: sandbox-vm-003]
+    end
+
+    S -->|トリガー| R
+    R -->|認証| MI
+    MI -->|Contributor権限| VM1
+    MI -->|Contributor権限| VM2
+    MI -->|Contributor権限| VM3
+
+    VM1 -->|シャットダウン| D[Deallocated]
+    VM2 -->|シャットダウン| D
+    VM3 -->|シャットダウン| D
+
+    style R fill:#ffe6cc
+    style D fill:#ffcccc
+```
+
+### 7.10.1 Azure Automation とは
 
 **Azure Automation** は、定期的なタスクを自動化するサービスです。本章では、コスト最適化のために **Sandbox Subscription のすべての VM を毎晩 20:00 に自動停止** する仕組みを構築します。
 
@@ -2349,7 +2353,7 @@ echo "✅ Key Vault Secrets Officer権限を付与しました"
 - **Schedule**: 毎日 20:00 (JST) に自動実行
 - **Managed Identity**: Sandbox Subscription への権限付与
 
-### 7.9.3 Automation Account モジュールの作成
+### 7.10.2 Automation Account モジュールの作成
 
 Automation Account を Management Subscription に作成します。集中管理の観点から、監視・運用ツールは Management Subscription に配置します。
 
@@ -2394,7 +2398,7 @@ output automationAccountName string = automationAccount.name
 output principalId string = automationAccount.identity.principalId
 ```
 
-### 7.9.4 オーケストレーションへのモジュール追加
+### 7.10.3 オーケストレーションへのモジュール追加
 
 `infrastructure/bicep/orchestration/main.bicep` に Automation Account モジュールを追加します：
 
@@ -2417,7 +2421,7 @@ output automationAccountId string = automationAccount.outputs.automationAccountI
 output automationPrincipalId string = automationAccount.outputs.principalId
 ```
 
-### 7.9.5 What-If による事前確認
+### 7.10.4 What-If による事前確認
 
 ```bash
 # Management Subscription にデプロイ
@@ -2431,7 +2435,7 @@ az deployment sub what-if \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
 ```
 
-### 7.9.5 デプロイ実行
+### 7.10.5 デプロイ実行
 
 ```bash
 # Management Subscription で実行
@@ -2457,7 +2461,9 @@ grep -q "AUTOMATION_PRINCIPAL_ID=" .env || echo "AUTOMATION_PRINCIPAL_ID=$AUTOMA
 echo "Automation Account Principal ID: $AUTOMATION_PRINCIPAL_ID"
 ```
 
-### 7.9.6 Sandbox 管理グループへの権限付与
+### 7.10.5 デプロイ実行
+
+### 7.10.6 Sandbox 管理グループへの権限付与
 
 Automation Account の Managed Identity に対して、**Sandbox 管理グループ**に **Virtual Machine Contributor** 権限を付与します。これにより、Runbook が Sandbox 配下のすべての VM を停止できるようになります。
 
@@ -2567,7 +2573,7 @@ echo "✅ Automation AccountにSandbox管理グループのVirtual Machine Contr
 - **Scope**: Sandbox 管理グループ（配下の全サブスクリプションに適用）
 - **用途**: 夜間の自動シャットダウン
 
-### 7.9.8 Runbook モジュールの作成
+### 7.10.7 Runbook モジュールの作成
 
 Runbook リソースを Bicep で管理します。スクリプト内容は GitHub で管理し、Source Control 統合で自動同期します。
 
@@ -2740,7 +2746,7 @@ output runbookId string = runbook.id
 
 **注意**: `publishContentLink` はダミーの URL です。実際の Runbook スクリプトは Source Control 統合で GitHub から自動同期されます。
 
-### 7.9.9 Source Control モジュールの作成
+### 7.10.8 Source Control モジュールの作成
 
 **CAF ベストプラクティス**: Source Control 統合も Bicep で管理することで、GitHub 連携設定を Infrastructure as Code として管理できます。
 
@@ -2797,7 +2803,7 @@ output sourceControlId string = sourceControl.id
 
 **注意**: Source Control には GitHub Personal Access Token が必要ですが、Bicep では機密情報として設定できないため、デプロイ後に AZ CLI で設定します。
 
-### 7.9.10 オーケストレーションへの統合
+### 7.10.9 オーケストレーションへの統合
 
 `infrastructure/bicep/orchestration/main.bicep` の Automation Account セクションを更新します：
 
@@ -2866,46 +2872,7 @@ output runbookName string = runbook.outputs.runbookName
 param automationPrincipalId = '' // デプロイ後に設定
 ```
 
-### 7.9.11 GitHub Personal Access Token の Key Vault 保管
-
-```bash
-# Management Subscription にデプロイ
-az account set --subscription $SUB_MANAGEMENT_ID
-
-# 事前確認
-az deployment sub what-if \
-  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
-  --location japaneast \
-  --template-file infrastructure/bicep/orchestration/main.bicep \
-  --parameters infrastructure/bicep/orchestration/main.bicepparam
-```
-
-### 7.9.6 デプロイ実行
-
-```bash
-# デプロイ実行
-DEPLOYMENT_NAME="main-deployment-$(date +%Y%m%d-%H%M%S)"
-
-az deployment sub create \
-  --name "$DEPLOYMENT_NAME" \
-  --location japaneast \
-  --template-file infrastructure/bicep/orchestration/main.bicep \
-  --parameters infrastructure/bicep/orchestration/main.bicepparam
-
-echo "✅ Runbook、Source Control統合をデプロイしました"
-```
-
-次に、Automation Identity の Principal ID を取得します：
-
-```bash
-# Automation Identity の Principal ID を取得
-AUTOMATION_PRINCIPAL_ID=$(az deployment sub show \
-  --name "$DEPLOYMENT_NAME" \
-  --query 'properties.outputs.automationPrincipalId.value' \
-  --output tsv)
-
-echo "Automation Principal ID: $AUTOMATION_PRINCIPAL_ID"
-```
+### 7.10.10 GitHub Personal Access Token の Key Vault 保管
 
 **CAF ベストプラクティス**: GitHub Personal Access Token のような機密情報は Key Vault に保管し、Automation Account から安全にアクセスします。
 
@@ -2980,7 +2947,7 @@ echo "✅ GitHubからRunbookを同期しました"
 - Automation Account は Managed Identity で Key Vault にアクセス
 - トークンは環境変数から即座に削除（unset）
 
-### 7.9.12 スケジュールの作成
+### 7.10.11 スケジュールの作成
 
 毎日夜 8 時（20:00 JST）に Runbook を実行するスケジュールを作成します。
 
@@ -3018,7 +2985,7 @@ echo "次回実行予定: 2026-01-09 20:00 (JST)"
 - **対象**: Sandbox Subscription のすべての VM
 - **コスト削減**: 約 12 時間/日 × VM 台数 分のコスト削減
 
-### 7.9.13 Azure Portal での確認
+### 7.10.12 Azure Portal での確認
 
 デプロイ後、Azure Portal で以下を確認します:
 
@@ -3072,7 +3039,7 @@ echo "次回実行予定: 2026-01-09 20:00 (JST)"
 
 ---
 
-## 7.10 コスト管理
+## 7.11 コスト管理
 
 ### 7.10.1 リソース別のコスト
 
@@ -3092,7 +3059,7 @@ echo "次回実行予定: 2026-01-09 20:00 (JST)"
 
 ---
 
-## 7.11 Git へのコミット
+## 7.12 Git へのコミット
 
 ```bash
 git add .
@@ -3112,7 +3079,7 @@ git push origin main
 
 ---
 
-## 7.12 章のまとめ
+## 7.13 章のまとめ
 
 本章で構築したもの：
 
