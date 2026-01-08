@@ -986,6 +986,12 @@ az deployment sub create \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
 
+echo "✅ DCR for VM Insights が orchestration 経由でデプロイされました"
+```
+
+#### DCR ID の取得と保存
+
+```bash
 # DCR IDを取得
 DCR_VM_INSIGHTS_ID=$(az monitor data-collection rule show \
   --name dcr-vm-insights-prod-jpe-001 \
@@ -994,8 +1000,6 @@ DCR_VM_INSIGHTS_ID=$(az monitor data-collection rule show \
 
 echo "DCR_VM_INSIGHTS_ID=$DCR_VM_INSIGHTS_ID" >> .env
 echo "VM Insights DCR ID: $DCR_VM_INSIGHTS_ID"
-
-echo "✅ DCR for VM Insights が orchestration 経由でデプロイされました"
 ```
 
 ### 7.4.2 DCR for Windows Event Logs and Syslog
@@ -1145,6 +1149,12 @@ az deployment sub create \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
 
+echo "✅ DCR for OS Logs が orchestration 経由でデプロイされました"
+```
+
+#### DCR ID の取得と保存
+
+```bash
 # DCR IDを取得
 DCR_OS_LOGS_ID=$(az monitor data-collection rule show \
   --name dcr-os-logs-prod-jpe-001 \
@@ -1153,8 +1163,6 @@ DCR_OS_LOGS_ID=$(az monitor data-collection rule show \
 
 echo "DCR_OS_LOGS_ID=$DCR_OS_LOGS_ID" >> .env
 echo "OS Logs DCR ID: $DCR_OS_LOGS_ID"
-
-echo "✅ DCR for OS Logs が orchestration 経由でデプロイされました"
 ```
 
 ### 7.4.3 DCR の役割と今後の活用
