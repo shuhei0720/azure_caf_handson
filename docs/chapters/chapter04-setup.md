@@ -815,7 +815,7 @@ param tags = {
 // 各章で追記予定のセクション
 // =============================================================================
 
-// Chapter 5: Management Groups (tenant.bicep)
+// Chapter 5/6: Management Groups & Subscriptions → tenant.bicepparam を使用
 
 // Chapter 7: Monitoring
 // param monitoring = { ... }
