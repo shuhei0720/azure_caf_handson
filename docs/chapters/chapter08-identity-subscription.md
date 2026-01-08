@@ -109,7 +109,17 @@ using '../subscriptions/sub-identity.bicep'
 param billingScope = '/providers/Microsoft.Billing/billingAccounts/your-billing-account-id/enrollmentAccounts/your-enrollment-account-id'
 ```
 
-**重要：** `billingScope` の値は、第 4 章で取得した `$BILLING_SCOPE` の値に置き換えてください。
+**重要：** `billingScope` の値を置き換えてください。以下のコマンドで取得した値を使用します：
+
+```bash
+# Billing Scopeの値を確認（第6章で取得済み）
+echo $BILLING_SCOPE
+
+# 出力例：
+# /providers/Microsoft.Billing/billingAccounts/12345678/billingProfiles/ABCD-EFGH-001/invoiceSections/IJKL-MNOP-002
+```
+
+この値をパラメーターファイルの `billingScope` に設定します。
 
 ### 8.2.3 Bicep のデプロイ（10-15 分）
 
@@ -173,7 +183,17 @@ param managementGroupName = 'contoso-platform-identity'
 param subscriptionId = 'YOUR_IDENTITY_SUBSCRIPTION_ID'
 ```
 
-**重要：** `subscriptionId` の値は、前手順で取得した Identity Subscription ID（`$SUB_IDENTITY_ID`）に置き換えてください。
+**重要：** `subscriptionId` の値を置き換えてください。以下のコマンドで取得した Identity Subscription ID を使用します：
+
+```bash
+# Identity Subscription IDの値を確認（前のセクションで取得済み）
+echo $SUB_IDENTITY_ID
+
+# 出力例：
+# 23456789-2345-2345-2345-234567890123
+```
+
+この値をパラメーターファイルの `subscriptionId` に設定します。
 
 第 6 章で作成した Bicep モジュールを使用します：
 
