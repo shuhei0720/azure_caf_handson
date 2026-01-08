@@ -1475,16 +1475,13 @@ resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-pre
 
 ```bicep
 // Chapter 7: Subscription Diagnostic Settings
-module subscriptionDiagnostics 'modules/monitoring/subscription-diagnostic-settings.bicep' = {
+module subscriptionDiagnostics '../modules/monitoring/subscription-diagnostic-settings.bicep' = {
   name: 'deploy-subscription-diagnostics'
   scope: subscription()
   params: {
     workspaceId: logAnalytics.outputs.workspaceId
     diagnosticSettingName: 'send-to-log-analytics'
   }
-  dependsOn: [
-    logAnalytics
-  ]
 }
 ```
 
@@ -1694,7 +1691,7 @@ output diagnosticSettingId string = diagnosticSetting.id
 
 ```bicep
 // Chapter 7: Log Analytics Diagnostics
-module logAnalyticsDiagnostics 'modules/monitoring/log-analytics-diagnostics.bicep' = {
+module logAnalyticsDiagnostics '../modules/monitoring/log-analytics-diagnostics.bicep' = {
   name: 'deploy-log-analytics-diagnostics'
   scope: resourceGroup(monitoring.resourceGroup.name)
   params: {
@@ -1702,9 +1699,6 @@ module logAnalyticsDiagnostics 'modules/monitoring/log-analytics-diagnostics.bic
     destinationWorkspaceId: logAnalytics.outputs.workspaceId
     diagnosticSettingName: 'send-to-log-analytics'
   }
-  dependsOn: [
-    logAnalytics
-  ]
 }
 ```
 
@@ -1896,7 +1890,7 @@ output clientId string = managedIdentity.properties.clientId
 
 ```bicep
 // Chapter 7: Policy Managed Identity
-module policyIdentity 'modules/identity/managed-identity.bicep' = {
+module policyIdentity '../modules/identity/managed-identity.bicep' = {
   name: 'deploy-policy-identity'
   scope: resourceGroup(monitoring.resourceGroup.name)
   params: {
@@ -1906,9 +1900,6 @@ module policyIdentity 'modules/identity/managed-identity.bicep' = {
       Purpose: 'Policy Assignment'
     })
   }
-  dependsOn: [
-    managementRG
-  ]
 }
 ```
 
@@ -2131,7 +2122,7 @@ output principalId string = automationAccount.identity.principalId
 
 ```bicep
 // Chapter 7: Automation Account
-module automationAccount 'modules/automation/automation-account.bicep' = {
+module automationAccount '../modules/automation/automation-account.bicep' = {
   name: 'deploy-automation-account'
   scope: resourceGroup(monitoring.resourceGroup.name)
   params: {
@@ -2141,9 +2132,6 @@ module automationAccount 'modules/automation/automation-account.bicep' = {
       Purpose: 'Automation and Runbooks'
     })
   }
-  dependsOn: [
-    managementRG
-  ]
 }
 ```
 
