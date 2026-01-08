@@ -221,6 +221,15 @@ output subscriptionId string = subManagement.properties.subscriptionId
 DEPLOYMENT_NAME="deploy-sub-management-$(date +%Y%m%d-%H%M%S)"
 
 echo "Creating Management Subscription..."
+
+# 事前確認
+az deployment tenant what-if \
+  --name "$DEPLOYMENT_NAME" \
+  --location japaneast \
+  --template-file infrastructure/bicep/subscriptions/sub-management.bicep \
+  --parameters billingScope="$BILLING_SCOPE"
+
+# 確認後、デプロイ実行
 az deployment tenant create \
   --name "$DEPLOYMENT_NAME" \
   --location japaneast \

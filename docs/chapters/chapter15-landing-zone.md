@@ -367,7 +367,14 @@ cat << EOF > infrastructure/bicep/parameters/spoke-vnet.parameters.json
 }
 EOF
 
-# Spoke VNetをデプロイ
+# 事前確認
+az deployment group what-if \
+  --name "spoke-vnet-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-landingzone-app1-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/networking/spoke-vnet.bicep \
+  --parameters infrastructure/bicep/parameters/spoke-vnet.parameters.json
+
+# 確認後、デプロイ実行
 az deployment group create \
   --name "spoke-vnet-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
@@ -380,6 +387,17 @@ SPOKE_VNET_ID=$(az network vnet show \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
   --query id -o tsv)
 
+# 事前確認
+az deployment group what-if \
+  --name "hub-to-spoke-peering-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-connectivity-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/networking/hub-to-spoke-peering.bicep \
+  --parameters \
+    hubVNetName=vnet-hub-prod-jpe-001 \
+    spokeVNetId="$SPOKE_VNET_ID" \
+    peeringName=hub-to-spoke-app1
+
+# 確認後、デプロイ実行
 az deployment group create \
   --name "hub-to-spoke-peering-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-connectivity-prod-jpe-001 \
@@ -453,6 +471,18 @@ APP_SUBNET_ID=$(az network vnet subnet show \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
   --query id -o tsv)
 
+# 事前確認
+az deployment group what-if \
+  --name "container-apps-env-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-landingzone-app1-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/compute/container-apps-environment.bicep \
+  --parameters \
+    environmentName=cae-app1-prod-jpe-001 \
+    location=japaneast \
+    logAnalyticsWorkspaceId="$LOG_WORKSPACE_ID" \
+    infrastructureSubnetId="$APP_SUBNET_ID"
+
+# 確認後、デプロイ実行
 az deployment group create \
   --name "container-apps-env-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
@@ -593,7 +623,16 @@ resource vnetLinks 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-0
 output privateDnsZoneId string = privateDnsZone.id
 EOF
 
-# PostgreSQL用のPrivate DNS Zoneを作成
+# 事前確認
+az deployment group what-if \
+  --name "postgres-private-dns-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-landingzone-app1-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/networking/private-dns-zone.bicep \
+  --parameters \
+    zoneName=privatelink.postgres.database.azure.com \
+    vnetIds="[\"$SPOKE_VNET_ID\",\"$HUB_VNET_ID\"]"
+
+# 確認後、デプロイ実行
 az deployment group create \
   --name "postgres-private-dns-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
@@ -619,7 +658,23 @@ POSTGRES_DNS_ZONE_ID=$(az network private-dns zone show \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
   --query id -o tsv)
 
-# PostgreSQLをデプロイ
+# 事前確認
+az deployment group what-if \
+  --name "postgresql-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-landingzone-app1-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/data/postgresql.bicep \
+  --parameters \
+    serverName=psql-app1-prod-jpe-001 \
+    location=japaneast \
+    administratorLogin=psqladmin \
+    administratorLoginPassword='P@ssw0rd1234!' \
+    delegatedSubnetId="$DATA_SUBNET_ID" \
+    privateDnsZoneId="$POSTGRES_DNS_ZONE_ID" \
+    postgresqlVersion=16 \
+    skuName=Standard_B1ms \
+    storageSizeGB=32
+
+# 確認後、デプロイ実行
 az deployment group create \
   --name "postgresql-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
@@ -716,7 +771,19 @@ output redisHostName string = redisCache.properties.hostName
 output redisPort int = redisCache.properties.sslPort
 EOF
 
-# デプロイ
+# 事前確認
+az deployment group what-if \
+  --name "redis-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-landingzone-app1-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/data/redis-cache.bicep \
+  --parameters \
+    redisCacheName=redis-app1-prod-jpe-001 \
+    location=japaneast \
+    skuName=Standard \
+    skuFamily=C \
+    skuCapacity=1
+
+# 確認後、デプロイ実行
 az deployment group create \
   --name "redis-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
@@ -823,7 +890,17 @@ output registryName string = containerRegistry.name
 output loginServer string = containerRegistry.properties.loginServer
 EOF
 
-# デプロイ
+# 事前確認
+az deployment group what-if \
+  --name "acr-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-landingzone-app1-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/compute/container-registry.bicep \
+  --parameters \
+    registryName=acrcafapp1prodjpe001 \
+    location=japaneast \
+    skuName=Premium
+
+# 確認後、デプロイ実行
 az deployment group create \
   --name "acr-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-landingzone-app1-prod-jpe-001 \

@@ -849,7 +849,26 @@ CAE_ID=$(az containerapp env show \
   --resource-group rg-landingzone-app1-prod-jpe-001 \
   --query id -o tsv)
 
-# デプロイ
+# 事前確認
+az deployment group what-if \
+  --name "container-app-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-landingzone-app1-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/compute/container-app.bicep \
+  --parameters \
+    appName=ca-taskmanager-prod-jpe-001 \
+    location=japaneast \
+    environmentId="$CAE_ID" \
+    containerImage=acrcafapp1prodjpe001.azurecr.io/task-manager:v1.0.0 \
+    registryServer=acrcafapp1prodjpe001.azurecr.io \
+    environmentVariables="[
+      {\"name\":\"DATABASE_URL\",\"value\":\"postgresql://psqladmin:P%40ssw0rd1234%21@psql-app1-prod-jpe-001.postgres.database.azure.com:5432/appdb?sslmode=require\"},
+      {\"name\":\"REDIS_HOST\",\"value\":\"redis-app1-prod-jpe-001.redis.cache.windows.net\"},
+      {\"name\":\"REDIS_PORT\",\"value\":\"6380\"},
+      {\"name\":\"REDIS_PASSWORD\",\"value\":\"$REDIS_PASSWORD\"},
+      {\"name\":\"REDIS_TLS\",\"value\":\"true\"}
+    ]"
+
+# 確認後、デプロイ実行
 az deployment group create \
   --name "container-app-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-landingzone-app1-prod-jpe-001 \

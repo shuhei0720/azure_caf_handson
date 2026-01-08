@@ -205,6 +205,17 @@ output customerId string = logAnalyticsWorkspace.properties.customerId
 デプロイ：
 
 ```bash
+# 事前確認
+az deployment group what-if \
+  --name "log-analytics-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/monitoring/log-analytics.bicep \
+  --parameters \
+    workspaceName=log-platform-prod-jpe-001 \
+    location=japaneast \
+    retentionInDays=90
+
+# 確認後、デプロイ実行
 az deployment group create \
   --name "log-analytics-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
@@ -311,6 +322,17 @@ output dcrName string = dcrVMInsights.name
 デプロイ：
 
 ```bash
+# 事前確認
+az deployment group what-if \
+  --name "dcr-vm-insights-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/monitoring/dcr-vm-insights.bicep \
+  --parameters \
+    dcrName=dcr-vm-insights-prod-jpe-001 \
+    location=japaneast \
+    workspaceId="$WORKSPACE_ID"
+
+# 確認後、デプロイ実行
 az deployment group create \
   --name "dcr-vm-insights-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
@@ -434,6 +456,17 @@ output dcrName string = dcrOSLogs.name
 デプロイ：
 
 ```bash
+# 事前確認
+az deployment group what-if \
+  --name "dcr-os-logs-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/monitoring/dcr-os-logs.bicep \
+  --parameters \
+    dcrName=dcr-os-logs-prod-jpe-001 \
+    location=japaneast \
+    workspaceId="$WORKSPACE_ID"
+
+# 確認後、デプロイ実行
 az deployment group create \
   --name "dcr-os-logs-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
@@ -512,6 +545,15 @@ resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-pre
 # Management Subscription で実行
 az account set --subscription $SUB_MANAGEMENT_ID
 
+# 事前確認
+az deployment sub what-if \
+  --name "sub-diagnostics-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/modules/monitoring/subscription-diagnostic-settings.bicep \
+  --parameters \
+    workspaceId=$LOG_WORKSPACE_ID
+
+# 確認後、デプロイ実行
 az deployment sub create \
   --name "sub-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
@@ -562,6 +604,16 @@ output clientId string = managedIdentity.properties.clientId
 # Management Subscription で実行
 az account set --subscription $SUB_MANAGEMENT_ID
 
+# 事前確認
+az deployment group what-if \
+  --name "policy-identity-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/identity/managed-identity.bicep \
+  --parameters \
+    identityName=id-policy-assignment-prod-jpe-001 \
+    location=japaneast
+
+# 確認後、デプロイ実行
 DEPLOYMENT_OUTPUT=$(az deployment group create \
   --name "policy-identity-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
@@ -612,6 +664,15 @@ output roleAssignmentId string = roleAssignment.id
 
 ```bash
 # Management Subscription に Owner 権限を付与
+# 事前確認
+az deployment sub what-if \
+  --name "policy-identity-owner-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/modules/identity/role-assignment-owner.bicep \
+  --parameters \
+    principalId=$POLICY_IDENTITY_PRINCIPAL_ID
+
+# 確認後、デプロイ実行
 az deployment sub create \
   --name "policy-identity-owner-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
@@ -671,6 +732,16 @@ output diagnosticSettingId string = diagnosticSetting.id
 
 ```bash
 # Log Analytics Workspace の診断設定を適用
+# 事前確認
+az deployment group what-if \
+  --name "log-diagnostics-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/monitoring/log-analytics-diagnostics.bicep \
+  --parameters \
+    workspaceName=log-platform-prod-jpe-001 \
+    destinationWorkspaceId=$LOG_WORKSPACE_ID
+
+# 確認後、デプロイ実行
 az deployment group create \
   --name "log-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
@@ -723,6 +794,16 @@ output diagnosticSettingId string = diagnosticSetting.id
 
 ```bash
 # VM Insights DCR の診断設定
+# 事前確認
+az deployment group what-if \
+  --name "dcr-vm-insights-diagnostics-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep \
+  --parameters \
+    dcrName=dcr-vm-insights-prod-jpe-001 \
+    destinationWorkspaceId=$LOG_WORKSPACE_ID
+
+# 確認後、デプロイ実行
 az deployment group create \
   --name "dcr-vm-insights-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
@@ -732,6 +813,16 @@ az deployment group create \
     destinationWorkspaceId=$LOG_WORKSPACE_ID
 
 # OS Logs DCR の診断設定
+# 事前確認
+az deployment group what-if \
+  --name "dcr-os-logs-diagnostics-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep \
+  --parameters \
+    dcrName=dcr-os-logs-prod-jpe-001 \
+    destinationWorkspaceId=$LOG_WORKSPACE_ID
+
+# 確認後、デプロイ実行
 az deployment group create \
   --name "dcr-os-logs-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
@@ -813,6 +904,16 @@ output principalId string = managedIdentity.identity.principalId
 
 ```bash
 # デプロイ
+# 事前確認
+az deployment group what-if \
+  --name "automation-account-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/automation/automation-account.bicep \
+  --parameters \
+    automationAccountName=aa-platform-prod-jpe-001 \
+    location=japaneast
+
+# 確認後、デプロイ実行
 az deployment group create \
   --name "automation-account-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \

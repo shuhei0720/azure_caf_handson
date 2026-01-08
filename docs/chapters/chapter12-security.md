@@ -378,7 +378,14 @@ cat << EOF > infrastructure/bicep/parameters/key-vault.parameters.json
 }
 EOF
 
-# デプロイ
+# 事前確認
+az deployment group what-if \
+  --name "key-vault-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-security-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/security/key-vault.bicep \
+  --parameters infrastructure/bicep/parameters/key-vault.parameters.json
+
+# 確認後、デプロイ実行
 az deployment group create \
   --name "key-vault-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-security-prod-jpe-001 \
@@ -449,7 +456,16 @@ output ddosProtectionPlanName string = ddosProtectionPlan.name
 ### 12.4.3 VNet への DDoS Protection 適用
 
 ```bash
-# DDoS Protection Planをデプロイ
+# 事前確認
+az deployment group what-if \
+  --name "ddos-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-security-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/security/ddos-protection.bicep \
+  --parameters \
+    ddosProtectionPlanName=ddos-hub-prod-jpe-001 \
+    location=japaneast
+
+# 確認後、デプロイ実行
 az deployment group create \
   --name "ddos-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-security-prod-jpe-001 \

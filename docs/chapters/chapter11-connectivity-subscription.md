@@ -108,6 +108,15 @@ output subscriptionId string = subConnectivity.properties.subscriptionId
 
 ```bash
 echo "Creating Connectivity Subscription..."
+
+# 事前確認
+az deployment tenant what-if \
+  --name "deploy-sub-connectivity-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/subscriptions/sub-connectivity.bicep \
+  --parameters billingScope="$BILLING_SCOPE"
+
+# 確認後、デプロイ実行
 az deployment tenant create \
   --name "deploy-sub-connectivity-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \

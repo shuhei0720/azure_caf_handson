@@ -297,7 +297,14 @@ cat << 'EOF' > infrastructure/bicep/parameters/hub-vnet.parameters.json
 }
 EOF
 
-# デプロイ
+# 事前確認
+az deployment group what-if \
+  --name "hub-vnet-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-connectivity-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/networking/hub-vnet.bicep \
+  --parameters infrastructure/bicep/parameters/hub-vnet.parameters.json
+
+# 確認後、デプロイ実行
 az deployment group create \
   --name "hub-vnet-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-connectivity-prod-jpe-001 \
@@ -545,7 +552,14 @@ cat << EOF > infrastructure/bicep/parameters/firewall.parameters.json
 }
 EOF
 
-# デプロイ（10-15分かかります）
+# 事前確認
+az deployment group what-if \
+  --name "firewall-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-connectivity-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/networking/firewall.bicep \
+  --parameters infrastructure/bicep/parameters/firewall.parameters.json
+
+# 確認後、デプロイ実行（10-15分かかります）
 az deployment group create \
   --name "firewall-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-connectivity-prod-jpe-001 \
@@ -670,7 +684,14 @@ cat << EOF > infrastructure/bicep/parameters/bastion.parameters.json
 }
 EOF
 
-# デプロイ（5-10分かかります）
+# 事前確認
+az deployment group what-if \
+  --name "bastion-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-connectivity-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/networking/bastion.bicep \
+  --parameters infrastructure/bicep/parameters/bastion.parameters.json
+
+# 確認後、デプロイ実行（5-10分かかります）
 az deployment group create \
   --name "bastion-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-connectivity-prod-jpe-001 \

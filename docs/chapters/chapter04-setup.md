@@ -285,7 +285,7 @@ cat infrastructure/bicep/test/test-rg.json
 実際にデプロイする前に、何が作成されるか確認します。
 
 ```bash
-# What-If実行
+# 事前確認
 az deployment sub what-if \
   --location japaneast \
   --template-file infrastructure/bicep/test/test-rg.bicep \
@@ -313,7 +313,7 @@ Scope: /subscriptions/12345678-1234-1234-1234-123456789abc
 ### 4.5.5 デプロイの実行
 
 ```bash
-# サブスクリプションレベルでデプロイ
+# 確認後、デプロイ実行
 az deployment sub create \
   --name "test-rg-deployment-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \

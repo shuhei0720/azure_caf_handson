@@ -103,6 +103,15 @@ output subscriptionId string = subIdentity.properties.subscriptionId
 
 ```bash
 echo "Creating Identity Subscription..."
+
+# 事前確認
+az deployment tenant what-if \
+  --name "deploy-sub-identity-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/subscriptions/sub-identity.bicep \
+  --parameters billingScope="$BILLING_SCOPE"
+
+# 確認後、デプロイ実行
 az deployment tenant create \
   --name "deploy-sub-identity-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \

@@ -111,6 +111,15 @@ output subscriptionId string = subLandingZoneCorp.properties.subscriptionId
 
 ```bash
 echo "Creating Landing Zone Corp Subscription..."
+
+# 事前確認
+az deployment tenant what-if \
+  --name "deploy-sub-landingzone-corp-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/subscriptions/sub-landingzone-corp.bicep \
+  --parameters billingScope="$BILLING_SCOPE"
+
+# 確認後、デプロイ実行
 az deployment tenant create \
   --name "deploy-sub-landingzone-corp-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
