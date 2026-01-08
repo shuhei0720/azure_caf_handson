@@ -450,9 +450,6 @@ Log Analytics Workspace のテーブルごとに保持期間を設定します�
 @description('Log Analytics Workspace名')
 param workspaceName string
 
-@description('Log Analytics Workspaceのリソースグループ名')
-param resourceGroupName string
-
 @description('テーブル名の配列')
 param tableNames array
 
@@ -466,62 +463,27 @@ param retentionInDays int = 90
 @maxValue(2556)
 param totalRetentionInDays int = 730
 
-@description('デプロイ先のリージョン')
-param location string
-
 // 既存のLog Analytics Workspace
 resource workspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing = {
   name: workspaceName
 }
 
-// Azure CLIを使用したDeployment Script（schemaプロパティを保持）
-resource updateTableRetention 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
-  name: 'update-table-retention-${uniqueString(workspaceName)}'
-  location: location
-  kind: 'AzureCLI'
+// 複数テーブルの保持期間設定
+resource tableRetention 'Microsoft.OperationalInsights/workspaces/tables@2022-10-01' = [for tableName in tableNames: {
+  parent: workspace
+  name: tableName
   properties: {
-    azCliVersion: '2.52.0'
-    retentionInterval: 'PT1H'
-    environmentVariables: [
-      {
-        name: 'WORKSPACE_ID'
-        value: workspace.id
-      }
-      {
-        name: 'RETENTION_DAYS'
-        value: string(retentionInDays)
-      }
-      {
-        name: 'TOTAL_RETENTION_DAYS'
-        value: string(totalRetentionInDays)
-      }
-      {
-        name: 'TABLE_NAMES'
-        value: join(tableNames, ',')
-      }
-    ]
-    scriptContent: '''
-      #!/bin/bash
-      set -e
-      
-      IFS=',' read -ra TABLES <<< "$TABLE_NAMES"
-      
-      for TABLE_NAME in "${TABLES[@]}"; do
-        echo "Updating retention for table: $TABLE_NAME"
-        
-        # REST APIでPATCH操作（既存プロパティを保持）
-        az rest --method patch \
-          --url "${WORKSPACE_ID}/tables/${TABLE_NAME}?api-version=2022-10-01" \
-          --body "{\"properties\":{\"retentionInDays\":${RETENTION_DAYS},\"totalRetentionInDays\":${TOTAL_RETENTION_DAYS}}}"
-      done
-      
-      echo "All tables updated successfully"
-    '''
+    retentionInDays: retentionInDays
+    totalRetentionInDays: totalRetentionInDays
+    plan: 'Analytics'
   }
-}
+}]
 
-output deploymentScriptName string = updateTableRetention.name
-output configuredTableCount int = length(tableNames)
+output configuredTables array = [for (tableName, i) in tableNames: {
+  name: tableRetention[i].name
+  retentionInDays: tableRetention[i].properties.retentionInDays
+  totalRetentionInDays: tableRetention[i].properties.totalRetentionInDays
+}]
 ```
 
 #### オーケストレーションへのパラメータ追記
@@ -599,11 +561,9 @@ module tableRetention '../modules/monitoring/log-analytics-table-retention.bicep
   scope: resourceGroup(monitoring.resourceGroup.name)
   params: {
     workspaceName: monitoring.logAnalytics.workspaceName
-    resourceGroupName: monitoring.resourceGroup.name
     tableNames: monitoring.tableRetention.tableNames
     retentionInDays: monitoring.tableRetention.retentionInDays
     totalRetentionInDays: monitoring.tableRetention.totalRetentionInDays
-    location: location
   }
   dependsOn: [
     logAnalytics
