@@ -1646,11 +1646,13 @@ graph LR
 
 ### 7.7.1 診断設定モジュールの作成
 
+#### Log Analytics Workspace 診断設定
+
 ファイル `infrastructure/bicep/modules/monitoring/log-analytics-diagnostics.bicep` を作成します：
 
 **log-analytics-diagnostics.bicep の解説：**
 
-Log Analytics Workspace 自体の操作ログ（Audit）とメトリクスを収集します。ワークスペースへの変更履歴を追跡できます。
+Log Analytics Workspace 自体の操作ログ（allLogs）とメトリクスを収集します。ワークスペースへの変更履歴を追跡できます。
 
 ```bicep
 @description('Log Analytics Workspace名')
@@ -1674,7 +1676,48 @@ resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-pre
   properties: {
     workspaceId: destinationWorkspaceId
     logs: [
-      { category: 'Audit', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
+      { categoryGroup: 'allLogs', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
+    ]
+    metrics: [
+      { category: 'AllMetrics', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
+    ]
+  }
+}
+
+output diagnosticSettingId string = diagnosticSetting.id
+```
+
+#### DCR 診断設定
+
+ファイル `infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep` を作成します：
+
+**dcr-diagnostics.bicep の解説：**
+
+Data Collection Rule (DCR) 自体の操作ログとメトリクスを収集します。DCR の変更や使用状況を追跡できます。
+
+```bicep
+@description('Data Collection Rule名')
+param dcrName string
+
+@description('診断設定の送信先 Workspace ID')
+param destinationWorkspaceId string
+
+@description('診断設定の名前')
+param diagnosticSettingName string = 'send-to-log-analytics'
+
+// 既存のDCR
+resource dcr 'Microsoft.Insights/dataCollectionRules@2022-06-01' existing = {
+  name: dcrName
+}
+
+// 診断設定
+resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: diagnosticSettingName
+  scope: dcr
+  properties: {
+    workspaceId: destinationWorkspaceId
+    logs: [
+      { categoryGroup: 'allLogs', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
     ]
     metrics: [
       { category: 'AllMetrics', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
@@ -1696,6 +1739,28 @@ module logAnalyticsDiagnostics '../modules/monitoring/log-analytics-diagnostics.
   scope: resourceGroup(monitoring.resourceGroup.name)
   params: {
     workspaceName: monitoring.logAnalytics.workspaceName
+    destinationWorkspaceId: logAnalytics.outputs.workspaceId
+    diagnosticSettingName: 'send-to-log-analytics'
+  }
+}
+
+// Chapter 7: DCR VM Insights Diagnostics
+module dcrVmInsightsDiagnostics '../modules/monitoring/dcr-diagnostics.bicep' = {
+  name: 'deploy-dcr-vm-insights-diagnostics'
+  scope: resourceGroup(monitoring.resourceGroup.name)
+  params: {
+    dcrName: monitoring.dataCollectionRules.vmInsights.name
+    destinationWorkspaceId: logAnalytics.outputs.workspaceId
+    diagnosticSettingName: 'send-to-log-analytics'
+  }
+}
+
+// Chapter 7: DCR OS Logs Diagnostics
+module dcrOsLogsDiagnostics '../modules/monitoring/dcr-diagnostics.bicep' = {
+  name: 'deploy-dcr-os-logs-diagnostics'
+  scope: resourceGroup(monitoring.resourceGroup.name)
+  params: {
+    dcrName: monitoring.dataCollectionRules.osLogs.name
     destinationWorkspaceId: logAnalytics.outputs.workspaceId
     diagnosticSettingName: 'send-to-log-analytics'
   }
@@ -1737,18 +1802,21 @@ echo "✅ Log Analytics Workspace の診断設定が orchestration 経由でデ�
 
 デプロイ後、Azure Portal で以下を確認します:
 
-1. **リソース診断設定の確認**
+1. **Log Analytics Workspace 診断設定の確認**
 
    - Azure Portal → Log Analytics workspace → Diagnostic settings
    - `send-to-log-analytics` が存在することを確認
+   - allLogs が有効になっていることを確認
 
 2. **DCR 診断設定の確認**
 
-   - Azure Portal → Monitor → Data Collection Rules → dcr-vm-insights
-   - Diagnostic settings で診断が有効になっていることを確認
+   - Azure Portal → Monitor → Data Collection Rules → dcr-vm-insights-prod-jpe-001
+   - Diagnostic settings → `send-to-log-analytics` が存在することを確認
+   - Azure Portal → Monitor → Data Collection Rules → dcr-os-logs-prod-jpe-001
+   - Diagnostic settings → `send-to-log-analytics` が存在することを確認
 
 3. **監視基盤のログ確認**
-   - Log Analytics → Logs → `AzureDiagnostics | where ResourceType == "OPERATIONALINSIGHTS/WORKSPACES" | take 10`
+   - Log Analytics → Logs → `AzureDiagnostics | where ResourceType == "OPERATIONALINSIGHTS/WORKSPACES" or ResourceType == "MICROSOFT.INSIGHTS/DATACOLLECTIONRULES" | take 20`
    - 監視リソース自体のログが収集されていることを確認
 
 ### 7.7.6 診断設定ログのクエリ例
