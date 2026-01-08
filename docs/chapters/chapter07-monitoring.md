@@ -1677,6 +1677,7 @@ resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-pre
     workspaceId: destinationWorkspaceId
     logs: [
       { categoryGroup: 'allLogs', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
+      { categoryGroup: 'audit', enabled: false, retentionPolicy: { enabled: false, days: 0 } }
     ]
     metrics: [
       { category: 'AllMetrics', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
