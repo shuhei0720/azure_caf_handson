@@ -1,52 +1,52 @@
-# 第 12 章 �E�Security 基盤構築！E 日目 �E�E
+# 第 12 章：Security 基盤構築（3 日目）
 
-## 本章の目皁 E
+## 本章の目的
 
-本章では、Azure CAF Landing Zone のセキュリチ E�� 基盤を構築します、Eicrosoft Defender for Cloud、Azure Key Vault、DDoS Protection、Azure Sentinel などのサービスを実裁 E��、ゼロトラストセキュリチ E�� を実現します、E
+本章では、Azure CAF Landing Zone のセキュリティ基盤を構築します。Microsoft Defender for Cloud、Azure Key Vault、DDoS Protection、Azure Sentinel などのサービスを実装し、ゼロトラストセキュリティを実現します。
 
-**所要時閁 E\*: 紁 E3-4 時間  
-**難易度**: ⭐⭐⭁E
-**実施タイミング**: **3 日目\*\*
+**所要時間**: 約 3-4 時間  
+**難易度**: ⭐⭐⭐  
+**実施タイミング**: **3 日目**
 
 ---
 
-## 12.0 事前準備 �E�Management Subscription の選抁 E
+## 12.0 事前準備：Management Subscription の選択
 
-本章では、セキュリチ E��・監視リソース �E�Eog Analytics Workspace、Key Vault 等）を **Management Subscription** にチ E�E ロイします、E
+本章では、セキュリティ・監視リソース（Log Analytics Workspace、Key Vault 等）を **Management Subscription** にデプロイします。
 
-作業を開始する前に、忁 E�� 適刁 E�� サブスクリプションを選択してください �E�E
+作業を開始する前に、必ず適切なサブスクリプションを選択してください：
 
 ```bash
-# Management Subscriptionに刁E��替ぁE
+# Management Subscriptionに切り替え
 az account set --subscription $SUB_MANAGEMENT_ID
 
-# 現在のサブスクリプションを確誁E
+# 現在のサブスクリプションを確認
 az account show --query "{Name:name, SubscriptionId:id}" -o table
 ```
 
-\*_重要 E_: Log Analytics Workspace め EKey Vault は管琁 E�E 監視 �E 中核となるため、忁 E�� Management Subscription に配置してください、E
+**重要**: Log Analytics Workspace や Key Vault は管理・監視の中核となるため、必ず Management Subscription に配置してください。
 
 ---
 
-## 12.1 ゼロトラストセキュリチ E�� モチ E��
+## 12.1 ゼロトラストセキュリティモデル
 
 ### 12.1.1 ゼロトラストとは
 
-\**ゼロトラスチ E*は「決して信頼せず、常に検証する」とぁ E�� 原則に基づくセキュリチ E�� モチ E�� です、E
+**ゼロトラスト**は「決して信頼せず、常に検証する」という原則に基づくセキュリティモデルです。
 
 ```mermaid
 graph LR
-    subgraph "従来の墁E��型セキュリチE��"
-        A1[信頼されたネチE��ワーク<br/>自由にアクセス]
+    subgraph "従来の境界型セキュリティ"
+        A1[信頼されたネットワーク<br/>自由にアクセス]
         A2[ファイアウォール]
-        A3[信頼されなぁE��チE��ワーク<br/>アクセス拒否]
+        A3[信頼されないネットワーク<br/>アクセス拒否]
     end
 
     A1 --- A2
     A2 --- A3
 
-    subgraph "ゼロトラストモチE��"
-        B1[ユーザー/チE��イス]
+    subgraph "ゼロトラストモデル"
+        B1[ユーザー/デバイス]
         B2[認証・認可<br/>MFA/条件付きアクセス]
         B3[継続的な検証]
         B4[リソース]
@@ -62,68 +62,68 @@ graph LR
     style B3 fill:#e6ffe6
 ```
 
-### 12.1.2 ゼロトラスト �E 3 原則
+### 12.1.2 ゼロトラストの 3 原則
 
-1. **明示皁 E�� 検証**: すべてのアクセスを認証・認可
-2. **最小権限アクセス**: 忁 E�� 最小限の権限 �E み付丁 E
-3. \*_侵害の想宁 E_: 侵害されたと仮定して設訁 E
+1. **明示的な検証**: すべてのアクセスを認証・認可
+2. **最小権限アクセス**: 必要最小限の権限のみ付与
+3. **侵害の想定**: 侵害されたと仮定して設計
 
 ---
 
-## 12.2 Microsoft Defender for Cloud の有効匁 E
+## 12.2 Microsoft Defender for Cloud の有効化
 
 ### 12.2.1 Microsoft Defender for Cloud とは
 
-**Microsoft Defender for Cloud**�E� 旧 Azure Security Center�E��E、統合セキュリチ E�� 管琁 E�� 脁 E�� 保護を提供します、E
+**Microsoft Defender for Cloud**（旧 Azure Security Center）は、統合セキュリティ管理と脅威保護を提供します。
 
-**機 �E**:
+**機能**:
 
-- セキュアスコア �E� セキュリチ E�� 評価 �E�E
-- 推奨事頁 E�E 提侁 E
-- 脁 E���E 検 �E とアラーチ E
+- セキュアスコア（セキュリティ評価）
+- 推奨事項の提供
+- 脅威の検出とアラート
 - コンプライアンス評価
 
-### 12.2.2 Defender Plans の有効匁 E
+### 12.2.2 Defender Plans の有効化
 
 ```bash
-# Subscription IDを取征E
+# Subscription IDを取得
 SUBSCRIPTION_ID=$(az account show --query id -o tsv)
 
-# Defender for Serversを有効匁E
+# Defender for Serversを有効化
 az security pricing create \
   --name VirtualMachines \
   --tier Standard
 
-# Defender for App Serviceを有効匁E
+# Defender for App Serviceを有効化
 az security pricing create \
   --name AppServices \
   --tier Standard
 
-# Defender for Storageを有効匁E
+# Defender for Storageを有効化
 az security pricing create \
   --name StorageAccounts \
   --tier Standard
 
-# Defender for SQLを有効匁E
+# Defender for SQLを有効化
 az security pricing create \
   --name SqlServers \
   --tier Standard
 
-# Defender for Containersを有効匁E
+# Defender for Containersを有効化
 az security pricing create \
   --name Containers \
   --tier Standard
 
-# Defender for Key Vaultを有効匁E
+# Defender for Key Vaultを有効化
 az security pricing create \
   --name KeyVaults \
   --tier Standard
 ```
 
-### 12.2.3 セキュリチ E�� 連絡先 �E 設宁 E
+### 12.2.3 セキュリティ連絡先の設定
 
 ```bash
-# セキュリチE��アラート�E送信先を設宁E
+# セキュリティアラートの送信先を設定
 az security contact create \
   --email security@example.com \
   --name default \
@@ -131,20 +131,20 @@ az security contact create \
   --alerts-admins On
 ```
 
-### 12.2.4 Bicep での実裁 E
+### 12.2.4 Bicep での実装
 
-#### モジュールの作 �E
+#### モジュールの作成
 
-ファイル `infrastructure/bicep/modules/security/defender.bicep` を作 �E し、以下 �E 冁 E�� を記述します！E
+ファイル `infrastructure/bicep/modules/security/defender.bicep` を作成し、以下の内容を記述します：
 
-\*_defender.bicep の解説 �E�E_
+**defender.bicep の解説：**
 
-Microsoft Defender for Cloud の褁 E�� の Plan�E�EirtualMachines、AppServices、StorageAccounts、SqlServers、Containers、KeyVaults�E� を有効化し、セキュリチ E�� 連絡先を設定します、E
+Microsoft Defender for Cloud の複数の Plan（VirtualMachines、AppServices、StorageAccounts、SqlServers、Containers、KeyVaults）を有効化し、セキュリティ連絡先を設定します。
 
 ```bicep
 targetScope = 'subscription'
 
-@description('Defender Plansの設宁E)
+@description('Defender Plansの設定')
 param defenderPlans array = [
   'VirtualMachines'
   'AppServices'
@@ -154,10 +154,10 @@ param defenderPlans array = [
   'KeyVaults'
 ]
 
-@description('セキュリチE��連絡先�Eメール')
+@description('セキュリティ連絡先のメール')
 param securityContactEmail string
 
-// Defender Plansの有効匁E
+// Defender Plansの有効化
 resource defenderPricing 'Microsoft.Security/pricings@2023-01-01' = [for plan in defenderPlans: {
   name: plan
   properties: {
@@ -165,7 +165,7 @@ resource defenderPricing 'Microsoft.Security/pricings@2023-01-01' = [for plan in
   }
 }]
 
-// セキュリチE��連絡先�E設宁E
+// セキュリティ連絡先の設定
 resource securityContact 'Microsoft.Security/securityContacts@2023-01-01' = {
   name: 'default'
   properties: {
@@ -183,14 +183,14 @@ resource securityContact 'Microsoft.Security/securityContacts@2023-01-01' = {
   }
 }
 
-// 出劁E
+// 出力
 output defenderPlans array = defenderPlans
 output securityContactEmail string = securityContactEmail
 ```
 
-#### オーケストレーションへのパラメータ追訁 E
+#### オーケストレーションへのパラメータ追記
 
-ファイル `infrastructure/bicep/orchestration/main.bicepparam` を開き、以下を追記！E
+ファイル `infrastructure/bicep/orchestration/main.bicepparam` を開き、以下を追記：
 
 ```bicep
 // =============================================================================
@@ -209,24 +209,24 @@ param security = {
     ]
     securityContactEmail: 'security@example.com'
   }
-  // 12.3以降で追記予宁E
+  // 12.3以降で追記予定
 }
 ```
 
 #### オーケストレーションへのモジュール追加
 
-ファイル `infrastructure/bicep/orchestration/main.bicep` を開き、以下を追記！E
+ファイル `infrastructure/bicep/orchestration/main.bicep` を開き、以下を追記：
 
 ```bicep
 // =============================================================================
-// パラメータ定義�E�既存�Eセクションに追加�E�E
+// パラメータ定義（既存のセクションに追加）
 // =============================================================================
 
-@description('Security設宁E)
+@description('Security設定')
 param security object
 
 // =============================================================================
-// モジュールチE�Eロイ�E�既存�Eセクションに追加�E�E
+// モジュールデプロイ（既存のセクションに追加）
 // =============================================================================
 
 // Chapter 12: Defender for Cloud
@@ -239,13 +239,13 @@ module defender '../modules/security/defender.bicep' = {
 }
 ```
 
-#### What-If による事前確誁 E
+#### What-If による事前確認
 
 ```bash
-# Management Subscription に刁E��替ぁE
+# Management Subscription に切り替え
 az account set --subscription $SUB_MANAGEMENT_ID
 
-# What-If実衁E
+# What-If実行
 az deployment sub what-if \
   --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
@@ -253,26 +253,26 @@ az deployment sub what-if \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
 ```
 
-#### チ E�E ロイ実衁 E
+#### デプロイ実行
 
 ```bash
-# チE�Eロイ実衁E
+# デプロイ実行
 az deployment sub create \
   --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
 
-echo "✁EDefender for Cloud ぁEorchestration 経由でチE�Eロイされました"
+echo "✅ Defender for Cloud が orchestration 経由でデプロイされました"
 ```
 
 ---
 
 ## 12.3 Azure Key Vault
 
-**Azure Key Vault** は第 7 章で作 �E 済みです、EitHub Personal Access Token などの機寁 E�� 報を安 �E に保管してぁ E�� す、E
+**Azure Key Vault** は第 7 章で作成済みです。GitHub Personal Access Token などの機密情報を安全に保管しています。
 
-Key Vault の詳細と構築手頁 E�� つぁ E�� は、E\*第 7 章 7.9.1 Key Vault の作 �E\*\* を参照してください、E
+Key Vault の詳細と構築手順については、**第 7 章 7.9 Key Vault の構築** を参照してください。
 
 ---
 
@@ -280,100 +280,26 @@ Key Vault の詳細と構築手頁 E�� つぁ E�� は、E\*第 7 章 7.9
 
 ### 12.4.1 Azure DDoS Protection とは
 
-```bicep
-targetScope = 'resourceGroup'
-
-@description('Key Vaultの名前�E�グローバルで一意！E)
-@minLength(3)
-@maxLength(24)
-param keyVaultName string
-
-@description('チE�Eロイ先�Eリージョン')
-param location string
-
-@description('チE��ンチED')
-param tenantId string = subscription().tenantId
-
-@description('Key Vault管琁E��E�EオブジェクチED')
-param administratorObjectId string
-
-@description('Soft Delete保持期間�E�日数�E�E)
-@minValue(7)
-@maxValue(90)
-param softDeleteRetentionInDays int = 90
-
-@description('タグ')
-param tags object = {}
-
-// Key Vault
-resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
-  name: keyVaultName
-  location: location
-  tags: tags
-  properties: {
-    sku: {
-      family: 'A'
-      name: 'standard'
-    }
-    tenantId: tenantId
-    enabledForDeployment: true
-    enabledForDiskEncryption: true
-    enabledForTemplateDeployment: true
-    enableSoftDelete: true
-    softDeleteRetentionInDays: softDeleteRetentionInDays
-    enablePurgeProtection: true
-    enableRbacAuthorization: true  // RBAC使用
-    publicNetworkAccess: 'Enabled'  // 簡略化�Eため有効
-    networkAcls: {
-      bypass: 'AzureServices'
-      defaultAction: 'Allow'
-    }
-  }
-}
-
-// Key Vault管琁E��E��ールの割り当て
-resource kvAdministratorRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyVault.id, administratorObjectId, '00482a5a-887f-4fb3-b363-3b7fe8e74483')
-  scope: keyVault
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '00482a5a-887f-4fb3-b363-3b7fe8e74483') // Key Vault Administrator
-    principalId: administratorObjectId
-    principalType: 'User'
-  }
-}
-
-// 出劁E
-output keyVaultId string = keyVault.id
-output keyVaultName string = keyVault.name
-output keyVaultUri string = keyVault.properties.vaultUri
-```
-
-\*_注愁 E_: Private Endpoint と Private DNS Zone は Chapter 13 で Hub VNet 作 �E 後に追加します、E
-
-## 12.4 DDoS Protection
-
-### 12.4.1 Azure DDoS Protection とは
-
-**Azure DDoS Protection**は、DDoS 攻撁 E�� らアプリケーションを保護するサービスです、E
+**Azure DDoS Protection**は、DDoS 攻撃からアプリケーションを保護するサービスです。
 
 **プラン**:
 
-- **Basic**: 無料、�E 動有効匁 E
+- **Basic**: 無料、自動有効化
 - **Standard**: 高度な保護、SLA 保証
 
 ### 12.4.2 DDoS Protection Plan Bicep モジュール
 
-ファイル `infrastructure/bicep/modules/security/ddos-protection.bicep` を作 �E し、以下 �E 冁 E�� を記述します！E
+ファイル `infrastructure/bicep/modules/security/ddos-protection.bicep` を作成し、以下の内容を記述します：
 
-\*_ddos-protection.bicep の解説 �E�E_
+**ddos-protection.bicep の解説：**
 
-Azure DDoS Protection Plan を作 �E し、Hub VNet に適用することで、DDoS 攻撁 E�� らアプリケーションを保護します、E
+Azure DDoS Protection Plan を作成し、Hub VNet に適用することで、DDoS 攻撃からアプリケーションを保護します。
 
 ```bicep
 @description('DDoS Protection Planの名前')
 param ddosProtectionPlanName string
 
-@description('チE�Eロイ先�Eリージョン')
+@description('デプロイ先のリージョン')
 param location string
 
 @description('タグ')
@@ -387,17 +313,17 @@ resource ddosProtectionPlan 'Microsoft.Network/ddosProtectionPlans@2023-05-01' =
   properties: {}
 }
 
-// 出劁E
+// 出力
 output ddosProtectionPlanId string = ddosProtectionPlan.id
 output ddosProtectionPlanName string = ddosProtectionPlan.name
 ```
 
 ### 12.4.3 VNet への DDoS Protection 適用
 
-\*_What-If による事前確認！E_
+**What-If による事前確認：**
 
 ```bash
-# 事前確誁E
+# 事前確認
 az deployment group what-if \
   --name "ddos-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-security-prod-jpe-001 \
@@ -407,10 +333,10 @@ az deployment group what-if \
     location=japaneast
 ```
 
-\*_チ E�E ロイ実行！E_
+**デプロイ実行：**
 
 ```bash
-# チE�Eロイ実衁E
+# デプロイ実行
 az deployment group create \
   --name "ddos-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-security-prod-jpe-001 \
@@ -432,31 +358,31 @@ az network vnet update \
   --ddos-protection true
 ```
 
-\*_注愁 E_: DDoS Protection Standard は紁 E¥350,000/月 �E 高コストです。テスト環墁 E�� は無効化を検討してください、E
+**注意**: DDoS Protection Standard は約 ¥350,000/月の高コストです。テスト環境では無効化を検討してください。
 
 ---
 
-## 12.5 診断設定！Eiagnostic Settings�E�E
+## 12.5 診断設定（Diagnostic Settings）
 
 ### 12.5.1 診断設定とは
 
-\**診断設宁 E*は、Azure リソースのログとメトリクスを収雁 E�� る仕絁 E�� です、E
+**診断設定**は、Azure リソースのログとメトリクスを収集する仕組みです。
 
-\*_送信允 E_:
+**送信先**:
 
-- Log Analytics Workspace�E� 推奨 �E�E
-- Storage Account�E� 長期保管 �E�E
-- Event Hubs�E�EIEM 統合！E
+- Log Analytics Workspace（推奨）
+- Storage Account（長期保管）
+- Event Hubs（SIEM 統合）
 
-### 12.5.2 Log Analytics Workspace ID の取征 E
+### 12.5.2 Log Analytics Workspace ID の取得
 
-Log Analytics Workspace は第 7 章で既に作 �E 済みです。ここでは Workspace ID を取得して環墁 E�� 数に保存します！E
+Log Analytics Workspace は第 7 章で既に作成済みです。ここでは Workspace ID を取得して環境変数に保存します：
 
 ```bash
-# Management Subscriptionに刁E��替ぁE
+# Management Subscriptionに切り替え
 az account set --subscription $SUB_MANAGEMENT_ID
 
-# Workspace IDを取征E
+# Workspace IDを取得
 WORKSPACE_ID=$(az monitor log-analytics workspace show \
   --resource-group rg-platform-management-prod-jpe-001 \
   --workspace-name log-platform-prod-jpe-001 \
@@ -464,17 +390,17 @@ WORKSPACE_ID=$(az monitor log-analytics workspace show \
 
 echo "WORKSPACE_ID=$WORKSPACE_ID"
 
-# .envファイルに保存（既に保存済みの場合�EスキチE�E�E�E
+# .envファイルに保存（既に保存済みの場合はスキップ）
 grep -q "WORKSPACE_ID=" .env || echo "WORKSPACE_ID=$WORKSPACE_ID" >> .env
 ```
 
 ### 12.5.3 リソースへの診断設定適用
 
-ファイル `infrastructure/bicep/modules/monitoring/diagnostic-settings.bicep` を作 �E し、以下 �E 冁 E�� を記述します！E
+ファイル `infrastructure/bicep/modules/monitoring/diagnostic-settings.bicep` を作成し、以下の内容を記述します：
 
-\*_diagnostic-settings.bicep の解説 �E�E_
+**diagnostic-settings.bicep の解説：**
 
-Azure リソースに診断設定を適用し、すべてのログとメトリクスめ ELog Analytics Workspace に送信する汎用モジュールです。allLogs カチ E�� リグループと AllMetrics を有効化します、E
+Azure リソースに診断設定を適用し、すべてのログとメトリクスを Log Analytics Workspace に送信する汎用モジュールです。allLogs カテゴリグループと AllMetrics を有効化します。
 
 ```bicep
 @description('診断設定を適用するリソースID')
@@ -483,10 +409,10 @@ param resourceId string
 @description('Log Analytics Workspace ID')
 param workspaceId string
 
-@description('診断設定�E名前')
+@description('診断設定の名前')
 param diagnosticSettingName string = 'default'
 
-// 診断設定（リソースごとに異なるログカチE��リがあるため、汎用皁E��記述�E�E
+// 診断設定（リソースごとに異なるログカテゴリがあるため、汎用的に記述）
 resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   name: diagnosticSettingName
   scope: resourceId
@@ -521,7 +447,7 @@ output diagnosticSettingId string = diagnosticSetting.id
 ### 12.5.4 Key Vault に診断設定を適用
 
 ```bash
-# Log Analytics Workspace IDを取征E
+# Log Analytics Workspace IDを取得
 LOG_WORKSPACE_ID=$(az monitor log-analytics workspace show \
   --resource-group rg-platform-management-prod-jpe-001 \
   --workspace-name log-platform-prod-jpe-001 \
@@ -542,20 +468,20 @@ az monitor diagnostic-settings create \
 
 ---
 
-## 12.6 Azure Sentinel�E� オプション �E�E
+## 12.6 Azure Sentinel（オプション）
 
 ### 12.6.1 Azure Sentinel とは
 
-**Azure Sentinel**は、クラウドネイチ E�� ブ �E SIEM�E�Eecurity Information and Event Management�E� およ �E SOAR�E�Eecurity Orchestration, Automation and Response�E� サービスです、E
+**Azure Sentinel**は、クラウドネイティブの SIEM（Security Information and Event Management）および SOAR（Security Orchestration, Automation and Response）サービスです。
 
-**機 �E**:
+**機能**:
 
-- セキュリチ E�� イベント �E 収集と刁 E��
-- 脁 E���E 検 �E
-- 自動応筁 E
-- インシチ E�� ト管琁 E
+- セキュリティイベントの収集と分析
+- 脅威の検出
+- 自動応答
+- インシデント管理
 
-### 12.6.2 Sentinel の有効化（オプション �E�E
+### 12.6.2 Sentinel の有効化（オプション）
 
 ```bash
 # Sentinelソリューションを追加
@@ -564,27 +490,27 @@ az sentinel onboard \
   --workspace-name log-platform-prod-jpe-001
 ```
 
-\*_注愁 E_: Sentinel はチ E�E タ取り込み量に応じた従量課金です。大規模環墁 E�� は高コストになります、E
+**注意**: Sentinel はデータ取り込み量に応じた従量課金です。大規模環境では高コストになります。
 
 ---
 
-## 12.7 セキュリチ E�� ベ �E スラインの実裁 E
+## 12.7 セキュリティベースラインの実装
 
-### 12.7.1 暗号化設宁 E
+### 12.7.1 暗号化設定
 
-すべてのストレージとチ E�E タベ �E スで暗号化を有効化！E
+すべてのストレージとデータベースで暗号化を有効化：
 
-ファイル `infrastructure/bicep/modules/storage/storage-account.bicep` を作 �E し、以下 �E 冁 E�� を記述します！E
+ファイル `infrastructure/bicep/modules/storage/storage-account.bicep` を作成し、以下の内容を記述します：
 
-\*_storage-account.bicep の解説 �E�E_
+**storage-account.bicep の解説：**
 
-Storage Account を作 �E し、HTTPS 強制、TLS 1.2 以上、Public アクセス禁止、暗号化有効化などのセキュリチ E�� ベ �E スラインを適用します、E
+Storage Account を作成し、HTTPS 強制、TLS 1.2 以上、Public アクセス禁止、暗号化有効化などのセキュリティベースラインを適用します。
 
 ```bicep
 @description('Storage Accountの名前')
 param storageAccountName string
 
-@description('チE�Eロイ先�Eリージョン')
+@description('デプロイ先のリージョン')
 param location string
 
 @description('タグ')
@@ -600,7 +526,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   kind: 'StorageV2'
   properties: {
     supportsHttpsTrafficOnly: true  // HTTPS強制
-    minimumTlsVersion: 'TLS1_2'    // TLS 1.2以丁E
+    minimumTlsVersion: 'TLS1_2'    // TLS 1.2以上
     allowBlobPublicAccess: false   // Publicアクセス禁止
     encryption: {
       services: {
@@ -613,7 +539,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
           keyType: 'Account'
         }
       }
-      keySource: 'Microsoft.Storage'  // Microsoft管琁E��ー
+      keySource: 'Microsoft.Storage'  // Microsoft管理キー
     }
   }
 }
@@ -622,32 +548,32 @@ output storageAccountId string = storageAccount.id
 output storageAccountName string = storageAccount.name
 ```
 
-````
+`````
 
 ---
 
-## 12.8 Azure Portal での確誁E
+## 12.8 Azure Portal での確認
 
-### 12.8.1 Microsoft Defender for Cloud の確誁E
+### 12.8.1 Microsoft Defender for Cloud の確認
 
-1. Azure ポ�Eタルで「Microsoft Defender for Cloud」を検索
-2. 「Overview」でセキュアスコアを確誁E
-3. 「Recommendations」で推奨事頁E��確誁E
-4. 「Security alerts」でアラートを確誁E
+1. Azure ポータルで「Microsoft Defender for Cloud」を検索
+2. 「Overview」でセキュアスコアを確認
+3. 「Recommendations」で推奨事項を確認
+4. 「Security alerts」でアラートを確認
 
-### 12.8.2 Key Vault の確誁E
+### 12.8.2 Key Vault の確認
 
 1. 「Key vaults」を検索
-2. 「kv-hub-prod-jpe-001」をクリチE��
-3. 「Secrets」でシークレチE��を確誁E
-4. 「Access policies」また�E「Access control (IAM)」でアクセス権限を確誁E
-5. 「Networking」で Private Endpoint 設定を確誁E
+2. 「kv-hub-prod-jpe-001」をクリック
+3. 「Secrets」でシークレットを確認
+4. 「Access policies」または「Access control (IAM)」でアクセス権限を確認
+5. 「Networking」で Private Endpoint 設定を確認
 
-### 12.8.3 Log Analytics の確誁E
+### 12.8.3 Log Analytics の確認
 
 1. 「Log Analytics workspaces」を検索
-2. 「log-platform-prod-jpe-001」をクリチE��
-3. 「Logs」でクエリを実行してみる！E
+2. 「log-platform-prod-jpe-001」をクリック
+3. 「Logs」でクエリを実行してみる：
 
 ```kql
 // Key Vaultのアクセスログ
@@ -660,28 +586,28 @@ AzureDiagnostics
 
 ---
 
-## 12.9 コスト管琁E
+## 12.9 コスト管理
 
-### 12.9.1 リソース別のコスチE
+### 12.9.1 リソース別のコスト
 
-| リソース                 | 概算月額コスト（東日本�E�E                |
+| リソース                 | 概算月額コスト（東日本）                 |
 | ------------------------ | ---------------------------------------- |
-| Defender for Cloud Plans | 紁E¥1,500 / サーバ�E                     |
-| Key Vault Standard       | 紁E¥50 + 操作ごとの従量課釁E             |
-| Log Analytics            | チE�Eタ取り込み量により変動�E�紁E¥300/GB�E�E|
-| DDoS Protection Standard | 紁E¥350,000                              |
-| Sentinel                 | チE�Eタ取り込み量により変動               |
+| Defender for Cloud Plans | 約 ¥1,500 / サーバー                     |
+| Key Vault Standard       | 約 ¥50 + 操作ごとの従量課金              |
+| Log Analytics            | データ取り込み量により変動（約 ¥300/GB） |
+| DDoS Protection Standard | 約 ¥350,000                              |
+| Sentinel                 | データ取り込み量により変動               |
 
-### 9.9.2 コスト削減�EヒンチE
+### 9.9.2 コスト削減のヒント
 
-- Defender for Cloud は忁E��なリソースタイプ�Eみ有効匁E
-- Log Analytics の保持期間を適刁E��設定！E0 日推奨�E�E
-- DDoS Protection Standard はチE��ト環墁E��は無効匁E
-- Sentinel は本番環墁E��のみ使用
+- Defender for Cloud は必要なリソースタイプのみ有効化
+- Log Analytics の保持期間を適切に設定（90 日推奨）
+- DDoS Protection Standard はテスト環境では無効化
+- Sentinel は本番環境でのみ使用
 
 ---
 
-## 12.10 Git へのコミッチE
+## 12.10 Git へのコミット
 
 ```bash
 git add .
@@ -700,56 +626,55 @@ git push origin main
 
 ---
 
-## 12.11 章のまとめE
+## 12.11 章のまとめ
 
-本章で構築したもの�E�E
+本章で構築したもの：
 
-1. ✁EMicrosoft Defender for Cloud
+1. ✅ Microsoft Defender for Cloud
 
-   - 褁E��の Defender Plans 有効匁E
-   - セキュアスコア監要E
-   - セキュリチE��連絡先設宁E
+   - 複数の Defender Plans 有効化
+   - セキュアスコア監視
+   - セキュリティ連絡先設定
 
-2. ✁EAzure Key Vault
+2. ✅ Azure Key Vault
 
    - RBAC 認証
-   - Private Endpoint 統吁E
+   - Private Endpoint 統合
    - Soft Delete & Purge Protection
 
-3. ✁EDDoS Protection
+3. ✅ DDoS Protection
 
    - Hub VNet に適用
 
-4. ✁ELog Analytics Workspace
+4. ✅ Log Analytics Workspace
 
-   - 診断設定�E雁E��E
-   - 90 日間�Eログ保持
+   - 診断設定の集約
+   - 90 日間のログ保持
 
-5. ✁EセキュリチE��ベ�Eスライン
+5. ✅ セキュリティベースライン
    - 暗号化強制
-   - TLS 1.2 以丁E
+   - TLS 1.2 以上
    - Public アクセス禁止
 
-### 重要なポインチE
+### 重要なポイント
 
-- **ゼロトラスト�E実践**: すべてのアクセスを検証
-- **暗号化�E徹庁E*: 保存時・転送時の両方
-- **ログの雁E��E*: Log Analytics で一允E��琁E
-- **コスト意譁E*: DDoS Protection と Sentinel は高コスチE
-
----
-
-## 次のスチE��チE
-
-3 日目の作業�E�Eonnectivity Subscription 作�EとセキュリチE��基盤�E�が完亁E��ました。次は 4 日目以降�E作業として、Hub Network�E�Eetworking-Hub�E��E構築に進みます、E
-
-**注意！E 日目以降�E作業は Azure リソースの費用が発生します。実施する前に予算とコストを確認してください、E*
-
-**24 時間後に 4 日目の作業�E�Eanding Zone Subscription 作�Eと Hub Network 構築）に進んでください、E*
-
-👉 [第 13 章�E�Hub Network 構築！E 日目以降）](chapter13-networking-hub.md)
+- **ゼロトラストの実践**: すべてのアクセスを検証
+- **暗号化の徹底**: 保存時・転送時の両方
+- **ログの集約**: Log Analytics で一元管理
+- **コスト意識**: DDoS Protection と Sentinel は高コスト
 
 ---
 
-**最終更新**: 2026 年 1 朁E7 日
-````
+## 次のステップ
+
+3 日目の作業（Connectivity Subscription 作成とセキュリティ基盤）が完了しました。次は 4 日目以降の作業として、Hub Network（Networking-Hub）の構築に進みます。
+
+**注意：4 日目以降の作業は Azure リソースの費用が発生します。実施する前に予算とコストを確認してください。**
+
+**24 時間後に 4 日目の作業（Landing Zone Subscription 作成と Hub Network 構築）に進んでください。**
+
+👉 [第 13 章：Hub Network 構築（4 日目以降）](chapter13-networking-hub.md)
+
+---
+
+**最終更新**: 2026 年 1 月 7 日
