@@ -1076,7 +1076,10 @@ resource dcrOSLogs 'Microsoft.Insights/dataCollectionRules@2022-06-01' = {
           xPathQueries: [
             'System!*[System[(Level=1 or Level=2 or Level=3 or Level=4 or Level=0)]]'
             'Application!*[System[(Level=1 or Level=2 or Level=3 or Level=4 or Level=0)]]'
-            'Security!*'
+            // セキュリティログ: 監査の成功 (Audit Success)
+            'Security!*[System[(band(Keywords,9007199254740992))]]'
+            // セキュリティログ: 監査の失敗 (Audit Failure)
+            'Security!*[System[(band(Keywords,4503599627370496))]]'
           ]
         }
       ]
