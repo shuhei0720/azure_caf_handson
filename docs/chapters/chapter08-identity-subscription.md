@@ -121,7 +121,7 @@ echo $BILLING_SCOPE
 
 この値をパラメーターファイルの `billingScope` に設定します。
 
-### 8.2.3 Bicep のデプロイ（10-15 分）
+### 8.2.3 What-If 実行
 
 ```bash
 echo "Creating Identity Subscription..."
@@ -132,8 +132,12 @@ az deployment tenant what-if \
   --location japaneast \
   --template-file infrastructure/bicep/subscriptions/sub-identity.bicep \
   --parameters infrastructure/bicep/parameters/sub-identity.bicepparam
+```
 
-# 確認後、デプロイ実行
+### 8.2.4 デプロイ実行（10-15 分）
+
+```bash
+# デプロイ実行
 az deployment tenant create \
   --name "deploy-sub-identity-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
@@ -143,7 +147,7 @@ az deployment tenant create \
 
 **デプロイには 10〜15 分程度かかります。**
 
-### 8.2.3 Subscription ID の記録
+### 8.2.5 Subscription ID の記録
 
 ```bash
 SUB_IDENTITY_ID=$(az account list --query "[?name=='sub-platform-identity-prod'].id" -o tsv)
