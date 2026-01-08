@@ -2055,49 +2055,107 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 output roleAssignmentId string = roleAssignment.id
 ```
 
-`infrastructure/bicep/orchestration/main.bicep` にロール割り当てモジュールを追加します：
+#### tenant.bicep へのロール割り当て追加
+
+ロール割り当ては管理グループスコープで行うため、`tenant.bicep` から呼び出します。
+
+まず、`tenant.bicep` にパラメータを追加：
+
+ファイル `infrastructure/bicep/orchestration/tenant.bicep` に以下を追記：
 
 ```bicep
-// Chapter 7: Policy Identity Owner Role Assignment (中間ルート管理グループに割り当て)
-module policyIdentityOwnerRole '../modules/identity/role-assignment-owner.bicep' = {
+// =============================================================================
+// Chapter 7: Policy Identity (追記)
+// =============================================================================
+
+@description('Policy Identity Principal ID')
+param policyIdentityPrincipalId string = ''
+
+// =============================================================================
+// Chapter 7: Role Assignment (追記)
+// =============================================================================
+
+// Policy Identity Owner Role Assignment (中間ルート管理グループに割り当て)
+module policyIdentityOwnerRole '../modules/identity/role-assignment-owner.bicep' = if (!empty(policyIdentityPrincipalId)) {
   name: 'deploy-policy-identity-owner'
   scope: managementGroup(companyPrefix)
   params: {
-    principalId: policyIdentity.outputs.principalId
+    principalId: policyIdentityPrincipalId
     managementGroupId: companyPrefix
   }
 }
+
+output policyIdentityRoleAssignmentId string = policyIdentityOwnerRole.?outputs.?roleAssignmentId ?? ''
 ```
 
-**注意:** `companyPrefix` (例: 'contoso') が中間ルート管理グループの ID として使用されます。
+次に、`tenant.bicepparam` にパラメータを追加：
 
-**What-If による事前確認：**
+ファイル `infrastructure/bicep/orchestration/tenant.bicepparam` に以下を追記：
+
+```bicep
+// =============================================================================
+// Chapter 7: Policy Identity Principal ID (main.bicepから手動で取得して設定)
+// =============================================================================
+
+// デプロイ後、以下のコマンドで取得した値を設定してください：
+// az deployment sub show --name <deployment-name> --query 'properties.outputs.policyIdentityPrincipalId.value' -o tsv
+param policyIdentityPrincipalId = ''  // 初回デプロイ後に設定
+```
+
+#### 2 段階デプロイ手順
+
+**手順 1: マネージド ID を作成（main.bicep）**
 
 ```bash
-# 事前確認
-az deployment sub what-if \
-  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+# Management Subscriptionに切り替え
+az account set --subscription $SUB_MANAGEMENT_ID
+
+# デプロイ名を変数に保存
+DEPLOYMENT_NAME="main-deployment-$(date +%Y%m%d-%H%M%S)"
+
+# main.bicepでマネージドIDを作成
+az deployment sub create \
+  --name "$DEPLOYMENT_NAME" \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
+
+echo "Deployment name: $DEPLOYMENT_NAME"
 ```
 
-**注意:** ロール割り当てのリソース名に `guid()` 関数を使用しているため、What-If 実行時に以下のような警告が表示されます：
-
-```
-Diagnostics (1): [roleAssignment] (Unsupported) Changes to the resource...cannot be analyzed because its resource ID or API version cannot be calculated until the deployment is under way.
-```
-
-これは、マネージド ID の `principalId` が動的に参照されるため、What-If 段階では正確なリソース ID を計算できないことを示す警告です。**実際のデプロイ時には問題なく動作します**ので、この警告は無視して問題ありません。
-
-**デプロイ実行：**
+**手順 2: Principal ID を取得して tenant.bicepparam に設定**
 
 ```bash
-# デプロイ実行（既に7.8.4で実行済みの場合はスキップ可能）
-az deployment sub create \
-  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+# Principal IDを取得
+POLICY_IDENTITY_PRINCIPAL_ID=$(az deployment sub show \
+  --name "$DEPLOYMENT_NAME" \
+  --query 'properties.outputs.policyIdentityPrincipalId.value' -o tsv)
+
+echo "Policy Identity Principal ID: $POLICY_IDENTITY_PRINCIPAL_ID"
+
+# .envに保存
+grep -q "POLICY_IDENTITY_PRINCIPAL_ID=" .env || echo "POLICY_IDENTITY_PRINCIPAL_ID=$POLICY_IDENTITY_PRINCIPAL_ID" >> .env
+```
+
+tenant.bicepparam を開いて、取得した値を設定：
+
+```bicep
+param policyIdentityPrincipalId = '<取得したPrincipal ID>'
+```
+
+**手順 3: ロール割り当てを実行（tenant.bicep）**
+
+```bash
+# テナントスコープでロール割り当て
+TENANT_DEPLOYMENT_NAME="tenant-deployment-$(date +%Y%m%d-%H%M%S)"
+
+az deployment tenant create \
+  --name "$TENANT_DEPLOYMENT_NAME" \
   --location japaneast \
-  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --template-file infrastructure/bicep/orchestration/tenant.bicep \
+  --parameters infrastructure/bicep/orchestration/tenant.bicepparam
+
+echo "Tenant Deployment name: $TENANT_DEPLOYMENT_NAME"
   --parameters infrastructure/bicep/orchestration/main.bicepparam
 
 echo "マネージドIDにOwner権限を付与しました"
