@@ -511,6 +511,7 @@ param monitoring = {
   }
   // 👇 7.3.3で追記（テーブル名は以下のスクリプトで自動生成）
   tableRetention: {
+    enabled: false  // 初回設定後はfalseにしてWhat-If警告を回避
     retentionInDays: 90
     totalRetentionInDays: 730
     tableNames: [
@@ -556,7 +557,7 @@ grep -A 50 'tableNames:' infrastructure/bicep/orchestration/main.bicepparam | he
 
 ```bicep
 // Chapter 7: Log Analytics Table Retention
-module tableRetention '../modules/monitoring/log-analytics-table-retention.bicep' = {
+module tableRetention '../modules/monitoring/log-analytics-table-retention.bicep' = if (monitoring.tableRetention.enabled) {
   name: 'deploy-table-retention'
   scope: resourceGroup(monitoring.resourceGroup.name)
   params: {
@@ -594,6 +595,23 @@ az deployment sub create \
 
 echo "✅ すべてのテーブルに保持期間が orchestration 経由で設定されました"
 ```
+
+**初回設定後の対応:**
+
+テーブル保持期間は初回のみ設定すればよいため、設定完了後は `main.bicepparam` で無効化します：
+
+```bicep
+tableRetention: {
+  enabled: false  // false にすることでWhat-If警告を回避
+  retentionInDays: 90
+  totalRetentionInDays: 730
+  tableNames: [
+    // テーブル名リスト（保持）
+  ]
+}
+```
+
+以降のデプロイでは、このモジュールはスキップされ、What-Ifで630個の変更が表示されなくなります。
 
 **Azure ポータルでの確認：**
 
