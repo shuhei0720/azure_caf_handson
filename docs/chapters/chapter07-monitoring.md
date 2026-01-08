@@ -1729,8 +1729,6 @@ az deployment sub create \
 echo "✅ Log Analytics Workspace の診断設定が orchestration 経由でデプロイされました"
 ```
 
-**注意：** DCR リソースは現在、診断設定をサポートしていないため、このセクションはスキップします。
-
 **今後のリソース作成ルール：**
 
 今後、新しいリソースを作成する際は、診断設定が利用可能なリソース（Azure Firewall、Key Vault、Bastion、Storage Account 等）については、リソース作成と同じ Bicep ファイル内で診断設定も一緒に定義します。
