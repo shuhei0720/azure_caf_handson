@@ -678,7 +678,17 @@ param tags = {
 }
 ```
 
-**重要：** `workspaceId` の `YOUR_SUB_ID` 部分を、前手順で取得した Management Subscription ID に置き換えてください。または、`$WORKSPACE_ID` 環境変数の値をそのまま使用します。
+**重要：** `workspaceId` の値を置き換えてください。以下のコマンドで取得した Workspace ID を使用します：
+
+```bash
+# Log Analytics Workspace IDの値を確認（前のセクションで取得済み）
+echo $WORKSPACE_ID
+
+# 出力例：
+# /subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-platform-management-prod-jpe-001/providers/Microsoft.OperationalInsights/workspaces/log-platform-prod-jpe-001
+```
+
+この値をパラメーターファイルの `workspaceId` に設定します。
 
 デプロイ：
 
@@ -823,7 +833,17 @@ param tags = {
 }
 ```
 
-**重要：** `workspaceId` の `YOUR_SUB_ID` 部分を、Management Subscription ID に置き換えてください。
+**重要：** `workspaceId` の値を置き換えてください。以下のコマンドで取得した Workspace ID を使用します：
+
+```bash
+# Log Analytics Workspace IDの値を確認（前のセクションで取得済み）
+echo $WORKSPACE_ID
+
+# 出力例：
+# /subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-platform-management-prod-jpe-001/providers/Microsoft.OperationalInsights/workspaces/log-platform-prod-jpe-001
+```
+
+この値をパラメーターファイルの `workspaceId` に設定します。
 
 デプロイ：
 
@@ -1109,7 +1129,17 @@ param workspaceId = '/subscriptions/YOUR_SUB_ID/resourceGroups/rg-platform-manag
 param diagnosticSettingName = 'send-to-log-analytics'
 ```
 
-**重要：** `workspaceId` の `YOUR_SUB_ID` 部分を、Management Subscription ID に置き換えてください。
+**重要：** `workspaceId` の値を置き換えてください。以下のコマンドで取得した Workspace ID を使用します：
+
+```bash
+# Log Analytics Workspace IDの値を確認（前のセクションで取得済み）
+echo $WORKSPACE_ID
+
+# 出力例：
+# /subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-platform-management-prod-jpe-001/providers/Microsoft.OperationalInsights/workspaces/log-platform-prod-jpe-001
+```
+
+この値をパラメーターファイルの `workspaceId` に設定します。
 
 ```bash
 # Management Subscription で実行
@@ -1313,7 +1343,17 @@ param destinationWorkspaceId = '/subscriptions/YOUR_SUB_ID/resourceGroups/rg-pla
 param diagnosticSettingName = 'send-to-log-analytics'
 ```
 
-**重要：** `destinationWorkspaceId` の `YOUR_SUB_ID` 部分を、Management Subscription ID に置き換えてください。
+**重要：** `destinationWorkspaceId` の値を置き換えてください。以下のコマンドで取得した Workspace ID を使用します：
+
+```bash
+# Log Analytics Workspace IDの値を確認（前のセクションで取得済み）
+echo $WORKSPACE_ID
+
+# 出力例：
+# /subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-platform-management-prod-jpe-001/providers/Microsoft.OperationalInsights/workspaces/log-platform-prod-jpe-001
+```
+
+この値をパラメーターファイルの `destinationWorkspaceId` に設定します。
 
 ```bash
 # Log Analytics Workspace の診断設定を適用
@@ -1393,7 +1433,17 @@ param destinationWorkspaceId = '/subscriptions/YOUR_SUB_ID/resourceGroups/rg-pla
 param diagnosticSettingName = 'send-to-log-analytics'
 ```
 
-**重要：** `destinationWorkspaceId` の `YOUR_SUB_ID` 部分を、Management Subscription ID に置き換えてください。
+**重要：** `destinationWorkspaceId` の値を置き換えてください。以下のコマンドで取得した Workspace ID を使用します：
+
+```bash
+# Log Analytics Workspace IDの値を確認（前のセクションで取得済み）
+echo $WORKSPACE_ID
+
+# 出力例：
+# /subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-platform-management-prod-jpe-001/providers/Microsoft.OperationalInsights/workspaces/log-platform-prod-jpe-001
+```
+
+この値をパラメーターファイルの `destinationWorkspaceId` に設定します。
 
 ```bash
 # VM Insights DCR の診断設定
