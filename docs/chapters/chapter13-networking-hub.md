@@ -380,7 +380,7 @@ module hubVNet '../modules/networking/hub-vnet.bicep' = {
 }
 ```
 
-#### デプロイ実行
+#### What-Ifによる事前確認
 
 **重要**: Connectivity Subscription に切り替えてからデプロイします。
 
@@ -397,7 +397,11 @@ az deployment sub what-if \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
+```
 
+#### デプロイ実行
+
+```bash
 # デプロイ実行
 az deployment sub create \
   --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
@@ -662,7 +666,7 @@ module firewall '../modules/networking/firewall.bicep' = {
 }
 ```
 
-#### デプロイ実行
+#### What-Ifによる事前確認
 
 ```bash
 # Connectivity Subscriptionに切り替え
@@ -674,7 +678,11 @@ az deployment sub what-if \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
+```
 
+#### デプロイ実行
+
+```bash
 # デプロイ実行（10-15分かかります）
 az deployment sub create \
   --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
@@ -821,7 +829,7 @@ module bastion '../modules/networking/bastion.bicep' = {
 }
 ```
 
-#### デプロイ実行
+#### What-Ifによる事前確認
 
 ```bash
 # Connectivity Subscriptionに切り替え
@@ -833,7 +841,11 @@ az deployment sub what-if \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
+```
 
+#### デプロイ実行
+
+```bash
 # デプロイ実行（5-10分かかります）
 az deployment sub create \
   --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
@@ -955,7 +967,7 @@ module routeTable '../modules/networking/route-table.bicep' = {
 }
 ```
 
-#### デプロイ実行
+#### What-Ifによる事前確認
 
 ```bash
 # Connectivity Subscriptionに切り替え
@@ -967,7 +979,11 @@ az deployment sub what-if \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
+```
 
+#### デプロイ実行
+
+```bash
 # デプロイ実行
 az deployment sub create \
   --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \

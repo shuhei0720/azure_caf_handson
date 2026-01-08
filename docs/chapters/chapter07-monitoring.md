@@ -965,7 +965,7 @@ module dcrVMInsights '../modules/monitoring/dcr-vm-insights.bicep' = {
 }
 ```
 
-#### デプロイ実行
+#### What-If による事前確認
 
 ```bash
 # What-If実行
@@ -974,7 +974,11 @@ az deployment sub what-if \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
+```
 
+#### デプロイ実行
+
+```bash
 # デプロイ実行
 az deployment sub create \
   --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
@@ -1126,7 +1130,7 @@ module dcrOSLogs '../modules/monitoring/dcr-os-logs.bicep' = {
 }
 ```
 
-#### デプロイ実行
+#### What-If による事前確認
 
 ```bash
 # What-If実行
@@ -1135,7 +1139,11 @@ az deployment sub what-if \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
+```
 
+#### デプロイ実行
+
+```bash
 # デプロイ実行
 az deployment sub create \
   --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \

@@ -239,7 +239,7 @@ module defender '../modules/security/defender.bicep' = {
 }
 ```
 
-#### デプロイ実行
+#### What-If による事前確認
 
 ```bash
 # Management Subscription に切り替え
@@ -251,7 +251,11 @@ az deployment sub what-if \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
+```
 
+#### デプロイ実行
+
+```bash
 # デプロイ実行
 az deployment sub create \
   --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
@@ -436,7 +440,7 @@ module keyVault '../modules/security/key-vault.bicep' = {
 }
 ```
 
-#### デプロイ実行
+#### What-Ifによる事前確認
 
 ````bash
 # Management Subscription に切り替え
@@ -448,7 +452,11 @@ az deployment sub what-if \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
+```
 
+#### デプロイ実行
+
+````bash
 # デプロイ実行
 az deployment sub create \
   --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
