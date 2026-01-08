@@ -343,6 +343,23 @@ az deployment tenant what-if \
   --parameters infrastructure/bicep/orchestration/tenant.bicepparam
 ```
 
+**What-If 結果の確認**：
+
+以下の出力が表示されれば正常です：
+
+```
+Resource changes: 1 to modify, 9 no change, 1 unsupported.
+
+Diagnostics (1):
+[tenantResourceId('Microsoft.Management/managementGroups/subscriptions', ...)] (Unsupported)
+```
+
+**💡 "Unsupported" について**：
+
+- これは**警告ではなく情報メッセージ**です
+- Subscription 作成 → その ID で Management Group 紐づけという流れのため、What-If 実行時点ではリソース ID が確定していません
+- デプロイ実行時には正しく処理されるため、**このままデプロイして問題ありません**
+
 ### 6.3.6 デプロイ実行（10-15 分）
 
 What-If で問題がないことを確認したら、実際にデプロイを実行します。
