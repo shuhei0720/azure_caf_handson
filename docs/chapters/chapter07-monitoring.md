@@ -1032,173 +1032,6 @@ graph LR
 
 ---
 
-## 7.8 Azure Policy 用ユーザー割り当てマネージド ID
-
-Azure Policy の DeployIfNotExists や Modify 効果を使用する際、ポリシーが自動的にリソースを作成・変更するためには、適切な権限を持つマネージド ID が必要です。
-
-```mermaid
-graph TB
-    subgraph "Management Subscription"
-        MI[マネージドID:<br/>id-policy-assignment]
-    end
-
-    subgraph "Azure Policy"
-        P1[Policy: Defender<br/>for Cloud]
-        P2[Policy: Diagnostic<br/>Settings]
-    end
-
-    subgraph "Target Subscriptions"
-        SUB1[Connectivity<br/>Subscription]
-        SUB2[Sandbox<br/>Subscription]
-        SUB3[Application<br/>Subscription]
-    end
-
-    P1 -->|DeployIfNotExists| MI
-    P2 -->|Modify| MI
-
-    MI -->|Owner権限で<br/>リソース作成/変更| SUB1
-    MI -->|Owner権限で<br/>リソース作成/変更| SUB2
-    MI -->|Owner権限で<br/>リソース作成/変更| SUB3
-
-    style MI fill:#ffe6cc
-    style SUB1 fill:#e1f5ff
-    style SUB2 fill:#e1f5ff
-    style SUB3 fill:#e1f5ff
-```
-
-CAF のベストプラクティスに従い、ポリシー実行用のマネージド ID は **Management Subscription** に配置します。これにより、複数のサブスクリプションにまたがるポリシー割り当てを一元管理できます。
-
-### 7.8.1 マネージド ID Bicep モジュール
-
-ファイル `infrastructure/bicep/modules/identity/managed-identity.bicep` を作成します：
-
-```bicep
-@description('マネージドIDの名前')
-param identityName string
-
-@description('デプロイ先のリージョン')
-param location string
-
-@description('タグ')
-param tags object = {}
-
-// ユーザー割り当てマネージドID
-resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: identityName
-  location: location
-  tags: tags
-}
-
-output identityId string = managedIdentity.id
-output principalId string = managedIdentity.properties.principalId
-output clientId string = managedIdentity.properties.clientId
-```
-
-### 7.8.2 マネージド ID の作成
-
-```bash
-# Management Subscription で実行
-az account set --subscription $SUB_MANAGEMENT_ID
-
-# 事前確認
-az deployment group what-if \
-  --name "policy-identity-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/identity/managed-identity.bicep \
-  --parameters \
-    identityName=id-policy-assignment-prod-jpe-001 \
-    location=japaneast
-
-# 確認後、デプロイ実行
-DEPLOYMENT_OUTPUT=$(az deployment group create \
-  --name "policy-identity-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/identity/managed-identity.bicep \
-  --parameters \
-    identityName=id-policy-assignment-prod-jpe-001 \
-    location=japaneast \
-  --query 'properties.outputs' -o json)
-
-# 環境変数に保存
-POLICY_IDENTITY_ID=$(echo $DEPLOYMENT_OUTPUT | jq -r '.identityId.value')
-POLICY_IDENTITY_PRINCIPAL_ID=$(echo $DEPLOYMENT_OUTPUT | jq -r '.principalId.value')
-
-echo "POLICY_IDENTITY_ID=$POLICY_IDENTITY_ID" >> .env
-echo "POLICY_IDENTITY_PRINCIPAL_ID=$POLICY_IDENTITY_PRINCIPAL_ID" >> .env
-
-echo "Policy用マネージドID: $POLICY_IDENTITY_ID"
-echo "Principal ID: $POLICY_IDENTITY_PRINCIPAL_ID"
-```
-
-### 7.8.3 マネージド ID への権限付与
-
-Azure Policy の DeployIfNotExists/Modify 効果（特に Defender for Cloud の適用）には **Owner** 権限が必要です。Management Subscription に対して Owner ロールを付与します。
-
-ファイル `infrastructure/bicep/modules/identity/role-assignment-owner.bicep` を作成します：
-
-```bicep
-targetScope = 'subscription'
-
-@description('マネージドIDのPrincipal ID')
-param principalId string
-
-@description('ロール定義ID（Owner）')
-param roleDefinitionId string = '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' // Owner
-
-// Owner権限の付与
-resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(subscription().id, principalId, roleDefinitionId)
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionId)
-    principalId: principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-output roleAssignmentId string = roleAssignment.id
-```
-
-```bash
-# Management Subscription に Owner 権限を付与
-# 事前確認
-az deployment sub what-if \
-  --name "policy-identity-owner-$(date +%Y%m%d-%H%M%S)" \
-  --location japaneast \
-  --template-file infrastructure/bicep/modules/identity/role-assignment-owner.bicep \
-  --parameters \
-    principalId=$POLICY_IDENTITY_PRINCIPAL_ID
-
-# 確認後、デプロイ実行
-az deployment sub create \
-  --name "policy-identity-owner-$(date +%Y%m%d-%H%M%S)" \
-  --location japaneast \
-  --template-file infrastructure/bicep/modules/identity/role-assignment-owner.bicep \
-  --parameters \
-    principalId=$POLICY_IDENTITY_PRINCIPAL_ID
-
-echo "マネージドIDにOwner権限を付与しました"
-```
-
-### 7.8.4 Azure Portal での確認
-
-デプロイ後、Azure Portal で以下を確認します:
-
-1. **マネージド ID の確認**
-
-   - Azure Portal → Resource groups → rg-platform-management-prod-jpe-001
-   - `id-policy-assignment-prod-jpe-001` が存在することを確認
-
-2. **Principal ID の確認**
-
-   - Managed Identity を開く → Properties → Object (principal) ID をコピー
-   - `.env` ファイルの `POLICY_IDENTITY_PRINCIPAL_ID` と一致することを確認
-
-3. **ロール割り当ての確認**
-   - Subscriptions → Management Subscription → Access control (IAM) → Role assignments
-   - マネージド ID に Owner ロールが付与されていることを確認
-
----
-
 ### 7.7.1 Log Analytics Workspace の診断設定
 
 ファイル `infrastructure/bicep/modules/monitoring/log-analytics-diagnostics.bicep` を作成します：
@@ -1363,6 +1196,173 @@ az deployment group create \
 3. **監視基盤のログ確認**
    - Log Analytics → Logs → `AzureDiagnostics | where ResourceType == "DATACOLECTIONRULES" | take 10`
    - 監視リソース自体のログが収集されていることを確認
+
+---
+
+## 7.8 Azure Policy 用ユーザー割り当てマネージド ID
+
+Azure Policy の DeployIfNotExists や Modify 効果を使用する際、ポリシーが自動的にリソースを作成・変更するためには、適切な権限を持つマネージド ID が必要です。
+
+```mermaid
+graph TB
+    subgraph "Management Subscription"
+        MI[マネージドID:<br/>id-policy-assignment]
+    end
+
+    subgraph "Azure Policy"
+        P1[Policy: Defender<br/>for Cloud]
+        P2[Policy: Diagnostic<br/>Settings]
+    end
+
+    subgraph "Target Subscriptions"
+        SUB1[Connectivity<br/>Subscription]
+        SUB2[Sandbox<br/>Subscription]
+        SUB3[Application<br/>Subscription]
+    end
+
+    P1 -->|DeployIfNotExists| MI
+    P2 -->|Modify| MI
+
+    MI -->|Owner権限で<br/>リソース作成/変更| SUB1
+    MI -->|Owner権限で<br/>リソース作成/変更| SUB2
+    MI -->|Owner権限で<br/>リソース作成/変更| SUB3
+
+    style MI fill:#ffe6cc
+    style SUB1 fill:#e1f5ff
+    style SUB2 fill:#e1f5ff
+    style SUB3 fill:#e1f5ff
+```
+
+CAF のベストプラクティスに従い、ポリシー実行用のマネージド ID は **Management Subscription** に配置します。これにより、複数のサブスクリプションにまたがるポリシー割り当てを一元管理できます。
+
+### 7.8.1 マネージド ID Bicep モジュール
+
+ファイル `infrastructure/bicep/modules/identity/managed-identity.bicep` を作成します：
+
+```bicep
+@description('マネージドIDの名前')
+param identityName string
+
+@description('デプロイ先のリージョン')
+param location string
+
+@description('タグ')
+param tags object = {}
+
+// ユーザー割り当てマネージドID
+resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: identityName
+  location: location
+  tags: tags
+}
+
+output identityId string = managedIdentity.id
+output principalId string = managedIdentity.properties.principalId
+output clientId string = managedIdentity.properties.clientId
+```
+
+### 7.8.2 マネージド ID の作成
+
+```bash
+# Management Subscription で実行
+az account set --subscription $SUB_MANAGEMENT_ID
+
+# 事前確認
+az deployment group what-if \
+  --name "policy-identity-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/identity/managed-identity.bicep \
+  --parameters \
+    identityName=id-policy-assignment-prod-jpe-001 \
+    location=japaneast
+
+# 確認後、デプロイ実行
+DEPLOYMENT_OUTPUT=$(az deployment group create \
+  --name "policy-identity-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/identity/managed-identity.bicep \
+  --parameters \
+    identityName=id-policy-assignment-prod-jpe-001 \
+    location=japaneast \
+  --query 'properties.outputs' -o json)
+
+# 環境変数に保存
+POLICY_IDENTITY_ID=$(echo $DEPLOYMENT_OUTPUT | jq -r '.identityId.value')
+POLICY_IDENTITY_PRINCIPAL_ID=$(echo $DEPLOYMENT_OUTPUT | jq -r '.principalId.value')
+
+echo "POLICY_IDENTITY_ID=$POLICY_IDENTITY_ID" >> .env
+echo "POLICY_IDENTITY_PRINCIPAL_ID=$POLICY_IDENTITY_PRINCIPAL_ID" >> .env
+
+echo "Policy用マネージドID: $POLICY_IDENTITY_ID"
+echo "Principal ID: $POLICY_IDENTITY_PRINCIPAL_ID"
+```
+
+### 7.8.3 マネージド ID への権限付与
+
+Azure Policy の DeployIfNotExists/Modify 効果（特に Defender for Cloud の適用）には **Owner** 権限が必要です。Management Subscription に対して Owner ロールを付与します。
+
+ファイル `infrastructure/bicep/modules/identity/role-assignment-owner.bicep` を作成します：
+
+```bicep
+targetScope = 'subscription'
+
+@description('マネージドIDのPrincipal ID')
+param principalId string
+
+@description('ロール定義ID（Owner）')
+param roleDefinitionId string = '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' // Owner
+
+// Owner権限の付与
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(subscription().id, principalId, roleDefinitionId)
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionId)
+    principalId: principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+output roleAssignmentId string = roleAssignment.id
+```
+
+```bash
+# Management Subscription に Owner 権限を付与
+# 事前確認
+az deployment sub what-if \
+  --name "policy-identity-owner-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/modules/identity/role-assignment-owner.bicep \
+  --parameters \
+    principalId=$POLICY_IDENTITY_PRINCIPAL_ID
+
+# 確認後、デプロイ実行
+az deployment sub create \
+  --name "policy-identity-owner-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/modules/identity/role-assignment-owner.bicep \
+  --parameters \
+    principalId=$POLICY_IDENTITY_PRINCIPAL_ID
+
+echo "マネージドIDにOwner権限を付与しました"
+```
+
+### 7.8.4 Azure Portal での確認
+
+デプロイ後、Azure Portal で以下を確認します:
+
+1. **マネージド ID の確認**
+
+   - Azure Portal → Resource groups → rg-platform-management-prod-jpe-001
+   - `id-policy-assignment-prod-jpe-001` が存在することを確認
+
+2. **Principal ID の確認**
+
+   - Managed Identity を開く → Properties → Object (principal) ID をコピー
+   - `.env` ファイルの `POLICY_IDENTITY_PRINCIPAL_ID` と一致することを確認
+
+3. **ロール割り当ての確認**
+   - Subscriptions → Management Subscription → Access control (IAM) → Role assignments
+   - マネージド ID に Owner ロールが付与されていることを確認
 
 ---
 
