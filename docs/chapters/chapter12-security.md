@@ -354,7 +354,7 @@ param tags = {
 
 Key Vault 用の Resource Group を Bicep で作成：
 
-**What-Ifによる事前確認：**
+**What-If による事前確認：**
 
 ```bash
 # 事前確認
@@ -367,7 +367,7 @@ az deployment sub what-if \
 
 **デプロイ実行：**
 
-```bash
+````bash
 # デプロイ実行
 az deployment sub create \
   --name "rg-security-$(date +%Y%m%d-%H%M%S)" \
@@ -419,7 +419,7 @@ az deployment group what-if \
  --resource-group rg-platform-security-prod-jpe-001 \
  --template-file infrastructure/bicep/modules/security/key-vault.bicep \
  --parameters infrastructure/bicep/parameters/key-vault.parameters.json
-```
+````
 
 **デプロイ実行：**
 
@@ -496,7 +496,7 @@ output ddosProtectionPlanName string = ddosProtectionPlan.name
 
 ### 12.4.3 VNet への DDoS Protection 適用
 
-**What-Ifによる事前確認：**
+**What-If による事前確認：**
 
 ```bash
 # 事前確認

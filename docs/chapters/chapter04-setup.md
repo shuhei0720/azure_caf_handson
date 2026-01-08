@@ -400,7 +400,7 @@ Scope: /subscriptions/12345678-1234-1234-1234-123456789abc
 ### 4.5.6 デプロイの実行
 
 ```bash
-# 確認後、デプロイ実行
+# デプロイ実行
 az deployment sub create \
   --name "test-rg-deployment-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
