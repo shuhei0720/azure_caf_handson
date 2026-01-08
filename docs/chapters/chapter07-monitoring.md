@@ -1303,6 +1303,9 @@ Entra ID の診断設定は **テナントレベル** のリソースであり�
 ### 7.5.2 診断設定の適用
 
 ```bash
+# WORKSPACE_IDが設定されているか確認
+echo "Log Analytics Workspace ID: $WORKSPACE_ID"
+
 # Entra ID の診断設定を作成（REST API経由）
 az rest --method PUT \
   --uri "https://management.azure.com/providers/Microsoft.AADIAM/diagnosticSettings/entra-id-to-log-analytics?api-version=2017-04-01" \
@@ -1315,12 +1318,41 @@ az rest --method PUT \
         {\"category\": \"NonInteractiveUserSignInLogs\", \"enabled\": true},
         {\"category\": \"ServicePrincipalSignInLogs\", \"enabled\": true},
         {\"category\": \"ManagedIdentitySignInLogs\", \"enabled\": true},
-        {\"category\": \"ProvisioningLogs\", \"enabled\": true}
+        {\"category\": \"ProvisioningLogs\", \"enabled\": true},
+        {\"category\": \"ADFSSignInLogs\", \"enabled\": true},
+        {\"category\": \"RiskyUsers\", \"enabled\": true},
+        {\"category\": \"UserRiskEvents\", \"enabled\": true},
+        {\"category\": \"NetworkAccessTrafficLogs\", \"enabled\": true},
+        {\"category\": \"RiskyServicePrincipals\", \"enabled\": true},
+        {\"category\": \"ServicePrincipalRiskEvents\", \"enabled\": true},
+        {\"category\": \"EnrichedOffice365AuditLogs\", \"enabled\": true},
+        {\"category\": \"MicrosoftGraphActivityLogs\", \"enabled\": true},
+        {\"category\": \"RemoteNetworkHealthLogs\", \"enabled\": true},
+        {\"category\": \"NetworkAccessAlerts\", \"enabled\": true},
+        {\"category\": \"NetworkAccessConnectionEvents\", \"enabled\": true},
+        {\"category\": \"MicrosoftServicePrincipalSignInLogs\", \"enabled\": true},
+        {\"category\": \"AzureADGraphActivityLogs\", \"enabled\": true},
+        {\"category\": \"NetworkAccessGenerativeAIInsights\", \"enabled\": true}
       ]
     }
   }"
 
 echo "✅ Entra ID のログが Log Analytics に送信されるようになりました"
+```
+
+**トラブルシューティング:**
+
+WORKSPACE_IDが空の場合は、7.3.2のセクションで取得したWorkspace IDを再確認してください：
+
+```bash
+# Workspace IDを再取得
+WORKSPACE_ID=$(az monitor log-analytics workspace show \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --workspace-name log-platform-prod-jpe-001 \
+  --query id -o tsv)
+
+grep -q "WORKSPACE_ID=" .env || echo "WORKSPACE_ID=$WORKSPACE_ID" >> .env
+echo "Log Analytics Workspace ID: $WORKSPACE_ID"
 ```
 
 **注意事項：**
