@@ -374,6 +374,7 @@ graph TB
 #### アプローチ 1: Subscription 分離（推奨）
 
 **メリット**：
+
 - ✅ **完全な課金分離**: 環境ごとのコストが明確
 - ✅ **強力なアクセス制御**: 本番環境への誤った変更を防止
 - ✅ **独立したクォータ**: 開発環境の負荷が本番に影響しない
@@ -381,10 +382,12 @@ graph TB
 - ✅ **ブラストラジアス**: 開発環境の障害が本番に波及しない
 
 **デメリット**：
+
 - ❌ 管理対象の Subscription が増える
 - ❌ Subscription 間のリソース共有が複雑
 
 **適用シナリオ**：
+
 - エンタープライズ環境（推奨）
 - 厳格なコンプライアンス要件がある場合
 - 大規模なチーム・プロジェクト
@@ -392,16 +395,19 @@ graph TB
 #### アプローチ 2: Resource Group 分離
 
 **メリット**：
+
 - ✅ 管理が簡単（単一 Subscription）
 - ✅ リソース間の接続が容易（同一 VNet など）
 - ✅ コストが低い（Subscription の最小数）
 
 **デメリット**：
+
 - ❌ 課金の分離が不十分
 - ❌ 誤操作のリスク（本番 RG を誤って削除など）
 - ❌ クォータの共有（環境間で競合）
 
 **適用シナリオ**：
+
 - 小規模プロジェクト
 - PoC や検証環境
 - 予算制約が厳しい場合
@@ -409,6 +415,7 @@ graph TB
 #### アプローチ 3: ハイブリッド（実践的な推奨）
 
 **構成例**：
+
 ```
 Platform Subscription（共通）
   ├── Management Subscription: 監視・ログ
@@ -426,28 +433,234 @@ Production Subscription（本番）
 ```
 
 **メリット**：
+
 - ✅ 本番環境の完全な分離（最も重要）
 - ✅ 開発・ステージングの統合管理（コスト削減）
 - ✅ バランスの取れた管理負荷
 
 **適用シナリオ**：
+
 - 中規模〜大規模プロジェクト（最も一般的）
 - セキュリティと管理負荷のバランスを重視
 
+#### ネットワーク分離パターン：Hub VNet の共有 vs 分離
+
+環境分離において、**Hub VNet（ハブネットワーク）をどう扱うか**は重要な設計判断です。CAF では以下の 2 つのパターンがあります。
+
+##### パターン A: 共有 Hub VNet（コスト効率重視）
+
+すべての環境が**単一の Hub VNet を共有**するアプローチ：
+
+```mermaid
+graph TB
+    subgraph "Connectivity Subscription"
+        Hub[Hub VNet<br/>10.0.0.0/16<br/>共有]
+        Firewall[Azure Firewall<br/>全環境の通信を制御]
+        Bastion[Azure Bastion<br/>全環境へのアクセス]
+    end
+
+    subgraph "Dev Subscription"
+        DevSpoke[Dev Spoke VNet<br/>10.10.0.0/16]
+    end
+
+    subgraph "Staging Subscription"
+        StgSpoke[Staging Spoke VNet<br/>10.20.0.0/16]
+    end
+
+    subgraph "Production Subscription"
+        ProdSpoke[Production Spoke VNet<br/>10.30.0.0/16]
+    end
+
+    Hub -->|VNet Peering| DevSpoke
+    Hub -->|VNet Peering| StgSpoke
+    Hub -->|VNet Peering| ProdSpoke
+
+    style Hub fill:#fff4e1
+    style DevSpoke fill:#e3f2fd
+    style StgSpoke fill:#fff8e1
+    style ProdSpoke fill:#e8f5e9
+```
+
+**メリット**：
+- ✅ **コスト効率**: Azure Firewall、VPN Gateway、Bastion を 1 セットのみ管理
+- ✅ **管理の簡素化**: 単一の Hub ネットワーク設定
+- ✅ **リソース共有**: ExpressRoute、VPN などの高価なリソースを共有
+
+**デメリット**：
+- ❌ **セキュリティ懸念**: Firewall ルールの誤設定で環境間の通信が発生するリスク
+- ❌ **ブラストラジアス**: Hub の障害が全環境に影響
+- ❌ **コンプライアンス**: 一部の規制では環境の完全分離を要求
+
+**適用シナリオ**：
+- 中小規模組織（最も一般的）← **本ハンズオンで採用**
+- コスト最適化が重要
+- 環境間の厳格な分離が不要
+
+##### パターン B: 環境別 Hub VNet（セキュリティ重視）
+
+環境ごとに**独立した Hub VNet**を持つアプローチ：
+
+```mermaid
+graph TB
+    subgraph "Dev Connectivity Subscription"
+        DevHub[Dev Hub VNet<br/>10.10.0.0/16]
+        DevFW[Dev Firewall]
+        DevBastion[Dev Bastion]
+    end
+
+    subgraph "Staging Connectivity Subscription"
+        StgHub[Staging Hub VNet<br/>10.20.0.0/16]
+        StgFW[Staging Firewall]
+        StgBastion[Staging Bastion]
+    end
+
+    subgraph "Production Connectivity Subscription"
+        ProdHub[Production Hub VNet<br/>10.30.0.0/16]
+        ProdFW[Production Firewall]
+        ProdBastion[Production Bastion]
+    end
+
+    subgraph "Dev Spoke Subscriptions"
+        DevSpoke1[Dev Spoke 1]
+        DevSpoke2[Dev Spoke 2]
+    end
+
+    subgraph "Production Spoke Subscriptions"
+        ProdSpoke1[Prod Spoke 1]
+        ProdSpoke2[Prod Spoke 2]
+    end
+
+    DevHub --> DevSpoke1
+    DevHub --> DevSpoke2
+    ProdHub --> ProdSpoke1
+    ProdHub --> ProdSpoke2
+
+    style DevHub fill:#e3f2fd
+    style StgHub fill:#fff8e1
+    style ProdHub fill:#e8f5e9
+```
+
+**メリット**：
+- ✅ **完全な環境分離**: ネットワークレベルで環境が独立
+- ✅ **セキュリティ**: 環境間の通信が物理的に不可能
+- ✅ **ブラストラジアス**: 開発環境の障害が本番に影響しない
+- ✅ **コンプライアンス**: 厳格な規制要件に対応可能
+- ✅ **独立した運用**: 環境ごとに異なる運用チーム・ポリシー
+
+**デメリット**：
+- ❌ **高コスト**: Azure Firewall、VPN Gateway、Bastion を環境数分だけ必要
+- ❌ **管理負荷**: Hub ネットワークが環境数分だけ増加
+- ❌ **複雑性**: 環境間のリソース共有が困難
+
+**コスト例**（月額・日本東部）：
+```
+単一 Hub VNet: 
+  Azure Firewall Standard: ¥122,000
+  Azure Bastion Standard: ¥14,000
+  合計: ¥136,000/月
+
+環境別 Hub VNet（Dev/Staging/Prod）:
+  Azure Firewall × 3: ¥366,000
+  Azure Bastion × 3: ¥42,000
+  合計: ¥408,000/月 ← 約 3 倍のコスト
+```
+
+**適用シナリオ**：
+- 大規模エンタープライズ組織
+- 金融、医療、政府機関など厳格な規制がある業界
+- セキュリティとコンプライアンスが最優先
+- 予算に余裕がある
+
+##### パターン C: ハイブリッド（非本番共有、本番分離）
+
+非本番環境（Dev/Staging）は Hub を共有し、**本番環境のみ独立した Hub** を持つアプローチ：
+
+```mermaid
+graph TB
+    subgraph "Non-Prod Connectivity Subscription"
+        NonProdHub[Non-Prod Hub VNet<br/>10.100.0.0/16]
+        NonProdFW[Shared Firewall]
+    end
+
+    subgraph "Production Connectivity Subscription"
+        ProdHub[Production Hub VNet<br/>10.0.0.0/16]
+        ProdFW[Production Firewall]
+    end
+
+    subgraph "Dev/Staging Environments"
+        DevSpoke[Dev Spoke<br/>10.110.0.0/16]
+        StgSpoke[Staging Spoke<br/>10.120.0.0/16]
+    end
+
+    subgraph "Production Environment"
+        ProdSpoke[Production Spoke<br/>10.10.0.0/16]
+    end
+
+    NonProdHub --> DevSpoke
+    NonProdHub --> StgSpoke
+    ProdHub --> ProdSpoke
+
+    style NonProdHub fill:#e3f2fd
+    style ProdHub fill:#e8f5e9
+```
+
+**メリット**：
+- ✅ **バランス**: コストとセキュリティの妥協点
+- ✅ **本番保護**: 最も重要な本番環境を完全分離
+- ✅ **コスト削減**: 非本番環境のリソースは共有
+
+**適用シナリオ**：
+- 中規模〜大規模プロジェクト（実践的な推奨）
+- 本番環境のセキュリティが重要だがコストも考慮したい
+
+##### Hub VNet 分離の設計判断基準
+
+| 判断基準                       | 共有 Hub（A） | 環境別 Hub（B） | ハイブリッド（C） |
+| ------------------------------ | ------------- | --------------- | ----------------- |
+| **月額コスト**                 | ¥140K         | ¥420K           | ¥280K             |
+| **管理負荷**                   | 低            | 高              | 中                |
+| **セキュリティレベル**         | 中            | 高              | 高（本番のみ）    |
+| **環境間の完全分離**           | ❌            | ✅              | ⚠️（本番のみ）   |
+| **コンプライアンス対応**       | 限定的        | 完全対応        | 本番のみ対応      |
+| **小規模組織（〜100 人）**     | ✅ 推奨       | ❌              | ⚠️                |
+| **中規模組織（100-1000 人）**  | ✅            | ⚠️              | ✅ 推奨           |
+| **大規模組織（1000 人〜）**    | ❌            | ✅ 推奨         | ✅                |
+| **金融・医療・政府**           | ❌            | ✅ 推奨         | ✅                |
+
+##### 本ハンズオンでの採用パターン
+
+本ハンズオンでは**パターン A（共有 Hub VNet）**を採用しています：
+
+```
+理由:
+1. 学習目的: コスト効率を重視
+2. シンプル: Hub-Spoke の基本概念を理解しやすい
+3. 実用的: 多くの中小規模組織で採用されているパターン
+
+実際のエンタープライズ環境への拡張:
+- パターン B（環境別 Hub）に移行する場合:
+  * Connectivity Subscription を環境数分作成
+  * 各環境に独立した Hub VNet、Firewall、Bastion を構築
+  
+- パターン C（ハイブリッド）に移行する場合:
+  * Non-Prod Connectivity Subscription（Dev/Staging共有）
+  * Prod Connectivity Subscription（Production専用）
+```
+
 #### 環境ごとの設計パターン
 
-| 観点               | Development（開発）        | Staging（ステージング）   | Production（本番）        |
-| ------------------ | -------------------------- | ------------------------- | ------------------------- |
-| **アクセス権限**   | 開発者: Contributor        | 限定メンバー: Contributor | SRE/運用チームのみ: Owner |
-| **ネットワーク**   | 10.10.0.0/16              | 10.20.0.0/16             | 10.0.0.0/16              |
-| **VM サイズ**      | Standard_B2s（小）        | Standard_D4s_v5（中）    | Standard_D8s_v5（大）    |
-| **可用性**         | Single VM                  | Availability Zone（1-2） | Availability Zone（3）   |
-| **バックアップ**   | なし or 週次              | 日次                      | 日次 + GRS               |
-| **診断ログ**       | 7日間                      | 30日間                    | 90日間                    |
-| **Azure Policy**   | Audit（監査のみ）         | Audit + DeployIfNotExists | Deny + 強制               |
-| **コストタグ**     | Environment: Dev          | Environment: Staging     | Environment: Production  |
-| **自動シャットダウン** | 有効（夜間・週末）      | 有効（夜間のみ）         | 無効                      |
-| **スケーリング**   | 手動                       | 手動 or 制限付き自動     | 自動（フル設定）         |
+| 観点                   | Development（開発） | Staging（ステージング）   | Production（本番）        |
+| ---------------------- | ------------------- | ------------------------- | ------------------------- |
+| **アクセス権限**       | 開発者: Contributor | 限定メンバー: Contributor | SRE/運用チームのみ: Owner |
+| **ネットワーク**       | 10.10.0.0/16        | 10.20.0.0/16              | 10.0.0.0/16               |
+| **VM サイズ**          | Standard_B2s（小）  | Standard_D4s_v5（中）     | Standard_D8s_v5（大）     |
+| **可用性**             | Single VM           | Availability Zone（1-2）  | Availability Zone（3）    |
+| **バックアップ**       | なし or 週次        | 日次                      | 日次 + GRS                |
+| **診断ログ**           | 7 日間              | 30 日間                   | 90 日間                   |
+| **Azure Policy**       | Audit（監査のみ）   | Audit + DeployIfNotExists | Deny + 強制               |
+| **コストタグ**         | Environment: Dev    | Environment: Staging      | Environment: Production   |
+| **自動シャットダウン** | 有効（夜間・週末）  | 有効（夜間のみ）          | 無効                      |
+| **スケーリング**       | 手動                | 手動 or 制限付き自動      | 自動（フル設定）          |
 
 #### 命名規則での環境識別
 
@@ -470,12 +683,13 @@ CAF の命名規則に環境を含める：
 ```
 
 **環境の略語**：
+
 - `dev`: Development（開発）
 - `stg`: Staging（ステージング）
 - `prod`: Production（本番）
 - `qa`: QA（品質保証）
 - `uat`: UAT（ユーザー受入テスト）
-- `dr`: Disaster Recovery（DR環境）
+- `dr`: Disaster Recovery（DR 環境）
 - `sandbox`: Sandbox（検証・実験）
 
 #### CI/CD パイプラインでの環境管理
@@ -498,19 +712,22 @@ graph LR
 ```
 
 **デプロイメント戦略**：
+
 - **Dev**: プッシュごとに自動デプロイ（高頻度）
-- **Staging**: マージ後に自動デプロイ（1日数回）
+- **Staging**: マージ後に自動デプロイ（1 日数回）
 - **Production**: 手動承認 + スケジュール（週次・隔週）
 
 #### 環境間のデータ管理
 
 **重要な原則**：
+
 ```
 ⚠️ 本番データを開発・ステージング環境にコピーしない
    → 個人情報保護、コンプライアンス違反のリスク
 ```
 
 **推奨アプローチ**：
+
 1. **合成データ**: 開発・ステージングでは架空のテストデータを使用
 2. **データマスキング**: 必要な場合は本番データを匿名化
 3. **サブセット**: 本番データの一部のみ（匿名化済み）を使用
@@ -520,6 +737,7 @@ graph LR
 本ハンズオンでは**単一の Production 環境**のみを構築しますが、実際のエンタープライズ環境では以下のように拡張できます：
 
 **拡張例**：
+
 ```
 Platform Subscriptions（共通）
   ├── Management Subscription
