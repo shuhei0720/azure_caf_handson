@@ -548,7 +548,7 @@ output storageAccountId string = storageAccount.id
 output storageAccountName string = storageAccount.name
 ```
 
-`````
+````
 
 ---
 
@@ -678,3 +678,4 @@ git push origin main
 ---
 
 **最終更新**: 2026 年 1 月 7 日
+````
