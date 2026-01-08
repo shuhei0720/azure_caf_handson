@@ -1924,6 +1924,11 @@ graph TB
 
 CAF のベストプラクティスに従い、ポリシー実行用のマネージド ID は **Management Subscription** に配置します。これにより、複数のサブスクリプションにまたがるポリシー割り当てを一元管理できます。
 
+```bash
+# ディレクトリ作成
+mkdir -p infrastructure/bicep/modules/identity
+```
+
 ### 7.8.1 マネージド ID Bicep モジュール
 
 ファイル `infrastructure/bicep/modules/identity/managed-identity.bicep` を作成します：
@@ -1967,11 +1972,7 @@ module policyIdentity '../modules/identity/managed-identity.bicep' = {
     })
   }
 }
-```
 
-`main.bicep` の最後に出力を追加：
-
-```bicep
 // Chapter 7: Policy Identity Outputs
 output policyIdentityId string = policyIdentity.outputs.identityId
 output policyIdentityPrincipalId string = policyIdentity.outputs.principalId
@@ -1980,12 +1981,6 @@ output policyIdentityPrincipalId string = policyIdentity.outputs.principalId
 ### 7.8.3 What-If による事前確認
 
 ```bash
-# ディレクトリ作成
-mkdir -p infrastructure/bicep/modules/identity
-
-# Management Subscription で実行
-az account set --subscription $SUB_MANAGEMENT_ID
-
 # 事前確認
 az deployment sub what-if \
   --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
@@ -1997,6 +1992,9 @@ az deployment sub what-if \
 ### 7.8.4 デプロイ実行
 
 ```bash
+# Management Subscription で実行
+az account set --subscription $SUB_MANAGEMENT_ID
+
 # デプロイ実行
 DEPLOYMENT_OUTPUT=$(az deployment sub create \
   --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
