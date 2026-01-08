@@ -1996,16 +1996,20 @@ az deployment sub what-if \
 az account set --subscription $SUB_MANAGEMENT_ID
 
 # デプロイ実行
+DEPLOYMENT_NAME="main-deployment-$(date +%Y%m%d-%H%M%S)"
 az deployment sub create \
-  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --name $DEPLOYMENT_NAME \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
 
-# デプロイ結果から出力を取得
+# デプロイ結果から出力を取得して表示
+echo "=== デプロイ出力を取得中 ==="
 DEPLOYMENT_OUTPUT=$(az deployment sub show \
-  --name $(az deployment sub list --query "[0].name" -o tsv) \
+  --name $DEPLOYMENT_NAME \
   --query 'properties.outputs' -o json)
+
+echo "出力内容: $DEPLOYMENT_OUTPUT"
 
 # 環境変数に保存
 POLICY_IDENTITY_ID=$(echo $DEPLOYMENT_OUTPUT | jq -r '.policyIdentityId.value')
