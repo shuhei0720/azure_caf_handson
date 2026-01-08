@@ -889,6 +889,115 @@ az deployment sub create \
 - 段階的にオーケストレーションを構築
 - 全体が消失した場合も 2 コマンドで復元可能
 
+### 4.8.5 コスト削減：途中削除と 1 コマンド復元
+
+**orchestration 方式の最大のメリット**：途中でリソースを全削除しても、**1 コマンドで復元して続きから再開**できます。
+
+#### 削除 → 復元 → 再開のフロー
+
+```mermaid
+graph LR
+    A[Chapter 7完了] -->|コスト削減| B[Resource Group削除]
+    B -->|数日後| C[1コマンドで復元]
+    C --> D[Chapter 8から再開]
+
+    style B fill:#ffcdd2
+    style C fill:#c8e6c9
+    style D fill:#fff9c4
+```
+
+#### 実践例：Chapter 7 で中断 → 後日 Chapter 8 から再開
+
+```bash
+# ============================================================
+# 1日目：Chapter 7まで完了
+# ============================================================
+
+# Chapter 7でResource Groupが作成されている
+az group show --name rg-platform-management-prod-jpe-001
+
+# コスト削減のため削除（Management Groupsは残す）
+az group delete --name rg-platform-management-prod-jpe-001 --yes --no-wait
+
+# ============================================================
+# 数日後：Chapter 8から再開
+# ============================================================
+
+# 環境変数を再読み込み
+source .env
+
+# Management Subscriptionに切り替え
+az account set --subscription $SUB_MANAGEMENT_ID
+
+# ✅ orchestration経由で1コマンド復元
+az deployment sub create \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+
+# ✅ Chapter 7までのリソースが全て復元される
+# ✅ Chapter 8の手順を続けるだけ
+```
+
+#### なぜ復元できるのか？
+
+orchestration ファイルには**全ての設定が蓄積**されています：
+
+```
+orchestration/main.bicepparam    ← Chapter 7までのパラメータが全て記載
+orchestration/main.bicep         ← Chapter 7までのモジュールが全て記載
+```
+
+Bicep の**冪等性**により：
+
+- 削除されたリソース → 再作成される
+- 既存のリソース → スキップされる
+- 変更されたリソース → 更新される
+
+#### 削除の推奨パターン
+
+**推奨：Resource Group 単位で削除**
+
+```bash
+# Management Subscriptionのリソースを削除
+az group delete --name rg-platform-management-prod-jpe-001 --yes --no-wait
+
+# Connectivity Subscriptionのリソースを削除
+az group delete --name rg-platform-connectivity-prod-jpe-001 --yes --no-wait
+```
+
+**削除してはいけないもの**：
+
+- ❌ Management Groups（無料、再作成に手間）
+- ❌ Subscriptions（無料、24 時間制限あり）
+- ❌ `.env`ファイル（Subscription ID が必要）
+- ❌ `orchestration/`配下のファイル（復元に必要）
+
+#### 完全削除後の全体復元
+
+全ての Subscription のリソースを削除した場合：
+
+```bash
+# 1. Management Subscriptionを復元
+az account set --subscription $SUB_MANAGEMENT_ID
+az deployment sub create \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+
+# 2. Connectivity Subscriptionを復元（Chapter 13以降の場合）
+az account set --subscription $SUB_CONNECTIVITY_ID
+az deployment sub create \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+
+# ✅ 全てのリソースが復元される
+```
+
+**これにより、コストを気にせず学習を中断・再開できます！**
+
 ---
 
 ## 4.9 Git へのコミット
