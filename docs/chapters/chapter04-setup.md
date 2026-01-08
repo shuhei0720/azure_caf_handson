@@ -221,7 +221,7 @@ output storageAccountId string = storageAccount.id
 
 ### 4.5.2 Bicep パラメーター管理の設計原則
 
-**なぜ `.bicepparam` ファイルが必要か？**
+**なぜパラメーターファイルが必要か？**
 
 Bicep で Infrastructure as Code を実践する最大の理由は、**すべてのリソースを消しても一発で復元できる**ことです。
 
@@ -256,6 +256,8 @@ az deployment sub create \
 - Git 管理で履歴追跡可能
 - 完全な再現性を保証
 - 災害時の復旧手順書として機能
+- タイプセーフ（Bicepファイルとの型チェック）
+- IntelliSenseサポート
 
 #### ディレクトリ構成
 
@@ -275,8 +277,8 @@ infrastructure/bicep/
 │   └── identity/
 │       └── managed-identity.bicep
 └── parameters/       # パラメーターファイル（環境固有の値）
-    ├── sub-management.bicepparam        # billingScope含む
-    ├── sub-identity.bicepparam          # billingScope含む
+    ├── sub-management.bicepparam
+    ├── sub-identity.bicepparam
     ├── management-resource-group.bicepparam
     ├── log-analytics.bicepparam
     └── dcr-vm-insights.bicepparam
@@ -288,6 +290,7 @@ infrastructure/bicep/
 2. **CLI でのパラメーター注入は禁止**: `--parameters param=value` 形式でのパラメーター指定は使用しません
 3. **Git 管理**: すべての `.bicepparam` ファイルは Git 管理下に置き、本番環境の完全なバックアップとして機能させます
 4. **環境固有の値**: 開発者ごとに異なる値（billingScope、subscription ID など）は、各自がパラメーターファイルを編集して使用します
+5. **`.bicepparam` を使用**: Microsoftが推奨する新しいパラメーターファイル形式（Bicep 0.18.4以降）
 
 ### 4.5.3 テスト用のリソースグループ作成
 
@@ -336,7 +339,7 @@ output resourceGroupId string = resourceGroup.id
 output resourceGroupName string = resourceGroup.name
 ```
 
-パラメーターファイル `infrastructure/bicep/test/test-rg.bicepparam` を作成：
+ファイル `infrastructure/bicep/test/test-rg.bicepparam` を作成し、以下の内容を記述します：
 
 ```bicep
 using './test-rg.bicep'
@@ -347,7 +350,6 @@ param tags = {
   Environment: 'Test'
   Project: 'CAF-Handson'
   ManagedBy: 'Bicep'
-  CreatedDate: utcNow('yyyy-MM-dd')
 }
 ```
 
@@ -470,9 +472,9 @@ infrastructure/
 └── bicep/
     ├── main.bicep                 # メインエントリポイント
     ├── parameters/                # パラメータファイル
-    │   ├── common.parameters.json
-    │   ├── dev.parameters.json
-    │   └── prod.parameters.json
+    │   ├── common.bicepparam
+    │   ├── dev.bicepparam
+    │   └── prod.bicepparam
     └── modules/                   # 再利用可能モジュール
         ├── management-groups/     # Management Groups
         │   └── main.bicep
@@ -513,31 +515,21 @@ infrastructure/
 mkdir -p infrastructure/bicep/parameters
 ```
 
-ファイル `infrastructure/bicep/parameters/common.parameters.json` を作成し、以下の内容を記述します：
+ファイル `infrastructure/bicep/parameters/common.bicepparam` を作成し、以下の内容を記述します：
 
-**common.parameters.json の解説：**
+**common.bicepparam の解説：**
 
-共通パラメータファイル。会社プレフィックス、デフォルトリージョン、共通タグを定義しており、すべての Bicep デプロイで再利用されます。
+共通パラメータファイル。会社プレフィックス、デフォルトリージョン、共通タグを定義しており、すべての Bicep デプロイで再利用されます。`.bicepparam` 形式は、Bicep 0.18.4以降で推奨される新しいパラメーターファイル形式で、タイプセーフとIntelliSenseをサポートしています。
 
-```json
-{
-  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
-  "contentVersion": "1.0.0.0",
-  "parameters": {
-    "companyPrefix": {
-      "value": "contoso"
-    },
-    "location": {
-      "value": "japaneast"
-    },
-    "tags": {
-      "value": {
-        "ManagedBy": "Bicep",
-        "Project": "CAF-Landing-Zone",
-        "CostCenter": "IT-001"
-      }
-    }
-  }
+```bicep
+using '../main.bicep'
+
+param companyPrefix = 'contoso'
+param location = 'japaneast'
+param tags = {
+  ManagedBy: 'Bicep'
+  Project: 'CAF-Landing-Zone'
+  CostCenter: 'IT-001'
 }
 ```
 

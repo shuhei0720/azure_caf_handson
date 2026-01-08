@@ -101,18 +101,15 @@ output subscriptionId string = subIdentity.properties.subscriptionId
 
 ### 8.2.2 パラメーターファイルの作成
 
-パラメーターファイル `infrastructure/bicep/parameters/sub-identity.bicepparam` を作成します：
+ファイル `infrastructure/bicep/parameters/sub-identity.bicepparam` を作成し、以下の内容を記述します：
 
-```bash
-# パラメーターファイルを作成
-cat > infrastructure/bicep/parameters/sub-identity.bicepparam << EOF
+```bicep
 using '../subscriptions/sub-identity.bicep'
 
-param billingScope = '$BILLING_SCOPE'
-EOF
+param billingScope = '/providers/Microsoft.Billing/billingAccounts/your-billing-account-id/enrollmentAccounts/your-enrollment-account-id'
 ```
 
-**重要：** `$BILLING_SCOPE` 環境変数が展開されて、実際の billingScope がパラメーターファイルに書き込まれます。
+**重要：** `billingScope` の値は、第 4 章で取得した `$BILLING_SCOPE` の値に置き換えてください。
 
 ### 8.2.3 Bicep のデプロイ（10-15 分）
 

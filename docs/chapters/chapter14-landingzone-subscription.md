@@ -109,16 +109,15 @@ output subscriptionId string = subLandingZoneCorp.properties.subscriptionId
 
 ### 14.2.2 パラメーターファイルの作成
 
-パラメーターファイル `infrastructure/bicep/parameters/sub-landingzone-corp.bicepparam` を作成します：
+ファイル `infrastructure/bicep/parameters/sub-landingzone-corp.bicepparam` を作成し、以下の内容を記述します：
 
-```bash
-# パラメーターファイルを作成
-cat > infrastructure/bicep/parameters/sub-landingzone-corp.bicepparam << EOF
+```bicep
 using '../subscriptions/sub-landingzone-corp.bicep'
 
-param billingScope = '$BILLING_SCOPE'
-EOF
+param billingScope = '/providers/Microsoft.Billing/billingAccounts/your-billing-account-id/enrollmentAccounts/your-enrollment-account-id'
 ```
+
+**重要：** `billingScope` の値は、第 4 章で取得した `$BILLING_SCOPE` の値に置き換えてください。
 
 ### 14.2.3 Bicep のデプロイ（10-15 分）
 

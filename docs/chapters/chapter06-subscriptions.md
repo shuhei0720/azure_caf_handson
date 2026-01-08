@@ -216,18 +216,12 @@ output subscriptionId string = subManagement.properties.subscriptionId
 
 ### 6.3.4 パラメーターファイルの作成
 
-パラメーターファイル `infrastructure/bicep/parameters/sub-management.bicepparam` を作成します：
+ファイル `infrastructure/bicep/parameters/sub-management.bicepparam` を作成し、以下の内容を記述します：
 
-```bash
-# パラメーターディレクトリ作成
-mkdir -p infrastructure/bicep/parameters
-
-# パラメーターファイルを作成
-cat > infrastructure/bicep/parameters/sub-management.bicepparam << 'EOF'
+```bicep
 using '../subscriptions/sub-management.bicep'
 
 param billingScope = '/providers/Microsoft.Billing/billingAccounts/your-billing-account-id/enrollmentAccounts/your-enrollment-account-id'
-EOF
 ```
 
 **重要：** `billingScope` の値は、第 4 章で取得した `$BILLING_SCOPE` の値に置き換えてください。
