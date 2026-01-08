@@ -1303,9 +1303,6 @@ Entra ID の診断設定は **テナントレベル** のリソースであり�
 ### 7.5.2 診断設定の適用
 
 ```bash
-# WORKSPACE_IDが設定されているか確認
-echo "Log Analytics Workspace ID: $WORKSPACE_ID"
-
 # Entra ID の診断設定を作成（REST API経由）
 az rest --method PUT \
   --uri "https://management.azure.com/providers/Microsoft.AADIAM/diagnosticSettings/entra-id-to-log-analytics?api-version=2017-04-01" \
@@ -1338,21 +1335,6 @@ az rest --method PUT \
   }"
 
 echo "✅ Entra ID のログが Log Analytics に送信されるようになりました"
-```
-
-**トラブルシューティング:**
-
-WORKSPACE_IDが空の場合は、7.3.2のセクションで取得したWorkspace IDを再確認してください：
-
-```bash
-# Workspace IDを再取得
-WORKSPACE_ID=$(az monitor log-analytics workspace show \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --workspace-name log-platform-prod-jpe-001 \
-  --query id -o tsv)
-
-grep -q "WORKSPACE_ID=" .env || echo "WORKSPACE_ID=$WORKSPACE_ID" >> .env
-echo "Log Analytics Workspace ID: $WORKSPACE_ID"
 ```
 
 **注意事項：**
