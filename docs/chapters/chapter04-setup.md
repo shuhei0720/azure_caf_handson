@@ -664,19 +664,82 @@ graph TB
 
 ### 4.8.2 オーケストレーションの骨格作成
 
+オーケストレーションは2つのスコープに分かれます：
+- **テナントスコープ**：Management Groups
+- **サブスクリプションスコープ**：リソース（監視、ネットワーク、セキュリティなど）
+
 ```bash
 # orchestrationディレクトリを作成
 mkdir -p infrastructure/bicep/orchestration
 ```
 
+#### テナントスコープ（Management Groups）
+
+ファイル `infrastructure/bicep/orchestration/tenant.bicep` を作成：
+
+```bicep
+// =============================================================================
+// CAF Landing Zone - Tenant Scope Template (Management Groups)
+// =============================================================================
+// このファイルはChapter 5で構築します
+
+targetScope = 'tenant'
+
+// =============================================================================
+// パラメータ定義
+// =============================================================================
+
+@description('ルートManagement Groupの表示名')
+param rootManagementGroupDisplayName string = 'Contoso'
+
+// Chapter 5で追加予定:
+// - Management Groups階層定義
+
+// =============================================================================
+// Management Groups
+// =============================================================================
+// Chapter 5でモジュールを追加します
+
+// =============================================================================
+// Outputs
+// =============================================================================
+
+output deploymentInfo object = {
+  scope: 'tenant'
+  deployedAt: utcNow()
+}
+```
+
+ファイル `infrastructure/bicep/orchestration/tenant.bicepparam` を作成：
+
+```bicep
+// =============================================================================
+// CAF Landing Zone - Tenant Scope Parameters
+// =============================================================================
+// Management Groups関連のパラメータ
+
+using './tenant.bicep'
+
+// =============================================================================
+// Management Groups設定
+// =============================================================================
+
+@description('ルートManagement Groupの表示名')
+param rootManagementGroupDisplayName = 'Contoso'
+
+// Chapter 5で追記予定:
+// param managementGroups = { ... }
+```
+
+#### サブスクリプションスコープ（リソース）
+
 ファイル `infrastructure/bicep/orchestration/main.bicep` を作成：
 
 ```bicep
 // =============================================================================
-// CAF Landing Zone - Orchestration Main Template
+// CAF Landing Zone - Subscription Scope Template (Resources)
 // =============================================================================
 // このファイルは各章で段階的に構築していきます
-// 各章でモジュールとパラメータを追加することで、最終的に全体を統合します
 
 targetScope = 'subscription'
 
@@ -694,8 +757,6 @@ param environment string
 param tags object
 
 // 以降、各章でパラメータを追加予定:
-// - Chapter 5: Management Groups (managementGroups object)
-// - Chapter 6: Subscriptions (subscriptions object)
 // - Chapter 7: Monitoring (monitoring object)
 // - Chapter 12: Security (security object)
 // - Chapter 13: Networking (networking object)
@@ -751,11 +812,7 @@ param tags = {
 // 各章で追記予定のセクション
 // =============================================================================
 
-// Chapter 5: Management Groups
-// param managementGroups = { ... }
-
-// Chapter 6: Subscriptions  
-// param subscriptions = { ... }
+// Chapter 5: Management Groups (tenant.bicep)
 
 // Chapter 7: Monitoring
 // param monitoring = { ... }
@@ -775,26 +832,52 @@ param tags = {
 現時点では骨格のみですが、構文確認します：
 
 ```bash
-# Bicepのビルド確認
+# テナントスコープのビルド確認
+az bicep build \
+  --file infrastructure/bicep/orchestration/tenant.bicep
+
+# サブスクリプションスコープのビルド確認
 az bicep build \
   --file infrastructure/bicep/orchestration/main.bicep
 
-echo "✅ Orchestration template is valid"
+echo "✅ Orchestration templates are valid"
 ```
 
 ### 4.8.4 今後の流れ
 
-各章（Chapter 5以降）で以下を実施します：
+各章で以下を実施します：
 
-1. **モジュール作成**：`modules/` 配下にリソース定義作成
-2. **パラメータ追記**：`orchestration/main.bicepparam` に設定追加
-3. **main.bicep更新**：`orchestration/main.bicep` にモジュール追加
-4. **デプロイ確認**：`main.bicep` + `main.bicepparam` でデプロイ
+**Chapter 5（Management Groups）：**
+1. `modules/management-groups/` にモジュール作成
+2. `orchestration/tenant.bicepparam` にパラメータ追記
+3. `orchestration/tenant.bicep` にモジュール追加
+4. テナントスコープでデプロイ
+
+**Chapter 7以降（リソース）：**
+1. `modules/` 配下にリソース定義作成
+2. `orchestration/main.bicepparam` にパラメータ追記
+3. `orchestration/main.bicep` にモジュール追加
+4. サブスクリプションスコープでデプロイ
+
+**全体復元時：**
+```bash
+# 1. Management Groupsをデプロイ
+az deployment tenant create \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/tenant.bicep \
+  --parameters infrastructure/bicep/orchestration/tenant.bicepparam
+
+# 2. リソースをデプロイ
+az deployment sub create \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+```
 
 **重要**：各章でのデプロイは **orchestration経由** で実行します。これにより：
 - パラメータが正しく動作することを確認
 - 段階的にオーケストレーションを構築
-- Chapter 17で即座に全体デプロイ可能
+- 全体が消失した場合も2コマンドで復元可能
 
 ---
 
