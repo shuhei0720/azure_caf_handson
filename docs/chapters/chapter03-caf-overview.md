@@ -158,12 +158,14 @@ graph LR
 
 ```mermaid
 graph TB
-    Root[Root Management Group<br/>Owner: テナント管理者]
+    Root[Tenant Root Group]
+    IntermediateRoot[Contoso<br/>中間ルートグループ<br/>Owner: テナント管理者]
     Platform[Platform MG<br/>Contributor: プラットフォームチーム]
     LZ[Landing Zones MG<br/>Reader: 全開発者]
 
-    Root --> Platform
-    Root --> LZ
+    Root --> IntermediateRoot
+    IntermediateRoot --> Platform
+    IntermediateRoot --> LZ
 
     Sub1[Subscription<br/>Owner: プロジェクトオーナー]
     Sub2[Subscription<br/>Contributor: 開発者]
@@ -175,7 +177,8 @@ graph TB
 
     Sub2 --> RG
 
-    style Root fill:#ffe1e1
+    style Root fill:#e1f5ff,stroke:#333,stroke-width:3px
+    style IntermediateRoot fill:#ffe1e1
     style Platform fill:#fff4e1
     style LZ fill:#e8f5e9
 ```
@@ -261,10 +264,12 @@ Management Groups は、複数のサブスクリプションをグループ化�
 graph TB
     Root["Root Tenant Group<br/>(contoso.onmicrosoft.com)"]
 
-    Root --> Platform[Platform]
-    Root --> LandingZones[Landing Zones]
-    Root --> Sandbox[Sandbox]
-    Root --> Decommissioned[Decommissioned]
+    Root --> IntermediateRoot[Contoso<br/>中間ルートグループ]
+
+    IntermediateRoot --> Platform[Platform]
+    IntermediateRoot --> LandingZones[Landing Zones]
+    IntermediateRoot --> Sandbox[Sandbox]
+    IntermediateRoot --> Decommissioned[Decommissioned]
 
     Platform --> PlatformMgmt[Management]
     Platform --> PlatformConn[Connectivity]
@@ -274,6 +279,7 @@ graph TB
     LandingZones --> LZOnline[Online]
 
     style Root fill:#e1f5ff,stroke:#333,stroke-width:3px
+    style IntermediateRoot fill:#fff9e6,stroke:#333,stroke-width:2px
     style Platform fill:#fff4e1
     style LandingZones fill:#e8f5e9
     style Sandbox fill:#ffe8e8
@@ -1472,16 +1478,17 @@ Git をシングルソースオブトゥルース（唯一の信頼できる情�
 ### 3.10.1 Management Groups 階層
 
 ```
-Root Tenant Group (Contoso)
-├── Platform
-│   ├── Management
-│   ├── Connectivity
-│   └── Identity
-├── Landing Zones
-│   ├── Corp
-│   └── Online
-├── Sandbox
-└── Decommissioned
+Tenant Root Group
+└── Contoso (中間ルートグループ)
+    ├── Platform
+    │   ├── Management
+    │   ├── Connectivity
+    │   └── Identity
+    ├── Landing Zones
+    │   ├── Corp
+    │   └── Online
+    ├── Sandbox
+    └── Decommissioned
 ```
 
 ### 3.10.2 Subscriptions

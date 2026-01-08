@@ -20,6 +20,7 @@ graph TB
 
     subgraph "Management Groups階層"
         Root[Tenant Root]
+        IntermediateRoot[Contoso]
         Platform[Platform]
         MG1[Management]
         MG2[Connectivity]
@@ -61,11 +62,12 @@ graph TB
     ContainerApps --> Log
     ContainerApps --> AppInsights
 
-    Root --> Platform
+    Root --> IntermediateRoot
+    IntermediateRoot --> Platform
     Platform --> MG1
     Platform --> MG2
     Platform --> MG3
-    Root --> LZ
+    IntermediateRoot --> LZ
     LZ --> Corp
     LZ --> Online
 
@@ -83,7 +85,7 @@ graph TB
 
 | カテゴリ         | コンポーネント             | 数              |
 | ---------------- | -------------------------- | --------------- |
-| **管理**         | Management Groups          | 9               |
+| **管理**         | Management Groups          | 10              |
 |                  | Azure Policy Assignments   | 5+              |
 |                  | Cost Budgets               | 1               |
 | **ネットワーク** | Virtual Networks           | 2 (Hub + Spoke) |
@@ -117,7 +119,7 @@ graph TB
 
 ✅ **Management Groups 階層**
 
-- 9 つの Management Groups を構築
+- 10 個の Management Groups を構築（中間ルートグループ含む）
 - Policy 適用のための論理構造
 
 ✅ **Identity & Access Management**
@@ -607,6 +609,7 @@ az account management-group delete --name contoso-platform-connectivity || true
 az account management-group delete --name contoso-platform-identity || true
 az account management-group delete --name contoso-landingzones || true
 az account management-group delete --name contoso-platform || true
+az account management-group delete --name contoso || true  # 中間ルートグループ
 
 echo "✅ クリーンアップ完了"
 echo "💰 今後のコストが発生しないことを確認してください"

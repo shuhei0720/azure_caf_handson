@@ -701,15 +701,16 @@ az deployment tenant list \
 
 ```
 Tenant Root Group
-├── contoso-platform
-│   ├── contoso-platform-management
-│   ├── contoso-platform-connectivity
-│   └── contoso-platform-identity
-├── contoso-landingzones
-│   ├── contoso-landingzones-corp
-│   └── contoso-landingzones-online
-├── contoso-sandbox
-└── contoso-decommissioned
+└── contoso (中間ルートグループ)
+    ├── contoso-platform
+    │   ├── contoso-platform-management
+    │   ├── contoso-platform-connectivity
+    │   └── contoso-platform-identity
+    ├── contoso-landingzones
+    │   ├── contoso-landingzones-corp
+    │   └── contoso-landingzones-online
+    ├── contoso-sandbox
+    └── contoso-decommissioned
 ```
 
 ### 5.5.2 各 Management Group の詳細確認
@@ -954,15 +955,16 @@ az account management-group delete --name contoso-platform-management
 
 ```
 Tenant Root Group
-├── contoso-platform
-│   ├── contoso-platform-management
-│   ├── contoso-platform-connectivity
-│   └── contoso-platform-identity
-├── contoso-landingzones
-│   ├── contoso-landingzones-corp
-│   └── contoso-landingzones-online
-├── contoso-sandbox (現在のサブスクリプション)
-└── contoso-decommissioned
+└── contoso (中間ルートグループ)
+    ├── contoso-platform
+    │   ├── contoso-platform-management
+    │   ├── contoso-platform-connectivity
+    │   └── contoso-platform-identity
+    ├── contoso-landingzones
+    │   ├── contoso-landingzones-corp
+    │   └── contoso-landingzones-online
+    ├── contoso-sandbox (現在のサブスクリプション)
+    └── contoso-decommissioned
 ```
 
 ### 重要なポイント
