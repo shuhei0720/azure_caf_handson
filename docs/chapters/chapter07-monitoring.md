@@ -393,20 +393,20 @@ output retentionInDays int = tableRetention.properties.retentionInDays
 output totalRetentionInDays int = tableRetention.properties.totalRetentionInDays
 ```
 
-ベースとなるファイル `infrastructure/bicep/parameters/log-analytics-table-retention.bicepparam` を作成し、以下の内容を記述します：
+ファイル `infrastructure/bicep/parameters/log-analytics-table-retention.bicepparam` を作成し、以下の内容を記述します：
 
 ```bicep
 using '../modules/monitoring/log-analytics-table-retention.bicep'
 
 param workspaceName = 'log-platform-prod-jpe-001'
-param tableName = 'AzureActivity'
+param tableName = 'AzureActivity'  // ループ処理でCLIから上書き
 param retentionInDays = 90
 param totalRetentionInDays = 730
 ```
 
 **すべてのテーブルに保持期間を設定：**
 
-Log Analytics Workspace内のすべてのテーブルに対して、一律の保持期間を設定します。
+1つのパラメーターファイルを使用し、テーブル名のみCLIから上書きしてループ処理します。
 
 ```bash
 # Log Analytics Workspaceのすべてのテーブルを取得
@@ -419,38 +419,25 @@ echo "取得されたテーブル数: $(echo "$TABLES" | wc -l)"
 echo "テーブル一覧:"
 echo "$TABLES"
 
-# 各テーブル用のパラメーターファイルを作成
-for TABLE in $TABLES; do
-  echo "Creating parameter file for table: $TABLE"
-  
-  # パラメーターファイル作成
-  cat > "infrastructure/bicep/parameters/log-analytics-table-retention-${TABLE}.bicepparam" << EOF
-using '../modules/monitoring/log-analytics-table-retention.bicep'
-
-param workspaceName = 'log-platform-prod-jpe-001'
-param tableName = '${TABLE}'
-param retentionInDays = 90
-param totalRetentionInDays = 730
-EOF
-done
-
 # 各テーブルに保持期間を設定
 for TABLE in $TABLES; do
   echo "Setting retention for table: $TABLE"
 
-  # 事前確認
+  # 事前確認（テーブル名のみCLIから上書き）
   az deployment group what-if \
     --name "table-retention-${TABLE}-$(date +%Y%m%d-%H%M%S)" \
     --resource-group rg-platform-management-prod-jpe-001 \
     --template-file infrastructure/bicep/modules/monitoring/log-analytics-table-retention.bicep \
-    --parameters "infrastructure/bicep/parameters/log-analytics-table-retention-${TABLE}.bicepparam"
+    --parameters infrastructure/bicep/parameters/log-analytics-table-retention.bicepparam \
+    --parameters tableName="$TABLE"
 
-  # 確認後、デプロイ実行
+  # 確認後、デプロイ実行（テーブル名のみCLIから上書き）
   az deployment group create \
     --name "table-retention-${TABLE}-$(date +%Y%m%d-%H%M%S)" \
     --resource-group rg-platform-management-prod-jpe-001 \
     --template-file infrastructure/bicep/modules/monitoring/log-analytics-table-retention.bicep \
-    --parameters "infrastructure/bicep/parameters/log-analytics-table-retention-${TABLE}.bicepparam"
+    --parameters infrastructure/bicep/parameters/log-analytics-table-retention.bicepparam \
+    --parameters tableName="$TABLE"
 done
 
 echo "すべてのテーブルに保持期間が設定されました"
@@ -458,9 +445,10 @@ echo "すべてのテーブルに保持期間が設定されました"
 
 **重要な注意事項：**
 
+- **パラメーターファイルは1つだけ**: `log-analytics-table-retention.bicepparam` のみを作成
+- **テーブル名のみCLI注入**: `--parameters tableName="$TABLE"` でパラメーターファイルの値を上書き
 - **カスタムテーブル**: Log Analytics にカスタムテーブルがある場合も自動的に対象となります
-- **システムテーブル**: 一部のシステムテーブル（_CL で終わるカスタムログテーブルなど）は保持期間設定がサポートされない場合があります
-- **エラーハンドリング**: デプロイ中にエラーが発生したテーブルはスキップし、次のテーブルに進みます
+- **システムテーブル**: 一部のシステムテーブルは保持期間設定がサポートされない場合があります（エラーが出た場合はスキップ）
 - **再実行**: 新しいテーブルが追加された場合、このスクリプトを再実行することで新規テーブルにも保持期間を設定できます
 
 **主要なテーブルの例：**
@@ -474,7 +462,7 @@ echo "すべてのテーブルに保持期間が設定されました"
 - `InsightsMetrics`: VM Insights メトリクス
 - `Syslog`: Linux Syslog
 - `Event`: Windows Event
-- その他、Workspace内のすべてのテーブル
+- その他、Workspace 内のすべてのテーブル
 
 ### 7.3.4 ログ保存期間とアーカイブ戦略
 
