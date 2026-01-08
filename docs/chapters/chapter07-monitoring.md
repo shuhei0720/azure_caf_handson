@@ -583,19 +583,172 @@ echo "Principal ID: $POLICY_IDENTITY_PRINCIPAL_ID"
 
 ### 7.5.4 マネージドIDへの権限付与
 
-後の章（第10章：ガバナンス・ポリシー実装）で、このマネージドIDに必要な RBAC ロールを付与します。
+Azure Policy の DeployIfNotExists/Modify 効果（特に Defender for Cloud の適用）には **Owner** 権限が必要です。Management Subscription に対して Owner ロールを付与します。
 
-**必要な権限（例）：**
+ファイル `infrastructure/bicep/modules/identity/role-assignment-owner.bicep` を作成します：
 
-- `Contributor` - リソースのデプロイ用
-- `Log Analytics Contributor` - Log Analytics Workspace への診断設定適用用
-- `Monitoring Contributor` - Azure Monitor リソースの管理用
+```bicep
+targetScope = 'subscription'
+
+@description('マネージドIDのPrincipal ID')
+param principalId string
+
+@description('ロール定義ID（Owner）')
+param roleDefinitionId string = '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' // Owner
+
+// Owner権限の付与
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(subscription().id, principalId, roleDefinitionId)
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionId)
+    principalId: principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+output roleAssignmentId string = roleAssignment.id
+```
+
+```bash
+# Management Subscription に Owner 権限を付与
+az deployment sub create \
+  --name "policy-identity-owner-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/modules/identity/role-assignment-owner.bicep \
+  --parameters \
+    principalId=$POLICY_IDENTITY_PRINCIPAL_ID
+
+echo "マネージドIDにOwner権限を付与しました"
+```
 
 ---
 
-## 7.6 Azure Automation の構築
+## 7.6 既存リソースの診断設定
 
-### 7.6.1 Azure Automation とは
+すでに作成した Log Analytics Workspace と DCR に対して診断設定を適用し、これらのリソース自体の操作ログも収集します。
+
+### 7.6.1 Log Analytics Workspace の診断設定
+
+ファイル `infrastructure/bicep/modules/monitoring/log-analytics-diagnostics.bicep` を作成します：
+
+**log-analytics-diagnostics.bicep の解説：**
+
+Log Analytics Workspace 自体の操作ログ（Audit）とメトリクスを収集します。ワークスペースへの変更履歴を追跡できます。
+
+```bicep
+@description('Log Analytics Workspace名')
+param workspaceName string
+
+@description('診断設定の送信先 Workspace ID')
+param destinationWorkspaceId string
+
+@description('診断設定の名前')
+param diagnosticSettingName string = 'send-to-log-analytics'
+
+// 既存のLog Analytics Workspace
+resource workspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing = {
+  name: workspaceName
+}
+
+// 診断設定
+resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: diagnosticSettingName
+  scope: workspace
+  properties: {
+    workspaceId: destinationWorkspaceId
+    logs: [
+      { category: 'Audit', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
+    ]
+    metrics: [
+      { category: 'AllMetrics', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
+    ]
+  }
+}
+
+output diagnosticSettingId string = diagnosticSetting.id
+```
+
+```bash
+# Log Analytics Workspace の診断設定を適用
+az deployment group create \
+  --name "log-diagnostics-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/monitoring/log-analytics-diagnostics.bicep \
+  --parameters \
+    workspaceName=log-platform-prod-jpe-001 \
+    destinationWorkspaceId=$LOG_WORKSPACE_ID
+```
+
+### 7.6.2 Data Collection Rule の診断設定
+
+ファイル `infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep` を作成します：
+
+**dcr-diagnostics.bicep の解説：**
+
+DCR 自体の操作ログを収集します。DCR の変更や削除を追跡できます。
+
+```bicep
+@description('DCR名')
+param dcrName string
+
+@description('診断設定の送信先 Workspace ID')
+param destinationWorkspaceId string
+
+@description('診断設定の名前')
+param diagnosticSettingName string = 'send-to-log-analytics'
+
+// 既存のDCR
+resource dcr 'Microsoft.Insights/dataCollectionRules@2022-06-01' existing = {
+  name: dcrName
+}
+
+// 診断設定
+resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: diagnosticSettingName
+  scope: dcr
+  properties: {
+    workspaceId: destinationWorkspaceId
+    logs: [
+      { category: 'allLogs', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
+    ]
+    metrics: [
+      { category: 'AllMetrics', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
+    ]
+  }
+}
+
+output diagnosticSettingId string = diagnosticSetting.id
+```
+
+```bash
+# VM Insights DCR の診断設定
+az deployment group create \
+  --name "dcr-vm-insights-diagnostics-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep \
+  --parameters \
+    dcrName=dcr-vm-insights-prod-jpe-001 \
+    destinationWorkspaceId=$LOG_WORKSPACE_ID
+
+# OS Logs DCR の診断設定
+az deployment group create \
+  --name "dcr-os-logs-diagnostics-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep \
+  --parameters \
+    dcrName=dcr-os-logs-prod-jpe-001 \
+    destinationWorkspaceId=$LOG_WORKSPACE_ID
+```
+
+**今後のリソース作成ルール：**
+
+今後、新しいリソースを作成する際は、診断設定が利用可能なリソース（Azure Firewall、Key Vault、Bastion、Storage Account等）については、リソース作成と同じ Bicep ファイル内で診断設定も一緒に定義します。
+
+---
+
+## 7.7 Azure Automation の構築
+
+### 7.7.1 Azure Automation とは
 
 **Azure Automation**は、定期的なタスクを自動化するサービスです。
 
@@ -606,7 +759,7 @@ echo "Principal ID: $POLICY_IDENTITY_PRINCIPAL_ID"
 - コンプライアンスレポートの生成
 - パッチ管理
 
-### 7.6.2 Automation Account の作成
+### 7.7.2 Automation Account の作成
 
 ファイル `infrastructure/bicep/modules/automation/automation-account.bicep` を作成し、以下の内容を記述します：
 
@@ -668,7 +821,7 @@ az deployment group create \
     location=japaneast
 ```
 
-### 7.6.3 Runbook の例（VM の自動起動・停止）
+### 7.7.3 Runbook の例（VM の自動起動・停止）
 
 ```bash
 cat << 'EOF' > infrastructure/automation/runbooks/Start-AzureVMs.ps1
@@ -717,7 +870,7 @@ az automation runbook publish \
   --name "Start-AzureVMs"
 ```
 
-### 7.6.4 スケジュールの作成
+### 7.7.4 スケジュールの作成
 
 ```bash
 # 平日の朝8時にVMを起動するスケジュール
@@ -741,16 +894,16 @@ az automation job-schedule create \
 
 ---
 
-## 7.7 Azure Portal での確認
+## 7.8 Azure Portal での確認
 
-### 7.7.1 Azure Monitor の確認
+### 7.8.1 Azure Monitor の確認
 
 1. Azure ポータルで「Monitor」を検索
 2. 「Metrics」でリソースのメトリクスをグラフ化
 3. 「Logs」で Log Analytics クエリを実行
 4. 「Alerts」でアラートルールを確認
 
-### 7.7.2 アラートのテスト
+### 7.8.2 アラートのテスト
 
 ```bash
 # Key Vaultに意図的に失敗したアクセスを実行（アラート発火テスト）
@@ -763,9 +916,9 @@ az keyvault secret show \
 
 ---
 
-## 7.8 コスト管理
+## 7.9 コスト管理
 
-### 7.8.1 リソース別のコスト
+### 7.9.1 リソース別のコスト
 
 | リソース             | 概算月額コスト（東日本）                |
 | -------------------- | --------------------------------------- |
@@ -774,7 +927,7 @@ az keyvault secret show \
 | Automation Account   | 実行時間により変動（500 分/月まで無料） |
 | アラート             | アラート数により変動                    |
 
-### 7.8.2 コスト削減のヒント
+### 7.9.2 コスト削減のヒント
 
 - Log Analytics の保持期間を適切に設定
 - 不要なログの収集を停止
@@ -783,7 +936,7 @@ az keyvault secret show \
 
 ---
 
-## 7.9 Git へのコミット
+## 7.10 Git へのコミット
 
 ```bash
 git add .
@@ -794,6 +947,7 @@ git commit -m "Day 1: Monitoring and log foundation
 - Created action groups for alert notifications
 - Created metric-based and log-based alerts
 - Deployed Azure Automation Account with sample runbooks
+- Configured diagnostic settings for existing resources (Log Analytics, DCR)
 - Documented monitoring best practices"
 
 git push origin main
@@ -801,7 +955,7 @@ git push origin main
 
 ---
 
-## 7.10 章のまとめ
+## 7.11 章のまとめ
 
 本章で構築したもの：
 
