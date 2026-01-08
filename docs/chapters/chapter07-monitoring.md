@@ -515,6 +515,37 @@ echo "すべてのテーブルに保持期間が設定されました"
 
 Log Analytics Workspace のデータ保存には 2 つの階層があります。
 
+```mermaid
+graph TB
+    subgraph "Log Analytics Workspace データ保存階層"
+        A[データ取り込み] -->|日次| B[Interactive Analytics 層]
+        B -->|90日経過後| C[Archive 層]
+        C -->|730日経過後| D[自動削除]
+        
+        B -->|"高速 KQL クエリ<br/>$2.30/GB/月"| E[日常的な分析<br/>・セキュリティ調査<br/>・トラブルシューティング<br/>・パフォーマンス分析]
+        C -->|"低速クエリ<br/>$0.10/GB/月<br/>(95%削減)"| F[長期保存<br/>・コンプライアンス<br/>・監査証跡<br/>・トレンド分析]
+        
+        style B fill:#4CAF50,stroke:#2E7D32,stroke-width:3px,color:#fff
+        style C fill:#2196F3,stroke:#1565C0,stroke-width:3px,color:#fff
+        style D fill:#757575,stroke:#424242,stroke-width:2px,color:#fff
+        style E fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px
+        style F fill:#E3F2FD,stroke:#1565C0,stroke-width:2px
+    end
+```
+
+**データ保存タイムライン：**
+
+```
+日数: 0 ─────────────────── 90 ────────────────────────────────────── 730
+      │                      │                                          │
+      │  Interactive 層      │           Archive 層                     │
+      │  (高速アクセス)      │        (低コスト保存)                   │ 削除
+      │  $2.30/GB/月         │         $0.10/GB/月                     │
+      └──────────────────────┴──────────────────────────────────────────┘
+                             90日間                    640日間
+                      (retentionInDays)    (totalRetentionInDays - retentionInDays)
+```
+
 #### Interactive Analytics 層（対話型分析）
 
 - **期間**: 90 日（`retentionInDays`）
@@ -544,17 +575,44 @@ retentionInDays: 90日 # Interactive期間
 totalRetentionInDays: 730日 # 総保持期間（アーカイブ含む）
 ```
 
+#### コスト比較の視覚化
+
 **コスト試算例（1 日 10GB のログ取り込みの場合）:**
 
-- Interactive（90 日）: 10GB × 90 日 × $2.30/GB/月 = $2,070/月
-- Archive（640 日）: 10GB × 640 日 × $0.10/GB/月 = $640/月
-- **合計**: $2,710/月
+```mermaid
+graph LR
+    subgraph "アーカイブ活用（推奨）"
+        A1[Interactive 90日<br/>$2,070/月] --> Total1["合計<br/>$2,710/月"]
+        A2[Archive 640日<br/>$640/月] --> Total1
+        style A1 fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+        style A2 fill:#2196F3,stroke:#1565C0,stroke-width:2px,color:#fff
+        style Total1 fill:#66BB6A,stroke:#2E7D32,stroke-width:3px,color:#fff
+    end
+    
+    subgraph "アーカイブなし（非推奨）"
+        B1[Interactive 730日<br/>$16,790/月] --> Total2["合計<br/>$16,790/月"]
+        style B1 fill:#F44336,stroke:#C62828,stroke-width:2px,color:#fff
+        style Total2 fill:#EF5350,stroke:#C62828,stroke-width:3px,color:#fff
+    end
+    
+    Total1 -.->|"84% 削減<br/>$14,080/月 節約"| Total2
+```
 
-**アーカイブなしの場合（730 日すべて Interactive）:**
+**詳細計算：**
 
-- Interactive（730 日）: 10GB × 730 日 × $2.30/GB/月 = $16,790/月
+| 項目 | アーカイブ活用 | アーカイブなし | 差額 |
+|------|---------------|---------------|------|
+| **Interactive 層** | 10GB × 90日 × $2.30 = $2,070/月 | 10GB × 730日 × $2.30 = $16,790/月 | -$14,720 |
+| **Archive 層** | 10GB × 640日 × $0.10 = $640/月 | $0/月 | +$640 |
+| **合計コスト** | **$2,710/月** | **$16,790/月** | **-$14,080** |
+| **年間コスト** | **$32,520** | **$201,480** | **-$168,960** |
+| **削減率** | - | - | **84%** |
 
-**節約効果**: Archive 層を活用することで、約 84% のコスト削減（$14,080/月の節約）
+**節約効果の要約：**
+
+- **月額削減**: $14,080（約 84%）
+- **年額削減**: $168,960（約 200万円/年）
+- **2年間**: 約 400万円の削減
 
 #### Azure ポータルでの確認
 
