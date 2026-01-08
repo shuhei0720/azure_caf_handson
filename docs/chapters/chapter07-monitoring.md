@@ -499,11 +499,80 @@ echo "OS Logs DCR ID: $DCR_OS_LOGS_ID"
 
 ---
 
-## 7.4 サブスクリプションのアクティビティログ収集
+## 7.4 Entra ID の監査ログ収集
+
+Entra ID（Azure Active Directory）のサインインログと監査ログを Log Analytics Workspace に送信します。ユーザーの認証履歴やディレクトリ変更を一元的に監視できます。
+
+### 7.4.1 Entra ID 診断設定の特徴
+
+Entra ID の診断設定は **テナントレベル** のリソースであり、通常の Bicep デプロイでは設定できません。Azure CLI の `az monitor diagnostic-settings` コマンドを使用します。
+
+**収集されるログカテゴリ：**
+
+- **AuditLogs**: ディレクトリの変更（ユーザー追加、グループ変更等）
+- **SignInLogs**: 対話型サインイン
+- **NonInteractiveUserSignInLogs**: 非対話型サインイン
+- **ServicePrincipalSignInLogs**: サービスプリンシパルのサインイン
+- **ManagedIdentitySignInLogs**: マネージドIDのサインイン
+- **ProvisioningLogs**: プロビジョニングログ
+
+### 7.4.2 診断設定の適用
+
+```bash
+# Entra ID の診断設定を作成
+az monitor diagnostic-settings create \
+  --name "entra-id-to-log-analytics" \
+  --resource "/providers/microsoft.aadiam/tenants/$TENANT_ID" \
+  --workspace $LOG_WORKSPACE_ID \
+  --logs '[
+    {"category": "AuditLogs", "enabled": true},
+    {"category": "SignInLogs", "enabled": true},
+    {"category": "NonInteractiveUserSignInLogs", "enabled": true},
+    {"category": "ServicePrincipalSignInLogs", "enabled": true},
+    {"category": "ManagedIdentitySignInLogs", "enabled": true},
+    {"category": "ProvisioningLogs", "enabled": true}
+  ]'
+
+echo "Entra ID のログが Log Analytics に送信されるようになりました"
+```
+
+**注意事項：**
+
+- Entra ID P1/P2 ライセンスが必要な場合があります（SignInLogs等）
+- 診断設定の確認：Azure Portal → Entra ID → Diagnostic settings
+
+### 7.4.3 KQL クエリ例
+
+```kql
+// 最近のサインインログ（成功のみ）
+SigninLogs
+| where TimeGenerated > ago(1h)
+| where ResultType == 0  // 0 = 成功
+| project TimeGenerated, UserPrincipalName, IPAddress, AppDisplayName, Location
+| order by TimeGenerated desc
+
+// サインイン失敗の監視
+SigninLogs
+| where TimeGenerated > ago(1h)
+| where ResultType != 0  // 失敗
+| summarize FailureCount = count() by UserPrincipalName, ResultType, ResultDescription
+| order by FailureCount desc
+
+// 監査ログ - ユーザー作成イベント
+AuditLogs
+| where TimeGenerated > ago(24h)
+| where OperationName == "Add user"
+| project TimeGenerated, Identity, TargetResources
+| order by TimeGenerated desc
+```
+
+---
+
+## 7.5 サブスクリプションのアクティビティログ収集
 
 作成したサブスクリプションのアクティビティログ（管理操作の履歴）を Log Analytics Workspace に送信します。
 
-### 7.4.1 診断設定 Bicep モジュール
+### 7.5.1 診断設定 Bicep モジュール
 
 ファイル `infrastructure/bicep/modules/monitoring/subscription-diagnostic-settings.bicep` を作成します：
 
@@ -539,7 +608,7 @@ resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-pre
 }
 ```
 
-### 7.4.2 Management Subscription の診断設定を適用
+### 7.5.2 Management Subscription の診断設定を適用
 
 ```bash
 # Management Subscription で実行
@@ -564,15 +633,15 @@ az deployment sub create \
 
 ---
 
-## 7.5 Azure Policy 用ユーザー割り当てマネージド ID
+## 7.6 Azure Policy 用ユーザー割り当てマネージド ID
 
 第 10 章で Azure Policy の DeployIfNotExists/Modify 効果を使う際に必要となるマネージド ID を事前に作成します。
 
-### 7.5.1 マネージド ID の配置場所
+### 7.6.1 マネージド ID の配置場所
 
 CAF のベストプラクティスに従い、ポリシー実行用のマネージド ID は **Management Subscription** に配置します。これにより、複数のサブスクリプションにまたがるポリシー割り当てを一元管理できます。
 
-### 7.5.2 マネージド ID Bicep モジュール
+### 7.6.2 マネージド ID Bicep モジュール
 
 ファイル `infrastructure/bicep/modules/identity/managed-identity.bicep` を作成します：
 
@@ -598,7 +667,7 @@ output principalId string = managedIdentity.properties.principalId
 output clientId string = managedIdentity.properties.clientId
 ```
 
-### 7.5.3 マネージド ID の作成
+### 7.6.3 マネージド ID の作成
 
 ```bash
 # Management Subscription で実行
@@ -634,7 +703,7 @@ echo "Policy用マネージドID: $POLICY_IDENTITY_ID"
 echo "Principal ID: $POLICY_IDENTITY_PRINCIPAL_ID"
 ```
 
-### 7.5.4 マネージド ID への権限付与
+### 7.6.4 マネージド ID への権限付与
 
 Azure Policy の DeployIfNotExists/Modify 効果（特に Defender for Cloud の適用）には **Owner** 権限が必要です。Management Subscription に対して Owner ロールを付与します。
 
@@ -685,11 +754,11 @@ echo "マネージドIDにOwner権限を付与しました"
 
 ---
 
-## 7.6 既存リソースの診断設定
+## 7.7 既存リソースの診断設定
 
 すでに作成した Log Analytics Workspace と DCR に対して診断設定を適用し、これらのリソース自体の操作ログも収集します。
 
-### 7.6.1 Log Analytics Workspace の診断設定
+### 7.7.1 Log Analytics Workspace の診断設定
 
 ファイル `infrastructure/bicep/modules/monitoring/log-analytics-diagnostics.bicep` を作成します：
 
@@ -751,7 +820,7 @@ az deployment group create \
     destinationWorkspaceId=$LOG_WORKSPACE_ID
 ```
 
-### 7.6.2 Data Collection Rule の診断設定
+### 7.7.2 Data Collection Rule の診断設定
 
 ファイル `infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep` を作成します：
 
@@ -838,9 +907,9 @@ az deployment group create \
 
 ---
 
-## 7.7 Azure Automation の構築
+## 7.8 Azure Automation の構築
 
-### 7.7.1 Azure Automation とは
+### 7.8.1 Azure Automation とは
 
 **Azure Automation**は、定期的なタスクを自動化するサービスです。
 
@@ -851,7 +920,7 @@ az deployment group create \
 - コンプライアンスレポートの生成
 - パッチ管理
 
-### 7.7.2 Automation Account の作成
+### 7.8.2 Automation Account の作成
 
 ファイル `infrastructure/bicep/modules/automation/automation-account.bicep` を作成し、以下の内容を記述します：
 
@@ -923,7 +992,7 @@ az deployment group create \
     location=japaneast
 ```
 
-### 7.7.3 Runbook の例（VM の自動起動・停止）
+### 7.8.3 Runbook の例（VM の自動起動・停止）
 
 ```bash
 cat << 'EOF' > infrastructure/automation/runbooks/Start-AzureVMs.ps1
@@ -972,7 +1041,7 @@ az automation runbook publish \
   --name "Start-AzureVMs"
 ```
 
-### 7.7.4 スケジュールの作成
+### 7.8.4 スケジュールの作成
 
 ```bash
 # 平日の朝8時にVMを起動するスケジュール
@@ -996,16 +1065,16 @@ az automation job-schedule create \
 
 ---
 
-## 7.8 Azure Portal での確認
+## 7.9 Azure Portal での確認
 
-### 7.8.1 Azure Monitor の確認
+### 7.9.1 Azure Monitor の確認
 
 1. Azure ポータルで「Monitor」を検索
 2. 「Metrics」でリソースのメトリクスをグラフ化
 3. 「Logs」で Log Analytics クエリを実行
 4. 「Alerts」でアラートルールを確認
 
-### 7.8.2 アラートのテスト
+### 7.9.2 アラートのテスト
 
 ```bash
 # Key Vaultに意図的に失敗したアクセスを実行（アラート発火テスト）
@@ -1018,9 +1087,9 @@ az keyvault secret show \
 
 ---
 
-## 7.9 コスト管理
+## 7.10 コスト管理
 
-### 7.9.1 リソース別のコスト
+### 7.10.1 リソース別のコスト
 
 | リソース             | 概算月額コスト（東日本）                |
 | -------------------- | --------------------------------------- |
@@ -1029,7 +1098,7 @@ az keyvault secret show \
 | Automation Account   | 実行時間により変動（500 分/月まで無料） |
 | アラート             | アラート数により変動                    |
 
-### 7.9.2 コスト削減のヒント
+### 7.10.2 コスト削減のヒント
 
 - Log Analytics の保持期間を適切に設定
 - 不要なログの収集を停止
@@ -1038,7 +1107,7 @@ az keyvault secret show \
 
 ---
 
-## 7.10 Git へのコミット
+## 7.11 Git へのコミット
 
 ```bash
 git add .
@@ -1046,6 +1115,7 @@ git commit -m "Day 1: Monitoring and log foundation
 
 - Created Log Analytics Workspace in Management Subscription
 - Configured comprehensive Log Analytics queries (KQL)
+- Configured Entra ID audit and sign-in logs to Log Analytics
 - Created action groups for alert notifications
 - Created metric-based and log-based alerts
 - Deployed Azure Automation Account with sample runbooks
@@ -1057,7 +1127,7 @@ git push origin main
 
 ---
 
-## 7.11 章のまとめ
+## 7.12 章のまとめ
 
 本章で構築したもの：
 
@@ -1066,6 +1136,7 @@ git push origin main
    - Management Subscription に Log Analytics Workspace を構築
    - **VM Insights 用 Data Collection Rule (DCR)**
    - **Windows Event Logs と Syslog 収集用 DCR**
+   - **Entra ID 監査ログとサインインログの収集**
    - 後続の章でポリシーによる自動適用の準備完了
 
 2. ✅ Log Analytics クエリ
