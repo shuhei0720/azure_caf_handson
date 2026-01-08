@@ -799,13 +799,10 @@ using './main.bicep'
 // 共通設定
 // =============================================================================
 
-@description('デプロイ先のリージョン')
 param location = 'japaneast'
 
-@description('環境名（プラットフォームは常にprod）')
 param environment = 'prod'
 
-@description('共通タグ')
 param tags = {
   Environment: 'Production'
   ManagedBy: 'Bicep'
