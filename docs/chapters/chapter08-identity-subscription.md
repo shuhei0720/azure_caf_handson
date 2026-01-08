@@ -77,9 +77,9 @@ graph TB
 
 ## 8.2 Identity Subscription の作成
 
-### 8.2.1 Orchestrationへの統合
+### 8.2.1 Orchestration への統合
 
-**Chapter 6で作成したorchestration (`tenant.bicep`)は既にSubscriptionモジュールを含んでいます。** Chapter 8では`tenant.bicepparam`にIdentity Subscriptionの設定を追記するだけです。
+**Chapter 6 で作成した orchestration (`tenant.bicep`)は既に Subscription モジュールを含んでいます。** Chapter 8 では`tenant.bicepparam`に Identity Subscription の設定を追記するだけです。
 
 **orchestration/tenant.bicepparam を開き**、`subscriptions`セクションを以下のように更新：
 
@@ -98,7 +98,7 @@ param subscriptions = {
 }
 ```
 
-**orchestration/tenant.bicep を開き**、Identity Subscriptionモジュールを追記：
+**orchestration/tenant.bicep を開き**、Identity Subscription モジュールを追記：
 
 ```bicep
 // Identity Subscription作成
@@ -127,7 +127,7 @@ module identitySubscriptionAssociation '../modules/management-groups/subscriptio
 
 ### 8.2.2 What-If 実行
 
-**orchestration経由**でデプロイします：
+**orchestration 経由**でデプロイします：
 
 ```bash
 # デプロイ名を変数に保存
@@ -202,11 +202,11 @@ az account management-group subscription show \
   --subscription $SUB_IDENTITY_ID
 ```
 
-**✅ orchestrationにより、Subscription作成とMG紐づけが自動で完了しています！**
+**✅ orchestration により、Subscription 作成と MG 紐づけが自動で完了しています！**
 
 ---
 
-## 8.3 orchestration統合のメリット（再確認）
+## 8.3 orchestration 統合のメリット（再確認）
 
 1. Azure ポータルで「Management groups」を開く
 

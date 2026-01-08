@@ -186,9 +186,9 @@ echo "Billing Scope: $BILLING_SCOPE"
 echo "BILLING_SCOPE=$BILLING_SCOPE" >> .env
 ```
 
-### 6.3.3 Bicepモジュールの作成
+### 6.3.3 Bicep モジュールの作成
 
-**重要**: Subscription作成は`targetScope = 'tenant'`が必要なため、**orchestration (`tenant.bicep`)に統合**します。
+**重要**: Subscription 作成は`targetScope = 'tenant'`が必要なため、**orchestration (`tenant.bicep`)に統合**します。
 
 まず、ディレクトリを準備：
 
@@ -197,7 +197,7 @@ mkdir -p infrastructure/bicep/modules/subscriptions
 mkdir -p infrastructure/bicep/modules/management-groups
 ```
 
-#### Subscriptionモジュールの作成
+#### Subscription モジュールの作成
 
 ファイル `infrastructure/bicep/modules/subscriptions/subscription.bicep` を作成：
 
@@ -230,7 +230,7 @@ output subscriptionId string = subscription.properties.subscriptionId
 output subscriptionName string = subscriptionDisplayName
 ```
 
-#### Subscription-MG紐づけモジュールの作成
+#### Subscription-MG 紐づけモジュールの作成
 
 ファイル `infrastructure/bicep/modules/management-groups/subscription-association.bicep` を作成：
 
@@ -252,9 +252,9 @@ output managementGroupId string = managementGroupId
 output subscriptionId string = subscriptionId
 ```
 
-### 6.3.4 Orchestrationへの統合
+### 6.3.4 Orchestration への統合
 
-**Chapter 4で作成した `orchestration/tenant.bicep` を開き**、以下を追記：
+**Chapter 4 で作成した `orchestration/tenant.bicep` を開き**、以下を追記：
 
 ```bicep
 // =============================================================================
@@ -327,7 +327,7 @@ echo $BILLING_SCOPE
 
 ### 6.3.5 What-If 実行
 
-**orchestration経由**でデプロイします：
+**orchestration 経由**でデプロイします：
 
 ```bash
 # デプロイ名を変数に保存
@@ -404,22 +404,24 @@ az account management-group subscription show \
 
 ---
 
-## 6.4 orchestration統合のメリット
+## 6.4 orchestration 統合のメリット
 
 **従来の方式**（個別デプロイ）:
-- ❌ 各ChapterでSubscription作成とMG紐づけを別々に実行
-- ❌ orchestrationファイルに含まれず、復元時に手動実行が必要
+
+- ❌ 各 Chapter で Subscription 作成と MG 紐づけを別々に実行
+- ❌ orchestration ファイルに含まれず、復元時に手動実行が必要
 - ❌ 冪等性が保証されない
 
-**orchestration統合後**:
-- ✅ **1コマンドで全て作成**: Subscription作成とMG紐づけが自動
+**orchestration 統合後**:
+
+- ✅ **1 コマンドで全て作成**: Subscription 作成と MG 紐づけが自動
 - ✅ **冪等性**: 何度実行しても同じ結果
 - ✅ **復元が容易**: 全削除後も`tenant.bicep`を実行するだけ
 - ✅ **一元管理**: `tenant.bicepparam`でパラメータ管理
 
 ---
 
-## 6.5 orchestrationの更新方法（各章での追加パターン）
+## 6.5 orchestration の更新方法（各章での追加パターン）
 
 **Chapter 8（Identity Subscription）での追加例**:
 
@@ -471,15 +473,15 @@ git push origin main
 本章で行ったこと：
 
 1. ✅ Subscription の理解と設計戦略の学習
-2. ✅ **Subscription作成をorchestration統合** （冪等性と復元性の向上）
+2. ✅ **Subscription 作成を orchestration 統合** （冪等性と復元性の向上）
 3. ✅ Management Subscription の作成
 4. ✅ Management Subscription と Management Group の自動紐づけ
 5. ✅ Billing Scope と Subscription ID の記録
 6. ✅ Git へのコミット・プッシュ
 
-### orchestration統合のメリット
+### orchestration 統合のメリット
 
-- **1コマンドで全て作成**: Subscription作成とMG紐づけが自動化
+- **1 コマンドで全て作成**: Subscription 作成と MG 紐づけが自動化
 - **冪等性**: 何度実行しても同じ結果
 - **復元が容易**: 全削除後も`tenant.bicep`を実行するだけ
 - **一元管理**: `tenant.bicepparam`でパラメータ管理
@@ -490,7 +492,7 @@ git push origin main
 - **アクセス制御の境界**: RBAC 適用の単位
 - **本番環境では分離**: 役割ごとに独立した Subscription
 - **24 時間に 1 つの制約**: 個人アカウントではサブスクリプション作成に時間がかかる
-- **orchestrationに統合**: tenant.bicepで一元管理
+- **orchestration に統合**: tenant.bicep で一元管理
 
 ### 次のステップ
 
@@ -502,7 +504,7 @@ git push origin main
 
 - [ ] Subscription の役割を理解した
 - [ ] Billing Scope を取得し、.env に保存した
-- [ ] Subscription/Subscription-Associationモジュールを作成した
+- [ ] Subscription/Subscription-Association モジュールを作成した
 - [ ] orchestration (tenant.bicep) に統合した
 - [ ] Management Subscription を作成した
 - [ ] Management Subscription が Management Group に自動紐づけされた
