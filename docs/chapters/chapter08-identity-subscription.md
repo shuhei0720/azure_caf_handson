@@ -177,16 +177,19 @@ SUB_IDENTITY_ID=$(az deployment tenant show \
 
 echo "Identity Subscription ID: $SUB_IDENTITY_ID"
 
-# このSubscription IDをtenant.bicepparamに追記します
-```
+# .envファイルに追記
+echo "SUB_IDENTITY_ID=$SUB_IDENTITY_ID" >> .env
 
-> **💡 Note:** Subscription IDは`tenant.bicepparam`ファイルに記載して管理します。
+# 確認
+cat .env
+```
 
 **代替方法**: デプロイから時間が経過している場合：
 
 ```bash
 SUB_IDENTITY_ID=$(az account list --query "[?name=='sub-platform-identity-prod'].id" -o tsv)
 echo "Identity Subscription ID: $SUB_IDENTITY_ID"
+echo "SUB_IDENTITY_ID=$SUB_IDENTITY_ID" >> .env
 ```
 
 ### 8.2.5 Azure ポータルでの確認

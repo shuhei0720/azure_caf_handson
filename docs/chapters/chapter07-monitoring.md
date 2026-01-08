@@ -2005,15 +2005,16 @@ DEPLOYMENT_OUTPUT=$(az deployment group create \
   --parameters infrastructure/bicep/parameters/policy-managed-identity.bicepparam \
   --query 'properties.outputs' -o json)
 
-# 環境変数に設定
+# 環境変数に保存
 POLICY_IDENTITY_ID=$(echo $DEPLOYMENT_OUTPUT | jq -r '.identityId.value')
 POLICY_IDENTITY_PRINCIPAL_ID=$(echo $DEPLOYMENT_OUTPUT | jq -r '.principalId.value')
+
+echo "POLICY_IDENTITY_ID=$POLICY_IDENTITY_ID" >> .env
+echo "POLICY_IDENTITY_PRINCIPAL_ID=$POLICY_IDENTITY_PRINCIPAL_ID" >> .env
 
 echo "Policy用マネージドID: $POLICY_IDENTITY_ID"
 echo "Principal ID: $POLICY_IDENTITY_PRINCIPAL_ID"
 ```
-
-> **💡 Note:** Principal IDは次のステップで使用します。
 
 ### 7.8.3 マネージド ID への権限付与
 
@@ -2082,7 +2083,7 @@ echo "マネージドIDにOwner権限を付与しました"
 2. **Principal ID の確認**
 
    - Managed Identity を開く → Properties → Object (principal) ID をコピー
-   - デプロイ出力の `POLICY_IDENTITY_PRINCIPAL_ID` と一致することを確認
+   - `.env` ファイルの `POLICY_IDENTITY_PRINCIPAL_ID` と一致することを確認
 
 3. **ロール割り当ての確認**
    - Subscriptions → Management Subscription → Access control (IAM) → Role assignments
@@ -2209,12 +2210,11 @@ DEPLOYMENT_OUTPUT=$(az deployment group create \
     location=japaneast \
   --query 'properties.outputs' -o json)
 
-# Principal ID を環境変数に設定
+# Principal ID を環境変数に保存
 AUTOMATION_PRINCIPAL_ID=$(echo $DEPLOYMENT_OUTPUT | jq -r '.principalId.value')
+echo "AUTOMATION_PRINCIPAL_ID=$AUTOMATION_PRINCIPAL_ID" >> .env
 echo "Automation Account Principal ID: $AUTOMATION_PRINCIPAL_ID"
 ```
-
-> **💡 Note:** Principal IDは次のステップで使用します。
 
 ### 7.9.3 Sandbox Subscription への権限付与
 

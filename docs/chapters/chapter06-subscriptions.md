@@ -182,10 +182,9 @@ BILLING_SCOPE="/providers/Microsoft.Billing/billingAccounts/$BILLING_ACCOUNT_NAM
 
 echo "Billing Scope: $BILLING_SCOPE"
 
-# この値はtenant.bicepparamに記載します
+# .envファイルに保存（後続の章で再利用）
+echo "BILLING_SCOPE=$BILLING_SCOPE" >> .env
 ```
-
-> **💡 Note:** Billing Scopeは`tenant.bicepparam`の`billingScope`パラメータとして記載します。
 
 ### 6.3.3 Bicep モジュールの作成
 
@@ -395,16 +394,19 @@ SUB_MANAGEMENT_ID=$(az deployment tenant show \
 
 echo "Management Subscription ID: $SUB_MANAGEMENT_ID"
 
-# このSubscription IDをtenant.bicepparamに記載します
-```
+# .envファイルに追記
+echo "SUB_MANAGEMENT_ID=$SUB_MANAGEMENT_ID" >> .env
 
-> **💡 Note:** Subscription IDは、デプロイ後に`tenant.bicepparam`ファイルに直接記載して管理します。
+# 確認
+cat .env
+```
 
 **代替方法**: デプロイから時間が経過している場合：
 
 ```bash
 SUB_MANAGEMENT_ID=$(az account list --query "[?name=='sub-platform-management-prod'].id" -o tsv)
 echo "Management Subscription ID: $SUB_MANAGEMENT_ID"
+echo "SUB_MANAGEMENT_ID=$SUB_MANAGEMENT_ID" >> .env
 ```
 
 ### 6.3.8 Azure ポータルでの確認
@@ -484,7 +486,7 @@ git commit -m "Chapter 6: Add Subscription creation to orchestration
 - Integrated into tenant.bicep orchestration
 - Added Management Subscription creation
 - Auto-associated with Management Group
-- Subscription IDs managed in tenant.bicepparam"
+- Saved BILLING_SCOPE and SUB_MANAGEMENT_ID to .env"
 
 # プッシュ
 git push origin main
@@ -527,12 +529,12 @@ git push origin main
 ## チェックリスト
 
 - [ ] Subscription の役割を理解した
-- [ ] Billing Scope を取得し、tenant.bicepparam に記載した
+- [ ] Billing Scope を取得し、.env に保存した
 - [ ] Subscription/Subscription-Association モジュールを作成した
 - [ ] orchestration (tenant.bicep) に統合した
 - [ ] Management Subscription を作成した
 - [ ] Management Subscription が Management Group に自動紐づけされた
-- [ ] SUB_MANAGEMENT_ID をtenant.bicepparamに追記した
+- [ ] SUB_MANAGEMENT_ID を .env に保存した
 - [ ] Git にコミット・プッシュした
 
 ---
