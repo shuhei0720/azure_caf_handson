@@ -77,155 +77,136 @@ graph TB
 
 ## 8.2 Identity Subscription の作成
 
-### 8.2.1 Bicep ファイルの作成
+### 8.2.1 Orchestrationへの統合
 
-ファイル `infrastructure/bicep/subscriptions/sub-identity.bicep` を作成し、以下の内容を記述します：
+**Chapter 6で作成したorchestration (`tenant.bicep`)は既にSubscriptionモジュールを含んでいます。** Chapter 8では`tenant.bicepparam`にIdentity Subscriptionの設定を追記するだけです。
+
+**orchestration/tenant.bicepparam を開き**、`subscriptions`セクションを以下のように更新：
 
 ```bicep
-targetScope = 'tenant'
-
-@description('Billing Scope')
-param billingScope string
-
-resource subIdentity 'Microsoft.Subscription/aliases@2021-10-01' = {
-  name: 'sub-platform-identity-prod'
-  properties: {
+param subscriptions = {
+  management: {
+    aliasName: 'sub-platform-management-prod'
+    displayName: 'sub-platform-management-prod'
     workload: 'Production'
+  }
+  identity: {  // 👈 Chapter 8で追記
+    aliasName: 'sub-platform-identity-prod'
     displayName: 'sub-platform-identity-prod'
+    workload: 'Production'
+  }
+}
+```
+
+**orchestration/tenant.bicep を開き**、Identity Subscriptionモジュールを追記：
+
+```bicep
+// Identity Subscription作成
+module identitySubscription '../modules/subscriptions/subscription.bicep' = if (contains(subscriptions, 'identity')) {
+  name: 'deploy-subscription-identity'
+  params: {
+    subscriptionAliasName: subscriptions.identity.aliasName
+    subscriptionDisplayName: subscriptions.identity.displayName
     billingScope: billingScope
+    workload: subscriptions.identity.workload
   }
 }
 
-output subscriptionId string = subIdentity.properties.subscriptionId
+// Identity SubscriptionをManagement Groupに紐づけ
+module identitySubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = if (contains(subscriptions, 'identity')) {
+  name: 'deploy-mg-assoc-identity'
+  params: {
+    managementGroupId: '${companyPrefix}-platform-identity'
+    subscriptionId: identitySubscription.outputs.subscriptionId
+  }
+  dependsOn: [
+    managementGroups
+  ]
+}
 ```
 
-### 8.2.2 パラメーターファイルの作成
+### 8.2.2 What-If 実行
 
-ファイル `infrastructure/bicep/parameters/sub-identity.bicepparam` を作成し、以下の内容を記述します：
-
-```bicep
-using '../subscriptions/sub-identity.bicep'
-
-param billingScope = '/providers/Microsoft.Billing/billingAccounts/your-billing-account-id/enrollmentAccounts/your-enrollment-account-id'
-```
-
-**重要：** `billingScope` の値を置き換えてください。以下のコマンドで取得した値を使用します：
+**orchestration経由**でデプロイします：
 
 ```bash
-# Billing Scopeの値を確認（第6章で取得済み）
-echo $BILLING_SCOPE
+# デプロイ名を変数に保存
+DEPLOYMENT_NAME="tenant-deployment-$(date +%Y%m%d-%H%M%S)"
 
-# 出力例：
-# /providers/Microsoft.Billing/billingAccounts/12345678/billingProfiles/ABCD-EFGH-001/invoiceSections/IJKL-MNOP-002
-```
+echo "Creating Identity Subscription via Orchestration..."
 
-この値をパラメーターファイルの `billingScope` に設定します。
-
-### 8.2.3 What-If 実行
-
-```bash
-echo "Creating Identity Subscription..."
-
-# 事前確認
+# What-If実行
 az deployment tenant what-if \
-  --name "deploy-sub-identity-$(date +%Y%m%d-%H%M%S)" \
+  --name "$DEPLOYMENT_NAME" \
   --location japaneast \
-  --template-file infrastructure/bicep/subscriptions/sub-identity.bicep \
-  --parameters infrastructure/bicep/parameters/sub-identity.bicepparam
+  --template-file infrastructure/bicep/orchestration/tenant.bicep \
+  --parameters infrastructure/bicep/orchestration/tenant.bicepparam
 ```
 
-### 8.2.4 デプロイ実行（10-15 分）
+### 8.2.3 デプロイ実行（10-15 分）
 
 ```bash
 # デプロイ実行
 az deployment tenant create \
-  --name "deploy-sub-identity-$(date +%Y%m%d-%H%M%S)" \
+  --name "$DEPLOYMENT_NAME" \
   --location japaneast \
-  --template-file infrastructure/bicep/subscriptions/sub-identity.bicep \
-  --parameters infrastructure/bicep/parameters/sub-identity.bicepparam
+  --template-file infrastructure/bicep/orchestration/tenant.bicep \
+  --parameters infrastructure/bicep/orchestration/tenant.bicepparam
+
+echo "Deployment name: $DEPLOYMENT_NAME"
 ```
 
 **デプロイには 10〜15 分程度かかります。**
 
-### 8.2.5 Subscription ID の記録
+### 8.2.4 Subscription ID の取得と記録
 
 ```bash
-SUB_IDENTITY_ID=$(az account list --query "[?name=='sub-platform-identity-prod'].id" -o tsv)
+# デプロイ結果から Subscription ID を取得
+SUB_IDENTITY_ID=$(az deployment tenant show \
+  --name "$DEPLOYMENT_NAME" \
+  --query "properties.outputs.identitySubscription.value.subscriptionId" -o tsv)
+
 echo "Identity Subscription ID: $SUB_IDENTITY_ID"
 
 # .envファイルに追記
 echo "SUB_IDENTITY_ID=$SUB_IDENTITY_ID" >> .env
+
+# 確認
+cat .env
 ```
 
-### 8.2.4 Azure ポータルでの確認
-
-1. [Azure ポータル](https://portal.azure.com)にアクセス
-
-2. 検索バーで「Subscriptions」を検索
-
-3. **sub-platform-identity-prod** が表示されることを確認
-
-または CLI で確認：
+**代替方法**: デプロイから時間が経過している場合：
 
 ```bash
-# Identity Subscriptionを表示
-az account show --subscription $SUB_IDENTITY_ID --output table
+SUB_IDENTITY_ID=$(az account list --query "[?name=='sub-platform-identity-prod'].id" -o tsv)
+echo "Identity Subscription ID: $SUB_IDENTITY_ID"
+echo "SUB_IDENTITY_ID=$SUB_IDENTITY_ID" >> .env
 ```
+
+### 8.2.5 Azure ポータルでの確認
+
+1. [Azure ポータル](https://portal.azure.com)にアクセス
+2. 検索バーで「Subscriptions」を検索
+3. **sub-platform-identity-prod** が表示されることを確認
+4. 「Management groups」を開き、**contoso-platform-identity** 配下に表示されることを確認
+
+CLI で確認：
+
+```bash
+# Subscription確認
+az account show --subscription $SUB_IDENTITY_ID --output table
+
+# Management Group紐づけ確認
+az account management-group subscription show \
+  --name contoso-platform-identity \
+  --subscription $SUB_IDENTITY_ID
+```
+
+**✅ orchestrationにより、Subscription作成とMG紐づけが自動で完了しています！**
 
 ---
 
-## 8.3 Identity Subscription と Management Group の関連付け
-
-作成した Identity Subscription を、第 5 章で作成した Management Group「contoso-platform-identity」に割り当てます。
-
-パラメーターファイル `infrastructure/bicep/parameters/mg-assoc-identity.bicepparam` を作成：
-
-```bicep
-using '../modules/management-groups/subscription-association.bicep'
-
-param managementGroupName = 'contoso-platform-identity'
-param subscriptionId = 'YOUR_IDENTITY_SUBSCRIPTION_ID'
-```
-
-**重要：** `subscriptionId` の値を置き換えてください。以下のコマンドで取得した Identity Subscription ID を使用します：
-
-```bash
-# Identity Subscription IDの値を確認（前のセクションで取得済み）
-echo $SUB_IDENTITY_ID
-
-# 出力例：
-# 23456789-2345-2345-2345-234567890123
-```
-
-この値をパラメーターファイルの `subscriptionId` に設定します。
-
-### 8.3.2 What-If による事前確認
-
-第 6 章で作成した Bicep モジュールを使用します：
-
-```bash
-# 事前確認
-az deployment mg what-if \
-  --management-group-id contoso-platform-identity \
-  --location japaneast \
-  --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters infrastructure/bicep/parameters/mg-assoc-identity.bicepparam
-```
-
-### 8.3.3 デプロイ実行
-
-```bash
-# デプロイ実行
-az deployment mg create \
-  --management-group-id contoso-platform-identity \
-  --location japaneast \
-  --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters infrastructure/bicep/parameters/mg-assoc-identity.bicepparam
-
-echo "Identity Subscription が Management Group に割り当てられました"
-```
-
-### 8.3.4 Azure ポータルでの確認
+## 8.3 orchestration統合のメリット（再確認）
 
 1. Azure ポータルで「Management groups」を開く
 

@@ -186,45 +186,134 @@ echo "Billing Scope: $BILLING_SCOPE"
 echo "BILLING_SCOPE=$BILLING_SCOPE" >> .env
 ```
 
-### 6.3.3 Bicep ファイルの作成
+### 6.3.3 Bicepモジュールの作成
+
+**重要**: Subscription作成は`targetScope = 'tenant'`が必要なため、**orchestration (`tenant.bicep`)に統合**します。
 
 まず、ディレクトリを準備：
 
 ```bash
-mkdir -p infrastructure/bicep/subscriptions
+mkdir -p infrastructure/bicep/modules/subscriptions
+mkdir -p infrastructure/bicep/modules/management-groups
 ```
 
-ファイル `infrastructure/bicep/subscriptions/sub-management.bicep` を作成し、以下の内容を記述します：
+#### Subscriptionモジュールの作成
+
+ファイル `infrastructure/bicep/modules/subscriptions/subscription.bicep` を作成：
 
 ```bicep
 targetScope = 'tenant'
 
+@description('Subscription alias name (unique identifier)')
+param subscriptionAliasName string
+
+@description('Subscription display name')
+param subscriptionDisplayName string
+
 @description('Billing Scope')
 param billingScope string
 
-resource subManagement 'Microsoft.Subscription/aliases@2021-10-01' = {
-  name: 'sub-platform-management-prod'
+@description('Workload type (Production or DevTest)')
+@allowed(['Production', 'DevTest'])
+param workload string = 'Production'
+
+resource subscription 'Microsoft.Subscription/aliases@2021-10-01' = {
+  name: subscriptionAliasName
   properties: {
-    workload: 'Production'
-    displayName: 'sub-platform-management-prod'
+    workload: workload
+    displayName: subscriptionDisplayName
     billingScope: billingScope
   }
 }
 
-output subscriptionId string = subManagement.properties.subscriptionId
+output subscriptionId string = subscription.properties.subscriptionId
+output subscriptionName string = subscriptionDisplayName
 ```
 
-### 6.3.4 パラメーターファイルの作成
+#### Subscription-MG紐づけモジュールの作成
 
-ファイル `infrastructure/bicep/parameters/sub-management.bicepparam` を作成し、以下の内容を記述します：
+ファイル `infrastructure/bicep/modules/management-groups/subscription-association.bicep` を作成：
 
 ```bicep
-using '../subscriptions/sub-management.bicep'
+targetScope = 'tenant'
 
-param billingScope = '/providers/Microsoft.Billing/billingAccounts/your-billing-account-id/enrollmentAccounts/your-enrollment-account-id'
+@description('Management Group ID')
+param managementGroupId string
+
+@description('Subscription ID')
+param subscriptionId string
+
+resource subscriptionAssociation 'Microsoft.Management/managementGroups/subscriptions@2021-04-01' = {
+  scope: tenant()
+  name: '${managementGroupId}/${subscriptionId}'
+}
+
+output managementGroupId string = managementGroupId
+output subscriptionId string = subscriptionId
 ```
 
-**重要：** `billingScope` の値を置き換えてください。以下のコマンドで取得した `$BILLING_SCOPE` の値を使用します：
+### 6.3.4 Orchestrationへの統合
+
+**Chapter 4で作成した `orchestration/tenant.bicep` を開き**、以下を追記：
+
+```bicep
+// =============================================================================
+// Chapter 6: Subscriptions (追記)
+// =============================================================================
+
+@description('Billing Scope')
+param billingScope string = ''
+
+@description('Subscriptions設定')
+param subscriptions object = {}
+
+// Management Subscription作成
+module managementSubscription '../modules/subscriptions/subscription.bicep' = if (contains(subscriptions, 'management')) {
+  name: 'deploy-subscription-management'
+  params: {
+    subscriptionAliasName: subscriptions.management.aliasName
+    subscriptionDisplayName: subscriptions.management.displayName
+    billingScope: billingScope
+    workload: subscriptions.management.workload
+  }
+}
+
+// Management SubscriptionをManagement Groupに紐づけ
+module managementSubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = if (contains(subscriptions, 'management')) {
+  name: 'deploy-mg-assoc-management'
+  params: {
+    managementGroupId: '${companyPrefix}-platform-management'
+    subscriptionId: managementSubscription.outputs.subscriptionId
+  }
+  dependsOn: [
+    managementGroups  // Management Groups作成後に実行
+  ]
+}
+```
+
+**orchestration/tenant.bicepparam を開き**、以下を追記：
+
+```bicep
+// =============================================================================
+// Chapter 6: Subscriptions
+// =============================================================================
+
+param billingScope = 'YOUR_BILLING_SCOPE_HERE'
+
+param subscriptions = {
+  management: {
+    aliasName: 'sub-platform-management-prod'
+    displayName: 'sub-platform-management-prod'
+    workload: 'Production'
+  }
+  // Chapter 8以降で追記:
+  // identity: { ... }
+  // connectivity: { ... }
+  // landingZoneCorp: { ... }
+}
+```
+
+**重要：** `billingScope` の値を置き換えてください：
 
 ```bash
 # Billing Scopeの値を確認（前のセクションで取得済み）
@@ -238,18 +327,20 @@ echo $BILLING_SCOPE
 
 ### 6.3.5 What-If 実行
 
+**orchestration経由**でデプロイします：
+
 ```bash
-# デプロイ名を変数に保存（重要：タイムスタンプが変わらないように）
-DEPLOYMENT_NAME="deploy-sub-management-$(date +%Y%m%d-%H%M%S)"
+# デプロイ名を変数に保存
+DEPLOYMENT_NAME="tenant-deployment-$(date +%Y%m%d-%H%M%S)"
 
-echo "Creating Management Subscription..."
+echo "Creating Management Subscription via Orchestration..."
 
-# 事前確認
+# What-If実行
 az deployment tenant what-if \
   --name "$DEPLOYMENT_NAME" \
   --location japaneast \
-  --template-file infrastructure/bicep/subscriptions/sub-management.bicep \
-  --parameters infrastructure/bicep/parameters/sub-management.bicepparam
+  --template-file infrastructure/bicep/orchestration/tenant.bicep \
+  --parameters infrastructure/bicep/orchestration/tenant.bicepparam
 ```
 
 ### 6.3.6 デプロイ実行（10-15 分）
@@ -261,134 +352,98 @@ What-If で問題がないことを確認したら、実際にデプロイを実
 az deployment tenant create \
   --name "$DEPLOYMENT_NAME" \
   --location japaneast \
-  --template-file infrastructure/bicep/subscriptions/sub-management.bicep \
-  --parameters infrastructure/bicep/parameters/sub-management.bicepparam
+  --template-file infrastructure/bicep/orchestration/tenant.bicep \
+  --parameters infrastructure/bicep/orchestration/tenant.bicepparam
 
+echo "Deployment name: $DEPLOYMENT_NAME"
+```
+
+### 6.3.7 Subscription ID の取得と記録
+
+```bash
 # デプロイ結果から Subscription ID を取得
 SUB_MANAGEMENT_ID=$(az deployment tenant show \
   --name "$DEPLOYMENT_NAME" \
-  --query properties.outputs.subscriptionId.value -o tsv)
+  --query "properties.outputs.managementSubscription.value.subscriptionId" -o tsv)
 
 echo "Management Subscription ID: $SUB_MANAGEMENT_ID"
-```
 
-### 6.3.7 Subscription ID の記録
-
-```bash
-# .envファイルに追記（既に取得済みの場合はスキップ可）
+# .envファイルに追記
 echo "SUB_MANAGEMENT_ID=$SUB_MANAGEMENT_ID" >> .env
 
 # 確認
-echo "Management Subscription ID: $SUB_MANAGEMENT_ID"
+cat .env
 ```
 
-**代替方法**: デプロイから時間が経過している場合は、以下のコマンドでも取得可能です：
+**代替方法**: デプロイから時間が経過している場合：
 
 ```bash
 SUB_MANAGEMENT_ID=$(az account list --query "[?name=='sub-platform-management-prod'].id" -o tsv)
 echo "Management Subscription ID: $SUB_MANAGEMENT_ID"
+echo "SUB_MANAGEMENT_ID=$SUB_MANAGEMENT_ID" >> .env
 ```
 
-### 6.3.6 Azure ポータルでの確認
+### 6.3.8 Azure ポータルでの確認
 
 1. [Azure ポータル](https://portal.azure.com)にアクセス
-
 2. 検索バーで「Subscriptions」を検索
-
 3. **sub-platform-management-prod** が表示されることを確認
+4. 「Management groups」を開き、**contoso-platform-management** 配下に表示されることを確認
 
-または CLI で確認：
+CLI で確認：
 
 ```bash
-# Management Subscriptionを表示
+# Subscription確認
 az account show --subscription $SUB_MANAGEMENT_ID --output table
+
+# Management Group紐づけ確認
+az account management-group subscription show \
+  --name contoso-platform-management \
+  --subscription $SUB_MANAGEMENT_ID
 ```
 
 ---
 
-## 6.4 Management Subscription と Management Group の関連付け
+## 6.4 orchestration統合のメリット
 
-作成した Management Subscription を、第 5 章で作成した Management Group「contoso-platform-management」に割り当てます。
+**従来の方式**（個別デプロイ）:
+- ❌ 各ChapterでSubscription作成とMG紐づけを別々に実行
+- ❌ orchestrationファイルに含まれず、復元時に手動実行が必要
+- ❌ 冪等性が保証されない
 
-Bicep モジュール `infrastructure/bicep/modules/management-groups/subscription-association.bicep` を作成します：
+**orchestration統合後**:
+- ✅ **1コマンドで全て作成**: Subscription作成とMG紐づけが自動
+- ✅ **冪等性**: 何度実行しても同じ結果
+- ✅ **復元が容易**: 全削除後も`tenant.bicep`を実行するだけ
+- ✅ **一元管理**: `tenant.bicepparam`でパラメータ管理
+
+---
+
+## 6.5 orchestrationの更新方法（各章での追加パターン）
+
+**Chapter 8（Identity Subscription）での追加例**:
 
 ```bicep
-targetScope = 'managementGroup'
-
-@description('Management Group 名')
-param managementGroupName string
-
-@description('割り当てる Subscription ID')
-param subscriptionId string
-
-// Management Group への Subscription 割り当て
-resource subscriptionAssociation 'Microsoft.Management/managementGroups/subscriptions@2021-04-01' = {
-  scope: tenant()
-  name: '${managementGroupName}/${subscriptionId}'
+// tenant.bicepparamに追記
+param subscriptions = {
+  management: {
+    aliasName: 'sub-platform-management-prod'
+    displayName: 'sub-platform-management-prod'
+    workload: 'Production'
+  }
+  identity: {  // 👈 Chapter 8で追記
+    aliasName: 'sub-platform-identity-prod'
+    displayName: 'sub-platform-identity-prod'
+    workload: 'Production'
+  }
 }
-
-output managementGroupName string = managementGroupName
-output subscriptionId string = subscriptionId
 ```
 
-パラメーターファイル `infrastructure/bicep/parameters/mg-assoc-management.bicepparam` を作成：
-
-```bicep
-using '../modules/management-groups/subscription-association.bicep'
-
-param managementGroupName = 'contoso-platform-management'
-param subscriptionId = 'YOUR_MANAGEMENT_SUBSCRIPTION_ID'
-```
-
-**重要：** `subscriptionId` の値を置き換えてください。以下のコマンドで取得した Management Subscription ID を使用します：
-
-```bash
-# Management Subscription IDの値を確認（前のセクションで取得済み）
-echo $SUB_MANAGEMENT_ID
-
-# 出力例：
-# 12345678-1234-1234-1234-123456789012
-```
-
-この値をパラメーターファイルの `subscriptionId` に設定します。
-
-### 6.4.2 What-If 実行
-
-```bash
-# 事前確認
-az deployment mg what-if \
-  --management-group-id contoso-platform-management \
-  --location japaneast \
-  --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters infrastructure/bicep/parameters/mg-assoc-management.bicepparam
-```
-
-### 6.4.3 デプロイ実行
-
-```bash
-# デプロイ実行
-az deployment mg create \
-  --management-group-id contoso-platform-management \
-  --location japaneast \
-  --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters infrastructure/bicep/parameters/mg-assoc-management.bicepparam
-
-echo "Management Subscription が Management Group に割り当てられました"
-```
-
-### 6.4.4 Azure ポータルでの確認
-
-1. Azure ポータルで「Management groups」を開く
-
-2. 「contoso-platform-management」をクリック
-
-3. 「Subscriptions」タブを選択
-
-4. **sub-platform-management-prod** が表示されていることを確認
+`tenant.bicep`にも対応するモジュール呼び出しを追記すれば、段階的に構築できます
 
 ---
 
-## 6.5 Git へのコミット
+## 6.6 Git へのコミット
 
 ```bash
 # 変更の確認
@@ -397,10 +452,12 @@ git status
 # ステージングとコミット
 git add .
 
-git commit -m "Day 1: Create Management Subscription and associate with Management Group
+git commit -m "Chapter 6: Add Subscription creation to orchestration
 
-- Created sub-platform-management-prod subscription
-- Associated with contoso-platform-management management group
+- Created subscription and subscription-association modules
+- Integrated into tenant.bicep orchestration
+- Added Management Subscription creation
+- Auto-associated with Management Group
 - Saved BILLING_SCOPE and SUB_MANAGEMENT_ID to .env"
 
 # プッシュ
@@ -409,15 +466,23 @@ git push origin main
 
 ---
 
-## 6.6 章のまとめ
+## 6.7 章のまとめ
 
 本章で行ったこと：
 
 1. ✅ Subscription の理解と設計戦略の学習
-2. ✅ Management Subscription の作成
-3. ✅ Management Subscription と Management Group の関連付け
-4. ✅ Billing Scope と Subscription ID の記録
-5. ✅ Git へのコミット・プッシュ
+2. ✅ **Subscription作成をorchestration統合** （冪等性と復元性の向上）
+3. ✅ Management Subscription の作成
+4. ✅ Management Subscription と Management Group の自動紐づけ
+5. ✅ Billing Scope と Subscription ID の記録
+6. ✅ Git へのコミット・プッシュ
+
+### orchestration統合のメリット
+
+- **1コマンドで全て作成**: Subscription作成とMG紐づけが自動化
+- **冪等性**: 何度実行しても同じ結果
+- **復元が容易**: 全削除後も`tenant.bicep`を実行するだけ
+- **一元管理**: `tenant.bicepparam`でパラメータ管理
 
 ### 重要なポイント
 
@@ -425,6 +490,7 @@ git push origin main
 - **アクセス制御の境界**: RBAC 適用の単位
 - **本番環境では分離**: 役割ごとに独立した Subscription
 - **24 時間に 1 つの制約**: 個人アカウントではサブスクリプション作成に時間がかかる
+- **orchestrationに統合**: tenant.bicepで一元管理
 
 ### 次のステップ
 
@@ -436,8 +502,10 @@ git push origin main
 
 - [ ] Subscription の役割を理解した
 - [ ] Billing Scope を取得し、.env に保存した
+- [ ] Subscription/Subscription-Associationモジュールを作成した
+- [ ] orchestration (tenant.bicep) に統合した
 - [ ] Management Subscription を作成した
-- [ ] Management Subscription を Management Group に関連付けた
+- [ ] Management Subscription が Management Group に自動紐づけされた
 - [ ] SUB_MANAGEMENT_ID を .env に保存した
 - [ ] Git にコミット・プッシュした
 
@@ -463,4 +531,4 @@ Management Subscription の準備が完了したら、次は監視・ログ基�
 
 ---
 
-**最終更新**: 2026 年 1 月 7 日
+**最終更新**: 2026 年 1 月 8 日
