@@ -1306,8 +1306,8 @@ Entra ID の診断設定は **テナントレベル** のリソースであり�
 # Entra ID の診断設定を作成
 az monitor diagnostic-settings create \
   --name "entra-id-to-log-analytics" \
-  --resource "/providers/microsoft.aadiam/tenants/$TENANT_ID" \
-  --workspace $LOG_WORKSPACE_ID \
+  --resource "/providers/microsoft.aadiam/tenants/$AZURE_TENANT_ID" \
+  --workspace "$WORKSPACE_ID" \
   --logs '[
     {"category": "AuditLogs", "enabled": true},
     {"category": "SignInLogs", "enabled": true},
