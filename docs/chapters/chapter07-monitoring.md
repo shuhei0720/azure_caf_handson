@@ -989,6 +989,55 @@ az deployment sub create \
    - Azure Portal → Monitor → Activity Log
    - 最近のサブスクリプション操作が表示されることを確認
 
+### 7.6.4 Activity Log のクエリ例
+
+Log Analytics で Activity Log を検索する KQL クエリ例：
+
+```kql
+// 過去24時間のすべてのActivity Log
+AzureActivity
+| where TimeGenerated > ago(24h)
+| project TimeGenerated, Caller, OperationNameValue, ResourceGroup, Resource, ActivityStatusValue
+| order by TimeGenerated desc
+
+// リソースの作成・削除操作のみ
+AzureActivity
+| where OperationNameValue has_any ("Microsoft.Resources/subscriptions/resourceGroups/write", 
+                                     "Microsoft.Resources/subscriptions/resourceGroups/delete")
+| project TimeGenerated, Caller, OperationNameValue, ResourceGroup, ActivityStatusValue
+| order by TimeGenerated desc
+
+// RBAC変更（ロール割り当て）
+AzureActivity
+| where OperationNameValue startswith "Microsoft.Authorization/roleAssignments/"
+| project TimeGenerated, Caller, OperationNameValue, Properties
+| order by TimeGenerated desc
+
+// 失敗した操作のみ
+AzureActivity
+| where ActivityStatusValue == "Failed"
+| project TimeGenerated, Caller, OperationNameValue, ResourceGroup, Resource, ActivitySubstatusValue
+| order by TimeGenerated desc
+
+// 特定のユーザーの操作履歴
+AzureActivity
+| where Caller contains "user@example.com"
+| project TimeGenerated, OperationNameValue, ResourceGroup, Resource, ActivityStatusValue
+| order by TimeGenerated desc
+
+// Resource Group削除操作の詳細
+AzureActivity
+| where OperationNameValue == "Microsoft.Resources/subscriptions/resourceGroups/delete"
+| extend DeletedResourceGroup = tostring(parse_json(Properties).resource)
+| project TimeGenerated, Caller, DeletedResourceGroup, ActivityStatusValue, SubscriptionId
+```
+
+**Activity Log の活用：**
+- **セキュリティ監査**: 誰が機密リソースを削除したか
+- **変更追跡**: RBAC変更の履歴
+- **トラブルシューティング**: 失敗した操作の原因調査
+- **コンプライアンス**: 管理操作の証跡保存
+
 ---
 
 ## 7.7 既存リソースの診断設定
@@ -1029,6 +1078,26 @@ graph LR
 **診断設定の重要性：**
 
 監視基盤自体（Log Analytics や DCR）の操作ログを収集することで、「誰が」「いつ」「どのような変更を行ったか」を追跡できます。セキュリティ監査やコンプライアンス対応に不可欠です。
+
+**今後のリソース作成における診断設定のルール：**
+
+本章では既存の監視リソース（Log Analytics、DCR）に診断設定を適用しましたが、**今後作成するすべてのリソースにも診断設定を適用します**。
+
+診断設定が利用可能なリソース：
+- Azure Firewall
+- Key Vault
+- Azure Bastion
+- Storage Account
+- Virtual Network Gateway
+- Application Gateway
+- その他の Azure サービス
+
+**実装方針：**
+- リソース作成と診断設定を**同じ Bicep ファイル内**で定義
+- すべてのログとメトリクスを Log Analytics Workspace に送信
+- リソース作成時に診断設定も自動的にデプロイ
+
+例：`infrastructure/bicep/modules/networking/firewall.bicep` では、Azure Firewall リソースと診断設定の両方を定義します。
 
 ---
 
@@ -1196,6 +1265,72 @@ az deployment group create \
 3. **監視基盤のログ確認**
    - Log Analytics → Logs → `AzureDiagnostics | where ResourceType == "DATACOLECTIONRULES" | take 10`
    - 監視リソース自体のログが収集されていることを確認
+
+### 7.7.4 診断設定ログのクエリ例
+
+今後作成する Azure Firewall などのリソースの診断設定ログを検索する KQL クエリ例：
+
+```kql
+// Azure Firewall - すべてのログ（第13章で作成後に使用可能）
+AzureDiagnostics
+| where ResourceType == "AZUREFIREWALLS"
+| project TimeGenerated, Category, msg_s, Resource
+| order by TimeGenerated desc
+
+// Azure Firewall - 許可されたアプリケーションルール
+AzureDiagnostics
+| where ResourceType == "AZUREFIREWALLS"
+| where Category == "AzureFirewallApplicationRule"
+| where msg_s contains "Allow"
+| project TimeGenerated, msg_s
+| order by TimeGenerated desc
+
+// Azure Firewall - ブロックされたネットワークトラフィック
+AzureDiagnostics
+| where ResourceType == "AZUREFIREWALLS"
+| where Category == "AzureFirewallNetworkRule"
+| where msg_s contains "Deny"
+| extend SourceIP = extract(@"Source: ([0-9\.]+)", 1, msg_s)
+| extend DestinationIP = extract(@"Destination: ([0-9\.]+)", 1, msg_s)
+| extend DestinationPort = extract(@"DestPort: ([0-9]+)", 1, msg_s)
+| project TimeGenerated, SourceIP, DestinationIP, DestinationPort, msg_s
+| order by TimeGenerated desc
+
+// Azure Firewall - 脅威インテリジェンスアラート
+AzureDiagnostics
+| where ResourceType == "AZUREFIREWALLS"
+| where Category == "AzureFirewallThreatIntelLog"
+| project TimeGenerated, msg_s, Resource
+| order by TimeGenerated desc
+
+// Key Vault - シークレットアクセス（第12章で作成後に使用可能）
+AzureDiagnostics
+| where ResourceType == "VAULTS"
+| where OperationName == "SecretGet"
+| project TimeGenerated, CallerIPAddress, identity_claim_http_schemas_xmlsoap_org_ws_2005_05_identity_claims_upn_s, 
+          Resource, ResultSignature
+| order by TimeGenerated desc
+
+// Key Vault - 失敗したアクセス試行
+AzureDiagnostics
+| where ResourceType == "VAULTS"
+| where ResultSignature != "OK"
+| project TimeGenerated, CallerIPAddress, OperationName, ResultSignature, Resource
+| order by TimeGenerated desc
+
+// すべてのリソースの診断設定概要
+AzureDiagnostics
+| summarize count() by ResourceType, Category
+| order by count_ desc
+```
+
+**診断設定ログの活用シーン：**
+- **セキュリティ分析**: Firewall でブロックされた不審なトラフィック
+- **コンプライアンス**: Key Vault のシークレットアクセス履歴
+- **トラブルシューティング**: 接続失敗の原因調査
+- **キャパシティプランニング**: リソース使用状況の傾向分析
+
+**注意：** 上記の Azure Firewall と Key Vault のクエリは、それぞれ第13章（Networking Hub）と第12章（Security）でリソース作成後に実行可能になります。
 
 ---
 
