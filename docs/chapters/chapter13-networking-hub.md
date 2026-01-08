@@ -145,46 +145,60 @@ Spoke 2 VNet:  10.2.0.0/16  (65,536 IP)
 
 ### 13.3.1 Resource Group の作成
 
-Hub Network 用の Resource Group を Bicep で作成します：
+Hub Network 用の Resource Group を Bicep で作成します。
 
-パラメーターファイル `infrastructure/bicep/parameters/connectivity-resource-group.bicepparam` を作成：
+#### オーケストレーションへのパラメータ追記
+
+ファイル `infrastructure/bicep/orchestration/main.bicepparam` を開き、以下を追記：
 
 ```bicep
-using '../modules/resource-group/resource-group.bicep'
+// =============================================================================
+// Chapter 13: Networking Hub
+// =============================================================================
 
-param resourceGroupName = 'rg-platform-connectivity-prod-jpe-001'
-param location = 'japaneast'
-param tags = {
-  Environment: 'Production'
-  ManagedBy: 'Bicep'
-  Project: 'CAF-Landing-Zone'
-  Component: 'Connectivity'
+@description('Networking設定')
+param networking = {
+  resourceGroup: {
+    name: 'rg-platform-connectivity-prod-jpe-001'
+    tags: {
+      Environment: 'Production'
+      ManagedBy: 'Bicep'
+      Project: 'CAF-Landing-Zone'
+      Component: 'Connectivity'
+    }
+  }
+  // 13.3.2以降で追記予定
 }
 ```
 
-**What-If による事前確認：**
+#### オーケストレーションへのモジュール追加
 
-```bash
-# 事前確認
-az deployment sub what-if \
-  --name "rg-connectivity-$(date +%Y%m%d-%H%M%S)" \
-  --location japaneast \
-  --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
-  --parameters infrastructure/bicep/parameters/connectivity-resource-group.bicepparam
+ファイル `infrastructure/bicep/orchestration/main.bicep` を開き、以下を追記：
+
+```bicep
+// =============================================================================
+// パラメータ定義（既存のセクションに追加）
+// =============================================================================
+
+@description('Networking設定')
+param networking object
+
+// =============================================================================
+// モジュールデプロイ（既存のセクションに追加）
+// =============================================================================
+
+// Chapter 13: Connectivity Resource Group
+module connectivityRG '../modules/resource-group/resource-group.bicep' = {
+  name: 'deploy-connectivity-rg'
+  params: {
+    resourceGroupName: networking.resourceGroup.name
+    location: location
+    tags: union(tags, networking.resourceGroup.tags)
+  }
+}
 ```
 
-**デプロイ実行：**
-
-```bash
-# デプロイ実行
-az deployment sub create \
-  --name "rg-connectivity-$(date +%Y%m%d-%H%M%S)" \
-  --location japaneast \
-  --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
-  --parameters infrastructure/bicep/parameters/connectivity-resource-group.bicepparam
-
-echo "Resource Group が Bicep で作成されました"
-```
+**注意**: この段階では Connectivity Subscription に切り替える必要があります。
 
 ### 13.3.2 Hub VNet Bicep モジュールの作成
 
@@ -211,6 +225,15 @@ param addressPrefix string = '10.0.0.0/16'
 
 @description('タグ')
 param tags object = {}
+
+@description('リソースグループ名')
+param resourceGroupName string
+
+// 既存のResource Group
+resource resourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
+  scope: subscription()
+  name: resourceGroupName
+}
 
 // Hub VNetの作成
 resource hubVNet 'Microsoft.Network/virtualNetworks@2023-05-01' = {
@@ -253,6 +276,7 @@ resource hubVNet 'Microsoft.Network/virtualNetworks@2023-05-01' = {
       }
     ]
   }
+  scope: resourceGroup
 }
 
 // Management Subnet用のNSG
@@ -303,6 +327,7 @@ resource managementNsg 'Microsoft.Network/networkSecurityGroups@2023-05-01' = {
       }
     ]
   }
+  scope: resourceGroup
 }
 
 // 出力
@@ -314,55 +339,84 @@ output bastionSubnetId string = hubVNet.properties.subnets[2].id
 output managementSubnetId string = hubVNet.properties.subnets[3].id
 ```
 
-### 8.3.3 Hub VNet のデプロイ
+### 13.3.3 Hub VNet のデプロイ
 
-````bash
-# パラメータファイルを作成
-cat << 'EOF' > infrastructure/bicep/parameters/hub-vnet.parameters.json
-{
-  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
-  "contentVersion": "1.0.0.0",
-  "parameters": {
-    "vnetName": {
-      "value": "vnet-hub-prod-jpe-001"
-    },
-    "location": {
-      "value": "japaneast"
-    },
-    "addressPrefix": {
-      "value": "10.0.0.0/16"
-    },
-    "tags": {
-      "value": {
-        "Environment": "Production",
-        "ManagedBy": "Bicep",
-        "Component": "Hub-Network"
-      }
+#### オーケストレーションへのパラメータ追記
+
+ファイル `infrastructure/bicep/orchestration/main.bicepparam` を開き、`networking` セクションに追記：
+
+```bicep
+@description('Networking設定')
+param networking = {
+  resourceGroup: {
+    name: 'rg-platform-connectivity-prod-jpe-001'
+    tags: {
+      Environment: 'Production'
+      ManagedBy: 'Bicep'
+      Project: 'CAF-Landing-Zone'
+      Component: 'Connectivity'
+    }
+  }
+  // 👇 13.3.2で追記
+  hubVNet: {
+    name: 'vnet-hub-prod-jpe-001'
+    addressPrefix: '10.0.0.0/16'
+    tags: {
+      Environment: 'Production'
+      ManagedBy: 'Bicep'
+      Component: 'Hub-Network'
     }
   }
 }
-EOF
+```
 
-**What-Ifによる事前確認：**
+#### オーケストレーションへのモジュール追加
+
+ファイル `infrastructure/bicep/orchestration/main.bicep` を開き、以下を追記：
+
+```bicep
+// Chapter 13: Hub VNet
+module hubVNet '../modules/networking/hub-vnet.bicep' = {
+  name: 'deploy-hub-vnet'
+  params: {
+    vnetName: networking.hubVNet.name
+    location: location
+    addressPrefix: networking.hubVNet.addressPrefix
+    resourceGroupName: networking.resourceGroup.name
+    tags: union(tags, networking.hubVNet.tags)
+  }
+  dependsOn: [
+    connectivityRG
+  ]
+}
+```
+
+#### デプロイ実行
+
+**重要**: Connectivity Subscription に切り替えてからデプロイします。
 
 ```bash
-# 事前確認
-az deployment group what-if \
-  --name "hub-vnet-deployment-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-connectivity-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/networking/hub-vnet.bicep \
-  --parameters infrastructure/bicep/parameters/hub-vnet.parameters.json
-````
+# Connectivity Subscriptionに切り替え
+az account set --subscription $SUB_CONNECTIVITY_ID
 
-**デプロイ実行：**
+# 現在のサブスクリプションを確認
+az account show --query "{Name:name, SubscriptionId:id}" -o table
 
-```bash
+# What-If実行
+az deployment sub what-if \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+
 # デプロイ実行
-az deployment group create \
-  --name "hub-vnet-deployment-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-connectivity-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/networking/hub-vnet.bicep \
-  --parameters infrastructure/bicep/parameters/hub-vnet.parameters.json
+az deployment sub create \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+
+echo "✅ Hub VNet が orchestration 経由でデプロイされました"
 ```
 
 ---
@@ -381,7 +435,7 @@ az deployment group create \
 - 脅威インテリジェンス
 - IDPS（侵入検知・防止）
 
-### 8.4.2 Firewall Bicep モジュールの作成
+### 13.4.2 Firewall Bicep モジュールの作成
 
 ファイル `infrastructure/bicep/modules/networking/firewall.bicep` を作成し、以下の内容を記述します：
 
@@ -409,6 +463,15 @@ param skuTier string = 'Standard'
 @description('タグ')
 param tags object = {}
 
+@description('リソースグループ名')
+param resourceGroupName string
+
+// 既存のResource Group
+resource resourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
+  scope: subscription()
+  name: resourceGroupName
+}
+
 // Public IP (Firewall用)
 resource firewallPublicIP 'Microsoft.Network/publicIPAddresses@2023-05-01' = {
   name: '${firewallName}-pip'
@@ -421,6 +484,7 @@ resource firewallPublicIP 'Microsoft.Network/publicIPAddresses@2023-05-01' = {
     publicIPAllocationMethod: 'Static'
     publicIPAddressVersion: 'IPv4'
   }
+  scope: resourceGroup
 }
 
 // Firewall Policy
@@ -437,6 +501,7 @@ resource firewallPolicy 'Microsoft.Network/firewallPolicies@2023-05-01' = {
       mode: 'Alert'
     } : null
   }
+  scope: resourceGroup
 }
 
 // Network Rule Collection Group
@@ -562,6 +627,7 @@ resource firewall 'Microsoft.Network/azureFirewalls@2023-05-01' = {
       id: firewallPolicy.id
     }
   }
+  scope: resourceGroup
 }
 
 // 出力
@@ -572,59 +638,72 @@ output firewallPublicIP string = firewallPublicIP.properties.ipAddress
 output firewallPolicyId string = firewallPolicy.id
 ```
 
-### 8.4.3 Firewall のデプロイ
+### 13.4.3 Firewall のデプロイ
 
-````bash
-# VNet IDを取得
-VNET_ID=$(az network vnet show \
-  --name vnet-hub-prod-jpe-001 \
-  --resource-group rg-platform-connectivity-prod-jpe-001 \
-  --query id -o tsv)
+#### オーケストレーションへのパラメータ追記
 
-FIREWALL_SUBNET_ID="${VNET_ID}/subnets/AzureFirewallSubnet"
+ファイル `infrastructure/bicep/orchestration/main.bicepparam` を開き、`networking` セクションに追記：
 
-# パラメータファイルを作成
-cat << EOF > infrastructure/bicep/parameters/firewall.parameters.json
-{
-  "\$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
-  "contentVersion": "1.0.0.0",
-  "parameters": {
-    "firewallName": {
-      "value": "afw-hub-prod-jpe-001"
-    },
-    "location": {
-      "value": "japaneast"
-    },
-    "firewallSubnetId": {
-      "value": "$FIREWALL_SUBNET_ID"
-    },
-    "skuTier": {
-      "value": "Standard"
+```bicep
+@description('Networking設定')
+param networking = {
+  // ... 既存の設定 ...
+  // 👇 13.4.3で追記
+  firewall: {
+    name: 'afw-hub-prod-jpe-001'
+    skuTier: 'Standard'
+    tags: {
+      Environment: 'Production'
+      ManagedBy: 'Bicep'
+      Component: 'Hub-Firewall'
     }
   }
 }
-EOF
+```
 
-**What-Ifによる事前確認：**
+#### オーケストレーションへのモジュール追加
+
+ファイル `infrastructure/bicep/orchestration/main.bicep` を開き、以下を追記：
+
+```bicep
+// Chapter 13: Azure Firewall
+module firewall '../modules/networking/firewall.bicep' = {
+  name: 'deploy-firewall'
+  params: {
+    firewallName: networking.firewall.name
+    location: location
+    firewallSubnetId: '${hubVNet.outputs.vnetId}/subnets/AzureFirewallSubnet'
+    skuTier: networking.firewall.skuTier
+    resourceGroupName: networking.resourceGroup.name
+    tags: union(tags, networking.firewall.tags)
+  }
+  dependsOn: [
+    hubVNet
+  ]
+}
+```
+
+#### デプロイ実行
 
 ```bash
-# 事前確認
-az deployment group what-if \
-  --name "firewall-deployment-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-connectivity-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/networking/firewall.bicep \
-  --parameters infrastructure/bicep/parameters/firewall.parameters.json
-````
+# Connectivity Subscriptionに切り替え
+az account set --subscription $SUB_CONNECTIVITY_ID
 
-**デプロイ実行（10-15 分）：**
+# What-If実行
+az deployment sub what-if \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
 
-```bash
 # デプロイ実行（10-15分かかります）
-az deployment group create \
-  --name "firewall-deployment-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-connectivity-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/networking/firewall.bicep \
-  --parameters infrastructure/bicep/parameters/firewall.parameters.json
+az deployment sub create \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+
+echo "✅ Azure Firewall が orchestration 経由でデプロイされました"
 ```
 
 **注意**: Azure Firewall のデプロイには 10-15 分かかります。コーヒーブレイクをどうぞ ☕
@@ -644,7 +723,7 @@ az deployment group create \
 - MFA と統合
 - セッション録画可能
 
-### 8.5.2 Bastion Bicep モジュール
+### 13.5.2 Bastion Bicep モジュール
 
 ファイル `infrastructure/bicep/modules/networking/bastion.bicep` を作成し、以下の内容を記述します：
 
@@ -672,6 +751,15 @@ param skuName string = 'Standard'
 @description('タグ')
 param tags object = {}
 
+@description('リソースグループ名')
+param resourceGroupName string
+
+// 既存のResource Group
+resource resourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
+  scope: subscription()
+  name: resourceGroupName
+}
+
 // Public IP (Bastion用)
 resource bastionPublicIP 'Microsoft.Network/publicIPAddresses@2023-05-01' = {
   name: '${bastionName}-pip'
@@ -684,6 +772,7 @@ resource bastionPublicIP 'Microsoft.Network/publicIPAddresses@2023-05-01' = {
     publicIPAllocationMethod: 'Static'
     publicIPAddressVersion: 'IPv4'
   }
+  scope: resourceGroup
 }
 
 // Azure Bastion
@@ -709,6 +798,7 @@ resource bastion 'Microsoft.Network/bastionHosts@2023-05-01' = {
       }
     ]
   }
+  scope: resourceGroup
 }
 
 // 出力
@@ -717,53 +807,72 @@ output bastionName string = bastion.name
 output bastionPublicIP string = bastionPublicIP.properties.ipAddress
 ```
 
-### 8.5.3 Bastion のデプロイ
+### 13.5.3 Bastion のデプロイ
 
-````bash
-BASTION_SUBNET_ID="${VNET_ID}/subnets/AzureBastionSubnet"
+#### オーケストレーションへのパラメータ追記
 
-# パラメータファイルを作成
-cat << EOF > infrastructure/bicep/parameters/bastion.parameters.json
-{
-  "\$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
-  "contentVersion": "1.0.0.0",
-  "parameters": {
-    "bastionName": {
-      "value": "bas-hub-prod-jpe-001"
-    },
-    "location": {
-      "value": "japaneast"
-    },
-    "bastionSubnetId": {
-      "value": "$BASTION_SUBNET_ID"
-    },
-    "skuName": {
-      "value": "Standard"
+ファイル `infrastructure/bicep/orchestration/main.bicepparam` を開き、`networking` セクションに追記：
+
+```bicep
+@description('Networking設定')
+param networking = {
+  // ... 既存の設定 ...
+  // 👇 13.5.3で追記
+  bastion: {
+    name: 'bas-hub-prod-jpe-001'
+    skuName: 'Standard'
+    tags: {
+      Environment: 'Production'
+      ManagedBy: 'Bicep'
+      Component: 'Hub-Bastion'
     }
   }
 }
-EOF
+```
 
-**What-Ifによる事前確認：**
+#### オーケストレーションへのモジュール追加
+
+ファイル `infrastructure/bicep/orchestration/main.bicep` を開き、以下を追記：
+
+```bicep
+// Chapter 13: Azure Bastion
+module bastion '../modules/networking/bastion.bicep' = {
+  name: 'deploy-bastion'
+  params: {
+    bastionName: networking.bastion.name
+    location: location
+    bastionSubnetId: '${hubVNet.outputs.vnetId}/subnets/AzureBastionSubnet'
+    skuName: networking.bastion.skuName
+    resourceGroupName: networking.resourceGroup.name
+    tags: union(tags, networking.bastion.tags)
+  }
+  dependsOn: [
+    hubVNet
+  ]
+}
+```
+
+#### デプロイ実行
 
 ```bash
-# 事前確認
-az deployment group what-if \
-  --name "bastion-deployment-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-connectivity-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/networking/bastion.bicep \
-  --parameters infrastructure/bicep/parameters/bastion.parameters.json
-````
+# Connectivity Subscriptionに切り替え
+az account set --subscription $SUB_CONNECTIVITY_ID
 
-**デプロイ実行（5-10 分）：**
+# What-If実行
+az deployment sub what-if \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
 
-```bash
 # デプロイ実行（5-10分かかります）
-az deployment group create \
-  --name "bastion-deployment-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-connectivity-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/networking/bastion.bicep \
-  --parameters infrastructure/bicep/parameters/bastion.parameters.json
+az deployment sub create \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+
+echo "✅ Azure Bastion が orchestration 経由でデプロイされました"
 ```
 
 ---
@@ -792,6 +901,15 @@ param firewallPrivateIP string
 
 @description('タグ')
 param tags object = {}
+
+@description('リソースグループ名')
+param resourceGroupName string
+
+// 既存のResource Group
+resource resourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
+  scope: subscription()
+  name: resourceGroupName
+}
 
 // Route Table
 resource routeTable 'Microsoft.Network/routeTables@2023-05-01' = {
@@ -826,11 +944,78 @@ resource routeTable 'Microsoft.Network/routeTables@2023-05-01' = {
       }
     ]
   }
+  scope: resourceGroup
 }
 
 // 出力
 output routeTableId string = routeTable.id
 output routeTableName string = routeTable.name
+```
+
+### 13.6.2 Route Table のデプロイ
+
+#### オーケストレーションへのパラメータ追記
+
+ファイル `infrastructure/bicep/orchestration/main.bicepparam` を開き、`networking` セクションに追記：
+
+```bicep
+@description('Networking設定')
+param networking = {
+  // ... 既存の設定 ...
+  // 👇 13.6.2で追記
+  routeTable: {
+    name: 'rt-hub-prod-jpe-001'
+    tags: {
+      Environment: 'Production'
+      ManagedBy: 'Bicep'
+      Component: 'Hub-RouteTable'
+    }
+  }
+}
+```
+
+#### オーケストレーションへのモジュール追加
+
+ファイル `infrastructure/bicep/orchestration/main.bicep` を開き、以下を追記：
+
+```bicep
+// Chapter 13: Route Table
+module routeTable '../modules/networking/route-table.bicep' = {
+  name: 'deploy-route-table'
+  params: {
+    routeTableName: networking.routeTable.name
+    location: location
+    firewallPrivateIP: firewall.outputs.firewallPrivateIP
+    resourceGroupName: networking.resourceGroup.name
+    tags: union(tags, networking.routeTable.tags)
+  }
+  dependsOn: [
+    firewall
+  ]
+}
+```
+
+#### デプロイ実行
+
+```bash
+# Connectivity Subscriptionに切り替え
+az account set --subscription $SUB_CONNECTIVITY_ID
+
+# What-If実行
+az deployment sub what-if \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+
+# デプロイ実行
+az deployment sub create \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+
+echo "✅ Route Table が orchestration 経由でデプロイされました"
 ```
 
 ---
@@ -851,7 +1036,7 @@ output routeTableName string = routeTable.name
 3. 「Overview」で Private IP と Public IP を確認
 4. 「Rules」→「Rule collections」でルールを確認
 
-### 8.7.3 Azure Bastion の確認
+### 13.7.3 Azure Bastion の確認
 
 1. 「Bastions」を検索
 2. 「bas-hub-prod-jpe-001」をクリック
