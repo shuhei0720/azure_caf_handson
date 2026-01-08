@@ -85,161 +85,163 @@ graph TB
 
 ## 14.2 Landing Zone Subscription の作成
 
-### 14.2.1 Bicep ファイルの作成
+### 14.2.1 Orchestration への統合
 
-ファイル `infrastructure/bicep/subscriptions/sub-landingzone-corp.bicep` を作成し、以下の内容を記述します：
+**Chapter 6 で作成した orchestration (`tenant.bicep`)は既に Subscription モジュールを含んでいます。** Chapter 14 では`tenant.bicepparam`に Landing Zone Subscription の設定を追記するだけです。
+
+**orchestration/tenant.bicepparam を開き**、`subscriptions`セクションを以下のように更新：
 
 ```bicep
-targetScope = 'tenant'
-
-@description('Billing Scope')
-param billingScope string
-
-resource subLandingZoneCorp 'Microsoft.Subscription/aliases@2021-10-01' = {
-  name: 'sub-landingzone-corp-prod'
-  properties: {
+param subscriptions = {
+  management: {
+    aliasName: 'sub-platform-management-prod'
+    displayName: 'sub-platform-management-prod'
     workload: 'Production'
+  }
+  identity: {
+    aliasName: 'sub-platform-identity-prod'
+    displayName: 'sub-platform-identity-prod'
+    workload: 'Production'
+  }
+  connectivity: {
+    aliasName: 'sub-platform-connectivity-prod'
+    displayName: 'sub-platform-connectivity-prod'
+    workload: 'Production'
+  }
+  landingZoneCorp: {  // 👈 Chapter 14で追記
+    aliasName: 'sub-landingzone-corp-prod'
     displayName: 'sub-landingzone-corp-prod'
+    workload: 'Production'
+  }
+}
+```
+
+**orchestration/tenant.bicep を開き**、Landing Zone Subscription モジュールを追記：
+
+```bicep
+// Landing Zone Corp Subscription作成
+module landingZoneCorpSubscription '../modules/subscriptions/subscription.bicep' = if (contains(subscriptions, 'landingZoneCorp')) {
+  name: 'deploy-subscription-landingzone-corp'
+  params: {
+    subscriptionAliasName: subscriptions.landingZoneCorp.aliasName
+    subscriptionDisplayName: subscriptions.landingZoneCorp.displayName
     billingScope: billingScope
+    workload: subscriptions.landingZoneCorp.workload
   }
 }
 
-output subscriptionId string = subLandingZoneCorp.properties.subscriptionId
+// Landing Zone Corp SubscriptionをManagement Groupに紐づけ
+module landingZoneCorpSubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = if (contains(subscriptions, 'landingZoneCorp')) {
+  name: 'deploy-mg-assoc-landingzone-corp'
+  params: {
+    managementGroupId: '${companyPrefix}-landingzones-corp'
+    subscriptionId: landingZoneCorpSubscription.outputs.subscriptionId
+  }
+  dependsOn: [
+    managementGroups
+  ]
+}
 ```
 
-### 14.2.2 パラメーターファイルの作成
+### 14.2.2 What-If 実行
 
-ファイル `infrastructure/bicep/parameters/sub-landingzone-corp.bicepparam` を作成し、以下の内容を記述します：
-
-```bicep
-using '../subscriptions/sub-landingzone-corp.bicep'
-
-param billingScope = '/providers/Microsoft.Billing/billingAccounts/your-billing-account-id/enrollmentAccounts/your-enrollment-account-id'
-```
-
-**重要：** `billingScope` の値を置き換えてください。以下のコマンドで取得した値を使用します：
+**orchestration 経由**でデプロイします：
 
 ```bash
-# Billing Scopeの値を確認（第6章で取得済み）
-echo $BILLING_SCOPE
+# デプロイ名を変数に保存
+DEPLOYMENT_NAME="tenant-deployment-$(date +%Y%m%d-%H%M%S)"
 
-# 出力例：
-# /providers/Microsoft.Billing/billingAccounts/12345678/billingProfiles/ABCD-EFGH-001/invoiceSections/IJKL-MNOP-002
-```
+echo "Creating Landing Zone Corp Subscription via Orchestration..."
 
-この値をパラメーターファイルの `billingScope` に設定します。
-
-### 14.2.3 What-If 実行
-
-```bash
-echo "Creating Landing Zone Corp Subscription..."
-
-# 事前確認
+# What-If実行
 az deployment tenant what-if \
-  --name "deploy-sub-landingzone-corp-$(date +%Y%m%d-%H%M%S)" \
+  --name "$DEPLOYMENT_NAME" \
   --location japaneast \
-  --template-file infrastructure/bicep/subscriptions/sub-landingzone-corp.bicep \
-  --parameters infrastructure/bicep/parameters/sub-landingzone-corp.bicepparam
+  --template-file infrastructure/bicep/orchestration/tenant.bicep \
+  --parameters infrastructure/bicep/orchestration/tenant.bicepparam
 ```
 
-### 14.2.4 デプロイ実行（10-15 分）
+### 14.2.3 デプロイ実行（10-15 分）
 
 ```bash
 # デプロイ実行
 az deployment tenant create \
-  --name "deploy-sub-landingzone-corp-$(date +%Y%m%d-%H%M%S)" \
+  --name "$DEPLOYMENT_NAME" \
   --location japaneast \
-  --template-file infrastructure/bicep/subscriptions/sub-landingzone-corp.bicep \
-  --parameters infrastructure/bicep/parameters/sub-landingzone-corp.bicepparam
+  --template-file infrastructure/bicep/orchestration/tenant.bicep \
+  --parameters infrastructure/bicep/orchestration/tenant.bicepparam
+
+echo "Deployment name: $DEPLOYMENT_NAME"
 ```
 
 **デプロイには 10〜15 分程度かかります。**
 
-### 14.2.5 Subscription ID の記録
+### 14.2.4 Subscription ID の取得と記録
 
 ```bash
-SUB_LANDINGZONE_CORP_ID=$(az account list --query "[?name=='sub-landingzone-corp-prod'].id" -o tsv)
+# デプロイ結果から Subscription ID を取得
+SUB_LANDINGZONE_CORP_ID=$(az deployment tenant show \
+  --name "$DEPLOYMENT_NAME" \
+  --query "properties.outputs.landingZoneCorpSubscription.value.subscriptionId" -o tsv)
+
 echo "Landing Zone Corp Subscription ID: $SUB_LANDINGZONE_CORP_ID"
 
 # .envファイルに追記
 echo "SUB_LANDINGZONE_CORP_ID=$SUB_LANDINGZONE_CORP_ID" >> .env
+
+# 確認
+cat .env
 ```
 
-### 14.2.4 Azure ポータルでの確認
-
-1. [Azure ポータル](https://portal.azure.com)にアクセス
-
-2. 検索バーで「Subscriptions」を検索
-
-3. **sub-landingzone-corp-prod** が表示されることを確認
-
-または CLI で確認：
+**代替方法**: デプロイから時間が経過している場合：
 
 ```bash
-# Landing Zone Corp Subscriptionを表示
-az account show --subscription $SUB_LANDINGZONE_CORP_ID --output table
+SUB_LANDINGZONE_CORP_ID=$(az account list --query "[?name=='sub-landingzone-corp-prod'].id" -o tsv)
+echo "Landing Zone Corp Subscription ID: $SUB_LANDINGZONE_CORP_ID"
+echo "SUB_LANDINGZONE_CORP_ID=$SUB_LANDINGZONE_CORP_ID" >> .env
 ```
+
+### 14.2.5 Azure ポータルでの確認
+
+1. [Azure ポータル](https://portal.azure.com)にアクセス
+2. 検索バーで「Subscriptions」を検索
+3. **sub-landingzone-corp-prod** が表示されることを確認
+4. 「Management groups」を開き、**contoso-landingzones-corp** 配下に表示されることを確認
+
+CLI で確認：
+
+```bash
+# Subscription確認
+az account show --subscription $SUB_LANDINGZONE_CORP_ID --output table
+
+# Management Group紐づけ確認
+az account management-group subscription show \
+  --name contoso-landingzones-corp \
+  --subscription $SUB_LANDINGZONE_CORP_ID
+```
+
+**✅ orchestration により、Subscription 作成と MG 紐づけが自動で完了しています！**
 
 ---
 
-## 14.3 Landing Zone Subscription と Management Group の関連付け
+## 14.3 orchestration 統合のメリット（再確認）
 
-作成した Landing Zone Subscription を、第 5 章で作成した Management Group「contoso-landingzones-corp」に割り当てます。
+**従来の方式**（個別デプロイ）:
 
-パラメーターファイル `infrastructure/bicep/parameters/mg-assoc-landingzone-corp.bicepparam` を作成：
+- ❌ 各 Chapter で Subscription 作成と MG 紐づけを別々に実行
+- ❌ orchestration ファイルに含まれず、復元時に手動実行が必要
+- ❌ 冪等性が保証されない
 
-```bicep
-using '../modules/management-groups/subscription-association.bicep'
+**orchestration 統合後**:
 
-param managementGroupName = 'contoso-landingzones-corp'
-param subscriptionId = 'YOUR_LANDINGZONE_SUBSCRIPTION_ID'
-```
+- ✅ **1 コマンドで全て作成**: Subscription 作成と MG 紐づけが自動
+- ✅ **冪等性**: 何度実行しても同じ結果
+- ✅ **復元が容易**: 全削除後も`tenant.bicep`を実行するだけ
+- ✅ **一元管理**: `tenant.bicepparam`でパラメータ管理
 
-**重要：** `subscriptionId` の値を置き換えてください。以下のコマンドで取得した Landing Zone Subscription ID を使用します：
+---
 
-```bash
-# Landing Zone Subscription IDの値を確認（前のセクションで取得済み）
-echo $SUB_LANDINGZONE_CORP_ID
-
-# 出力例：
-# 45678901-4567-4567-4567-456789012345
-```
-
-この値をパラメーターファイルの `subscriptionId` に設定します。
-
-### 14.3.2 What-If による事前確認
-
-第 6 章で作成した Bicep モジュールを使用します：
-
-```bash
-# 事前確認
-az deployment mg what-if \
-  --management-group-id contoso-landingzones-corp \
-  --location japaneast \
-  --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters infrastructure/bicep/parameters/mg-assoc-landingzone-corp.bicepparam
-```
-
-### 14.3.3 デプロイ実行
-
-```bash
-# デプロイ実行
-az deployment mg create \
-  --management-group-id contoso-landingzones-corp \
-  --location japaneast \
-  --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters infrastructure/bicep/parameters/mg-assoc-landingzone-corp.bicepparam
-
-echo "Landing Zone Subscription が Management Group に割り当てられました"
-```
-
-### 14.3.4 Azure ポータルでの確認
-
-1. Azure ポータルで「Management groups」を開く
-
-2. 「contoso-landingzones-corp」をクリック
-
-3. 「Subscriptions」タブを選択
+## 14.4 Git へのコミット
 
 4. **sub-landingzone-corp-prod** が表示されていることを確認
 

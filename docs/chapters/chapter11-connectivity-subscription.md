@@ -82,163 +82,154 @@ graph TB
 
 ## 11.2 Connectivity Subscription の作成
 
-### 11.2.1 Bicep ファイルの作成
+### 11.2.1 Orchestration への統合
 
-ファイル `infrastructure/bicep/subscriptions/sub-connectivity.bicep` を作成し、以下の内容を記述します：
+**Chapter 6 で作成した orchestration (`tenant.bicep`)は既に Subscription モジュールを含んでいます。** Chapter 11 では`tenant.bicepparam`に Connectivity Subscription の設定を追記するだけです。
+
+**orchestration/tenant.bicepparam を開き**、`subscriptions`セクションを以下のように更新：
 
 ```bicep
-targetScope = 'tenant'
-
-@description('Billing Scope')
-param billingScope string
-
-resource subConnectivity 'Microsoft.Subscription/aliases@2021-10-01' = {
-  name: 'sub-platform-connectivity-prod'
-  properties: {
+param subscriptions = {
+  management: {
+    aliasName: 'sub-platform-management-prod'
+    displayName: 'sub-platform-management-prod'
     workload: 'Production'
+  }
+  identity: {
+    aliasName: 'sub-platform-identity-prod'
+    displayName: 'sub-platform-identity-prod'
+    workload: 'Production'
+  }
+  connectivity: {  // 👈 Chapter 11で追記
+    aliasName: 'sub-platform-connectivity-prod'
     displayName: 'sub-platform-connectivity-prod'
+    workload: 'Production'
+  }
+}
+```
+
+**orchestration/tenant.bicep を開き**、Connectivity Subscription モジュールを追記：
+
+```bicep
+// Connectivity Subscription作成
+module connectivitySubscription '../modules/subscriptions/subscription.bicep' = if (contains(subscriptions, 'connectivity')) {
+  name: 'deploy-subscription-connectivity'
+  params: {
+    subscriptionAliasName: subscriptions.connectivity.aliasName
+    subscriptionDisplayName: subscriptions.connectivity.displayName
     billingScope: billingScope
+    workload: subscriptions.connectivity.workload
   }
 }
 
-output subscriptionId string = subConnectivity.properties.subscriptionId
+// Connectivity SubscriptionをManagement Groupに紐づけ
+module connectivitySubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = if (contains(subscriptions, 'connectivity')) {
+  name: 'deploy-mg-assoc-connectivity'
+  params: {
+    managementGroupId: '${companyPrefix}-platform-connectivity'
+    subscriptionId: connectivitySubscription.outputs.subscriptionId
+  }
+  dependsOn: [
+    managementGroups
+  ]
+}
 ```
 
-### 11.2.2 パラメーターファイルの作成
+### 11.2.2 What-If 実行
 
-ファイル `infrastructure/bicep/parameters/sub-connectivity.bicepparam` を作成し、以下の内容を記述します：
-
-```bicep
-using '../subscriptions/sub-connectivity.bicep'
-
-param billingScope = '/providers/Microsoft.Billing/billingAccounts/your-billing-account-id/enrollmentAccounts/your-enrollment-account-id'
-```
-
-**重要：** `billingScope` の値を置き換えてください。以下のコマンドで取得した値を使用します：
+**orchestration 経由**でデプロイします：
 
 ```bash
-# Billing Scopeの値を確認（第6章で取得済み）
-echo $BILLING_SCOPE
+# デプロイ名を変数に保存
+DEPLOYMENT_NAME="tenant-deployment-$(date +%Y%m%d-%H%M%S)"
 
-# 出力例：
-# /providers/Microsoft.Billing/billingAccounts/12345678/billingProfiles/ABCD-EFGH-001/invoiceSections/IJKL-MNOP-002
-```
+echo "Creating Connectivity Subscription via Orchestration..."
 
-この値をパラメーターファイルの `billingScope` に設定します。
-
-### 11.2.3 What-If 実行
-
-```bash
-echo "Creating Connectivity Subscription..."
-
-# 事前確認
+# What-If実行
 az deployment tenant what-if \
-  --name "deploy-sub-connectivity-$(date +%Y%m%d-%H%M%S)" \
+  --name "$DEPLOYMENT_NAME" \
   --location japaneast \
-  --template-file infrastructure/bicep/subscriptions/sub-connectivity.bicep \
-  --parameters infrastructure/bicep/parameters/sub-connectivity.bicepparam
+  --template-file infrastructure/bicep/orchestration/tenant.bicep \
+  --parameters infrastructure/bicep/orchestration/tenant.bicepparam
 ```
 
-### 11.2.4 デプロイ実行（10-15 分）
+### 11.2.3 デプロイ実行（10-15 分）
 
 ```bash
 # デプロイ実行
 az deployment tenant create \
-  --name "deploy-sub-connectivity-$(date +%Y%m%d-%H%M%S)" \
+  --name "$DEPLOYMENT_NAME" \
   --location japaneast \
-  --template-file infrastructure/bicep/subscriptions/sub-connectivity.bicep \
-  --parameters infrastructure/bicep/parameters/sub-connectivity.bicepparam
+  --template-file infrastructure/bicep/orchestration/tenant.bicep \
+  --parameters infrastructure/bicep/orchestration/tenant.bicepparam
+
+echo "Deployment name: $DEPLOYMENT_NAME"
 ```
 
 **デプロイには 10〜15 分程度かかります。**
 
-### 11.2.5 Subscription ID の記録
+### 11.2.4 Subscription ID の取得と記録
 
 ```bash
-SUB_CONNECTIVITY_ID=$(az account list --query "[?name=='sub-platform-connectivity-prod'].id" -o tsv)
+# デプロイ結果から Subscription ID を取得
+SUB_CONNECTIVITY_ID=$(az deployment tenant show \
+  --name "$DEPLOYMENT_NAME" \
+  --query "properties.outputs.connectivitySubscription.value.subscriptionId" -o tsv)
+
 echo "Connectivity Subscription ID: $SUB_CONNECTIVITY_ID"
 
 # .envファイルに追記
 echo "SUB_CONNECTIVITY_ID=$SUB_CONNECTIVITY_ID" >> .env
+
+# 確認
+cat .env
 ```
 
-### 11.2.4 Azure ポータルでの確認
-
-1. [Azure ポータル](https://portal.azure.com)にアクセス
-
-2. 検索バーで「Subscriptions」を検索
-
-3. **sub-platform-connectivity-prod** が表示されることを確認
-
-または CLI で確認：
+**代替方法**: デプロイから時間が経過している場合：
 
 ```bash
-# Connectivity Subscriptionを表示
-az account show --subscription $SUB_CONNECTIVITY_ID --output table
+SUB_CONNECTIVITY_ID=$(az account list --query "[?name=='sub-platform-connectivity-prod'].id" -o tsv)
+echo "Connectivity Subscription ID: $SUB_CONNECTIVITY_ID"
+echo "SUB_CONNECTIVITY_ID=$SUB_CONNECTIVITY_ID" >> .env
 ```
+
+### 11.2.5 Azure ポータルでの確認
+
+1. [Azure ポータル](https://portal.azure.com)にアクセス
+2. 検索バーで「Subscriptions」を検索
+3. **sub-platform-connectivity-prod** が表示されることを確認
+4. 「Management groups」を開き、**contoso-platform-connectivity** 配下に表示されることを確認
+
+CLI で確認：
+
+```bash
+# Subscription確認
+az account show --subscription $SUB_CONNECTIVITY_ID --output table
+
+# Management Group紐づけ確認
+az account management-group subscription show \
+  --name contoso-platform-connectivity \
+  --subscription $SUB_CONNECTIVITY_ID
+```
+
+**✅ orchestration により、Subscription 作成と MG 紐づけが自動で完了しています！**
 
 ---
 
-## 11.3 Connectivity Subscription と Management Group の関連付け
+## 11.3 orchestration 統合のメリット（再確認）
 
-作成した Connectivity Subscription を、第 5 章で作成した Management Group「contoso-platform-connectivity」に割り当てます。
+**従来の方式**（個別デプロイ）:
 
-パラメーターファイル `infrastructure/bicep/parameters/mg-assoc-connectivity.bicepparam` を作成：
+- ❌ 各 Chapter で Subscription 作成と MG 紐づけを別々に実行
+- ❌ orchestration ファイルに含まれず、復元時に手動実行が必要
+- ❌ 冪等性が保証されない
 
-```bicep
-using '../modules/management-groups/subscription-association.bicep'
+**orchestration 統合後**:
 
-param managementGroupName = 'contoso-platform-connectivity'
-param subscriptionId = 'YOUR_CONNECTIVITY_SUBSCRIPTION_ID'
-```
-
-**重要：** `subscriptionId` の値を置き換えてください。以下のコマンドで取得した Connectivity Subscription ID を使用します：
-
-```bash
-# Connectivity Subscription IDの値を確認（前のセクションで取得済み）
-echo $SUB_CONNECTIVITY_ID
-
-# 出力例：
-# 34567890-3456-3456-3456-345678901234
-```
-
-この値をパラメーターファイルの `subscriptionId` に設定します。
-
-### 11.3.2 What-If による事前確認
-
-第 6 章で作成した Bicep モジュールを使用します：
-
-```bash
-# 事前確認
-az deployment mg what-if \
-  --management-group-id contoso-platform-connectivity \
-  --location japaneast \
-  --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters infrastructure/bicep/parameters/mg-assoc-connectivity.bicepparam
-```
-
-### 11.3.3 デプロイ実行
-
-```bash
-# デプロイ実行
-az deployment mg create \
-  --management-group-id contoso-platform-connectivity \
-  --location japaneast \
-  --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
-  --parameters infrastructure/bicep/parameters/mg-assoc-connectivity.bicepparam
-
-echo "Connectivity Subscription が Management Group に割り当てられました"
-```
-
-### 11.3.4 Azure ポータルでの確認
-
-1. Azure ポータルで「Management groups」を開く
-
-2. 「contoso-platform-connectivity」をクリック
-
-3. 「Subscriptions」タブを選択
-
-4. **sub-platform-connectivity-prod** が表示されていることを確認
+- ✅ **1 コマンドで全て作成**: Subscription 作成と MG 紐づけが自動
+- ✅ **冪等性**: 何度実行しても同じ結果
+- ✅ **復元が容易**: 全削除後も`tenant.bicep`を実行するだけ
+- ✅ **一元管理**: `tenant.bicepparam`でパラメータ管理
 
 ---
 
