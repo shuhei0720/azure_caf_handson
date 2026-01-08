@@ -2043,29 +2043,38 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 output roleAssignmentId string = roleAssignment.id
 ```
 
+`infrastructure/bicep/orchestration/main.bicep` にロール割り当てモジュールを追加します：
+
+```bicep
+// Chapter 7: Policy Identity Owner Role Assignment
+module policyIdentityOwnerRole '../modules/identity/role-assignment-owner.bicep' = {
+  name: 'deploy-policy-identity-owner'
+  params: {
+    principalId: policyIdentity.outputs.principalId
+  }
+}
+```
+
 **What-If による事前確認：**
 
 ```bash
-# Management Subscription に Owner 権限を付与
 # 事前確認
 az deployment sub what-if \
-  --name "policy-identity-owner-$(date +%Y%m%d-%H%M%S)" \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
-  --template-file infrastructure/bicep/modules/identity/role-assignment-owner.bicep \
-  --parameters \
-    principalId=$POLICY_IDENTITY_PRINCIPAL_ID
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
 ```
 
 **デプロイ実行：**
 
 ```bash
-# デプロイ実行
+# デプロイ実行（既に7.8.4で実行済みの場合はスキップ可能）
 az deployment sub create \
-  --name "policy-identity-owner-$(date +%Y%m%d-%H%M%S)" \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
-  --template-file infrastructure/bicep/modules/identity/role-assignment-owner.bicep \
-  --parameters \
-    principalId=$POLICY_IDENTITY_PRINCIPAL_ID
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
 
 echo "マネージドIDにOwner権限を付与しました"
 ```
