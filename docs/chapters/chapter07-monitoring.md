@@ -922,6 +922,13 @@ param monitoring = {
       Component: 'Monitoring'
     }
   }
+  tableRetention: {
+    retentionInDays: 90
+    totalRetentionInDays: 730
+    tableNames: [
+      // 7.3.3のスクリプトで自動追記済み
+    ]
+  }
   // 👇 7.4.1で追記
   dataCollectionRules: {
     vmInsights: {
