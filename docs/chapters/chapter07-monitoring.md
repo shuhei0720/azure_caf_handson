@@ -2419,13 +2419,13 @@ echo "✅ Automation AccountにSandbox管理グループのVirtual Machine Contr
 - **Scope**: Sandbox 管理グループ（配下の全サブスクリプションに適用）
 - **用途**: 夜間の自動シャットダウン
 
-### 7.9.7 Runbook の作成（Sandbox VM 自動停止）
+### 7.9.7 Runbook モジュールの作成
 
-すべての Sandbox VM を停止する PowerShell Runbook を Bicep で管理します。
+Runbook リソースを Bicep で管理します。スクリプト内容は GitHub で管理し、Source Control 統合で自動同期します。
 
-**CAF ベストプラクティス**: Runbook も Infrastructure as Code で管理することで、バージョン管理、復元性、監査性を確保します。
+**CAF ベストプラクティス**: Runbook リソース（インフラ）は Bicep で管理し、スクリプト内容（コード）は GitHub で管理することで、完全な Infrastructure as Code を実現します。
 
-まず、PowerShell スクリプトを作成：
+まず、Runbook の PowerShell スクリプトを GitHub リポジトリに配置します：
 
 ```bash
 mkdir -p infrastructure/automation/runbooks
@@ -2527,49 +2527,252 @@ catch {
 }
 ```
 
-### 7.9.8 Source Control 統合（GitHub 連携）
-
-**CAF ベストプラクティス**: Runbook を GitHub リポジトリで管理し、Azure Automation の Source Control 統合で自動同期します。これにより、バージョン管理、コードレビュー、CI/CD が可能になります。
-
-#### Source Control 統合の設定
+スクリプトをコミット：
 
 ```bash
-# Management Subscription で実行
-az account set --subscription $SUB_MANAGEMENT_ID
-
-# Source Control 統合を作成
-az automation source-control create \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --automation-account-name aa-platform-prod-jpe-001 \
-  --name "GitHubRunbooks" \
-  --source-type GitHub \
-  --repo-url "https://github.com/<YOUR_GITHUB_USERNAME>/azure_caf_handson.git" \
-  --branch main \
-  --folder-path "/infrastructure/automation/runbooks" \
-  --auto-sync true \
-  --publish-runbook true \
-  --description "Runbook source control integration with GitHub"
-
-echo "✅ Source Control統合を作成しました"
+git add infrastructure/automation/runbooks/Stop-SandboxVMs.ps1
+git commit -m "追加: Sandbox VM自動停止Runbook"
+git push
 ```
 
-**パラメータ説明**：
-- `--repo-url`: GitHub リポジトリの URL（各自のリポジトリに変更）
-- `--branch main`: 同期するブランチ
-- `--folder-path`: Runbook が格納されているフォルダパス
-- `--auto-sync true`: 自動同期を有効化
-- `--publish-runbook true`: 同期時に自動公開
+次に、Runbook リソースの Bicep モジュールを作成します。
 
-#### GitHub Personal Access Token の設定
+ファイル `infrastructure/bicep/modules/automation/runbook.bicep` を作成：
 
-Source Control 統合には GitHub の Personal Access Token が必要です：
+```bicep
+@description('Automation Account名')
+param automationAccountName string
+
+@description('Runbook名')
+param runbookName string
+
+@description('Runbookの説明')
+param description string = ''
+
+@description('Runbookのタイプ')
+@allowed([
+  'PowerShell'
+  'PowerShell72'
+  'Python3'
+])
+param runbookType string = 'PowerShell72'
+
+@description('デプロイ先のリージョン')
+param location string
+
+@description('タグ')
+param tags object = {}
+
+// Runbook リソース
+resource automationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' existing = {
+  name: automationAccountName
+}
+
+resource runbook 'Microsoft.Automation/automationAccounts/runbooks@2023-11-01' = {
+  parent: automationAccount
+  name: runbookName
+  location: location
+  tags: tags
+  properties: {
+    runbookType: runbookType
+    logProgress: true
+    logVerbose: false
+    description: description
+    publishContentLink: {
+      uri: 'https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/quickstarts/microsoft.automation/101-automation/scripts/AzureAutomationTutorial.ps1'
+      version: '1.0.0.0'
+    }
+  }
+}
+
+// 出力
+output runbookName string = runbook.name
+output runbookId string = runbook.id
+```
+
+**注意**: `publishContentLink` はダミーの URL です。実際の Runbook スクリプトは Source Control 統合で GitHub から自動同期されます。
+
+### 7.9.8 Source Control モジュールの作成
+
+**CAF ベストプラクティス**: Source Control 統合も Bicep で管理することで、GitHub 連携設定を Infrastructure as Code として管理できます。
+
+ファイル `infrastructure/bicep/modules/automation/source-control.bicep` を作成：
+
+```bicep
+@description('Automation Account名')
+param automationAccountName string
+
+@description('Source Control名')
+param sourceControlName string
+
+@description('GitHubリポジトリURL')
+param repositoryUrl string
+
+@description('ブランチ名')
+param branch string = 'main'
+
+@description('Runbookフォルダパス')
+param folderPath string = '/infrastructure/automation/runbooks'
+
+@description('自動同期を有効化')
+param autoSync bool = true
+
+@description('同期時に自動公開')
+param publishRunbook bool = true
+
+@description('説明')
+param description string = 'GitHub Source Control Integration'
+
+// Source Control 統合
+resource automationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' existing = {
+  name: automationAccountName
+}
+
+resource sourceControl 'Microsoft.Automation/automationAccounts/sourceControls@2023-11-01' = {
+  parent: automationAccount
+  name: sourceControlName
+  properties: {
+    repoUrl: repositoryUrl
+    branch: branch
+    folderPath: folderPath
+    autoSync: autoSync
+    publishRunbook: publishRunbook
+    sourceType: 'GitHub'
+    description: description
+  }
+}
+
+// 出力
+output sourceControlName string = sourceControl.name
+output sourceControlId string = sourceControl.id
+```
+
+**注意**: Source Control には GitHub Personal Access Token が必要ですが、Bicep では機密情報として設定できないため、デプロイ後に AZ CLI で設定します。
+
+### 7.9.9 オーケストレーションへの統合
+
+`infrastructure/bicep/orchestration/main.bicep` の Automation Account セクションを更新します：
+
+```bicep
+// Chapter 7: Automation Account
+module automationAccount '../modules/automation/automation-account.bicep' = {
+  name: 'deploy-automation-account'
+  scope: resourceGroup(monitoring.resourceGroup.name)
+  params: {
+    automationAccountName: 'aa-platform-prod-jpe-001'
+    location: location
+    tags: union(tags, {
+      Purpose: 'Automation and Runbooks'
+    })
+  }
+}
+
+// Chapter 7: Runbook
+module runbook '../modules/automation/runbook.bicep' = {
+  name: 'deploy-runbook-stop-sandbox-vms'
+  scope: resourceGroup(monitoring.resourceGroup.name)
+  params: {
+    automationAccountName: automationAccount.outputs.automationAccountName
+    runbookName: 'Stop-SandboxVMs'
+    description: 'Sandbox Subscriptionのすべての VM を停止します'
+    runbookType: 'PowerShell72'
+    location: location
+    tags: tags
+  }
+  dependsOn: [
+    automationAccount
+  ]
+}
+
+// Chapter 7: Source Control Integration
+module sourceControl '../modules/automation/source-control.bicep' = {
+  name: 'deploy-source-control-github'
+  scope: resourceGroup(monitoring.resourceGroup.name)
+  params: {
+    automationAccountName: automationAccount.outputs.automationAccountName
+    sourceControlName: 'GitHubRunbooks'
+    repositoryUrl: 'https://github.com/<YOUR_GITHUB_USERNAME>/azure_caf_handson.git'
+    branch: 'main'
+    folderPath: '/infrastructure/automation/runbooks'
+    autoSync: true
+    publishRunbook: true
+    description: 'Runbook source control integration with GitHub'
+  }
+  dependsOn: [
+    runbook
+  ]
+}
+
+// Chapter 7: Automation Account Outputs
+output automationAccountId string = automationAccount.outputs.automationAccountId
+output automationPrincipalId string = automationAccount.outputs.principalId
+output runbookName string = runbook.outputs.runbookName
+```
+
+**重要**: `repositoryUrl` を各自の GitHub リポジトリ URL に変更してください。
+
+`infrastructure/bicep/orchestration/tenant.bicepparam` に Runbook 関連のパラメータを追加します（既に追加済みの場合はスキップ）：
+
+```bicep
+// Chapter 7: Automation Identity Principal ID
+param automationPrincipalId = '' // デプロイ後に設定
+```
+
+### 7.9.10 What-If による事前確認
+
+```bash
+# Management Subscription にデプロイ
+az account set --subscription $SUB_MANAGEMENT_ID
+
+# 事前確認
+az deployment sub what-if \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+```
+
+デプロイ実行：
+
+```bash
+# デプロイ実行
+DEPLOYMENT_NAME="main-deployment-$(date +%Y%m%d-%H%M%S)"
+
+az deployment sub create \
+  --name "$DEPLOYMENT_NAME" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+
+echo "✅ Runbook、Source Control統合をデプロイしました"
+```
+
+次に、Automation Identity の Principal ID を取得します：
+
+```bash
+# Automation Identity の Principal ID を取得
+AUTOMATION_PRINCIPAL_ID=$(az deployment sub show \
+  --name "$DEPLOYMENT_NAME" \
+  --query 'properties.outputs.automationPrincipalId.value' \
+  --output tsv)
+
+echo "Automation Principal ID: $AUTOMATION_PRINCIPAL_ID"
+```
+
+### 7.9.11 GitHub Personal Access Token の設定
+
+Source Control 統合には GitHub の Personal Access Token が必要です。Bicep では機密情報として設定できないため、デプロイ後に AZ CLI で設定します。
+
+#### Personal Access Token の生成
 
 1. GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
 2. Generate new token (classic)
-3. Scopes: `repo` (Full control of private repositories) を選択
-4. Generate token をクリックしてトークンをコピー
+3. Note: "Azure Automation Runbook Integration"
+4. Expiration: 90 days（推奨）
+5. Scopes: `repo` (Full control of private repositories) を選択
+6. Generate token をクリックしてトークンをコピー
 
-トークンを Azure Automation に設定：
+#### トークンの設定
 
 ```bash
 # トークンを環境変数に設定
@@ -2589,18 +2792,67 @@ echo "✅ GitHub認証を設定しました"
 #### 初回同期の実行
 
 ```bash
-# 手動で同期を実行
+# 手動で同期を実行（GitHub から Runbook を取得）
 az automation source-control sync-job create \
   --resource-group rg-platform-management-prod-jpe-001 \
   --automation-account-name aa-platform-prod-jpe-001 \
   --source-control-name "GitHubRunbooks"
 
-echo "✅ Runbookを同期しました"
+echo "✅ GitHubからRunbookを同期しました"
 ```
 
-これで、`infrastructure/automation/runbooks/` 配下の PowerShell スクリプトが自動的に Azure Automation に同期され、Runbook として公開されます。
+**動作確認**：
 
-### 7.9.9 スケジュールの作成
+1. Azure Portal → Automation Account → Runbooks
+2. `Stop-SandboxVMs` が表示されていることを確認
+3. 内容が GitHub のスクリプトと一致していることを確認
+
+以降、GitHub リポジトリの Runbook を更新すると、自動的に Azure Automation に同期されます。
+
+### 7.9.12 Sandbox 管理グループへの権限付与
+
+Automation Identity に Sandbox 管理グループの Virtual Machine Contributor 権限を付与します。
+
+`infrastructure/bicep/orchestration/tenant.bicepparam` を編集し、取得した Principal ID を設定します：
+
+```bicep
+// Chapter 7: Automation Identity Principal ID
+param automationPrincipalId = '<AUTOMATION_PRINCIPAL_ID>' // 上記で取得した値
+```
+
+**注意**: `<AUTOMATION_PRINCIPAL_ID>` を実際の値に置き換えてください。
+
+What-If で確認：
+
+```bash
+# Tenant スコープで What-If 実行
+az deployment tenant what-if \
+  --name "tenant-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/tenant.bicep \
+  --parameters infrastructure/bicep/orchestration/tenant.bicepparam
+```
+
+デプロイ実行：
+
+```bash
+# デプロイ実行
+az deployment tenant create \
+  --name "tenant-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/tenant.bicep \
+  --parameters infrastructure/bicep/orchestration/tenant.bicepparam
+
+echo "✅ Automation AccountにSandbox管理グループのVirtual Machine Contributor権限を付与しました"
+```
+
+**権限の範囲：**
+
+- **Virtual Machine Contributor**: VM の起動・停止のみ可能（最小権限）
+- **Scope**: Sandbox 管理グループ（配下の全サブスクリプションに適用）
+- **用途**: 夜間の自動シャットダウン
+
+### 7.9.13 スケジュールの作成
 
 毎日夜 8 時（20:00 JST）に Runbook を実行するスケジュールを作成します。
 
