@@ -227,7 +227,7 @@ param tags = {
 
 **重要：** パラメーターファイルを Git 管理下に置くことで、すべてのリソースを消しても一発で復元できます。
 
-デプロイ：
+**What-If による事前確認：**
 
 ```bash
 # パラメーターファイルのディレクトリを作成
@@ -242,8 +242,12 @@ az deployment sub what-if \
   --location japaneast \
   --template-file infrastructure/bicep/modules/resource-group/resource-group.bicep \
   --parameters infrastructure/bicep/parameters/management-resource-group.bicepparam
+```
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# デプロイ実行
 az deployment sub create \
   --name "rg-management-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
@@ -323,7 +327,7 @@ param tags = {
 }
 ```
 
-デプロイ：
+**What-If による事前確認：**
 
 ```bash
 # 事前確認
@@ -332,8 +336,12 @@ az deployment group what-if \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/log-analytics.bicep \
   --parameters infrastructure/bicep/parameters/log-analytics.bicepparam
+```
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# デプロイ実行
 az deployment group create \
   --name "log-analytics-deployment-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
@@ -431,7 +439,7 @@ echo "パラメーターファイルが生成されました"
 cat infrastructure/bicep/parameters/log-analytics-table-retention.bicepparam
 ```
 
-**保持期間の設定：**
+**What-If による事前確認：**
 
 ```bash
 # 事前確認
@@ -440,8 +448,12 @@ az deployment group what-if \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/log-analytics-table-retention.bicep \
   --parameters infrastructure/bicep/parameters/log-analytics-table-retention.bicepparam
+```
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# デプロイ実行
 az deployment group create \
   --name "table-retention-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
@@ -708,7 +720,7 @@ echo $WORKSPACE_ID
 
 この値をパラメーターファイルの `workspaceId` に設定します。
 
-デプロイ：
+**What-If による事前確認：**
 
 ```bash
 # 事前確認
@@ -717,8 +729,12 @@ az deployment group what-if \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-vm-insights.bicep \
   --parameters infrastructure/bicep/parameters/dcr-vm-insights.bicepparam
+```
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# デプロイ実行
 az deployment group create \
   --name "dcr-vm-insights-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
@@ -863,7 +879,7 @@ echo $WORKSPACE_ID
 
 この値をパラメーターファイルの `workspaceId` に設定します。
 
-デプロイ：
+**What-If による事前確認：**
 
 ```bash
 # 事前確認
@@ -872,8 +888,12 @@ az deployment group what-if \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-os-logs.bicep \
   --parameters infrastructure/bicep/parameters/dcr-os-logs.bicepparam
+```
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# デプロイ実行
 az deployment group create \
   --name "dcr-os-logs-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
@@ -1159,6 +1179,8 @@ echo $WORKSPACE_ID
 
 この値をパラメーターファイルの `workspaceId` に設定します。
 
+**What-If による事前確認：**
+
 ```bash
 # Management Subscription で実行
 az account set --subscription $SUB_MANAGEMENT_ID
@@ -1169,8 +1191,12 @@ az deployment sub what-if \
   --location japaneast \
   --template-file infrastructure/bicep/modules/monitoring/subscription-diagnostic-settings.bicep \
   --parameters infrastructure/bicep/parameters/subscription-diagnostics.bicepparam
+```
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# デプロイ実行
 az deployment sub create \
   --name "sub-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
@@ -1373,6 +1399,8 @@ echo $WORKSPACE_ID
 
 この値をパラメーターファイルの `destinationWorkspaceId` に設定します。
 
+**What-If による事前確認：**
+
 ```bash
 # Log Analytics Workspace の診断設定を適用
 # 事前確認
@@ -1381,8 +1409,12 @@ az deployment group what-if \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/log-analytics-diagnostics.bicep \
   --parameters infrastructure/bicep/parameters/log-analytics-diagnostics.bicepparam
+```
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# デプロイ実行
 az deployment group create \
   --name "log-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
@@ -1463,17 +1495,12 @@ echo $WORKSPACE_ID
 
 この値をパラメーターファイルの `destinationWorkspaceId` に設定します。
 
+**What-If による事前確認：**
+
 ```bash
 # VM Insights DCR の診断設定
 # 事前確認
 az deployment group what-if \
-  --name "dcr-vm-insights-diagnostics-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep \
-  --parameters infrastructure/bicep/parameters/dcr-diagnostics-vm-insights.bicepparam
-
-# 確認後、デプロイ実行
-az deployment group create \
   --name "dcr-vm-insights-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep \
@@ -1486,8 +1513,19 @@ az deployment group what-if \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep \
   --parameters infrastructure/bicep/parameters/dcr-diagnostics-os-logs.bicepparam
+```
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# VM Insights DCR のデプロイ
+az deployment group create \
+  --name "dcr-vm-insights-diagnostics-$(date +%Y%m%d-%H%M%S)" \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --template-file infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep \
+  --parameters infrastructure/bicep/parameters/dcr-diagnostics-vm-insights.bicepparam
+
+# OS Logs DCR のデプロイ
 az deployment group create \
   --name "dcr-os-logs-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
@@ -1664,6 +1702,8 @@ param tags = {
 }
 ```
 
+**What-If による事前確認：**
+
 ```bash
 # ディレクトリ作成
 mkdir -p infrastructure/bicep/modules/identity
@@ -1677,8 +1717,12 @@ az deployment group what-if \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/identity/managed-identity.bicep \
   --parameters infrastructure/bicep/parameters/policy-managed-identity.bicepparam
+```
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# デプロイ実行
 DEPLOYMENT_OUTPUT=$(az deployment group create \
   --name "policy-identity-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
@@ -1725,6 +1769,8 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 output roleAssignmentId string = roleAssignment.id
 ```
 
+**What-If による事前確認：**
+
 ```bash
 # Management Subscription に Owner 権限を付与
 # 事前確認
@@ -1734,8 +1780,12 @@ az deployment sub what-if \
   --template-file infrastructure/bicep/modules/identity/role-assignment-owner.bicep \
   --parameters \
     principalId=$POLICY_IDENTITY_PRINCIPAL_ID
+```
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# デプロイ実行
 az deployment sub create \
   --name "policy-identity-owner-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
@@ -1856,6 +1906,8 @@ output automationAccountName string = automationAccount.name
 output principalId string = automationAccount.identity.principalId
 ```
 
+**What-Ifによる事前確認：**
+
 ```bash
 # Management Subscription にデプロイ
 az account set --subscription $SUB_MANAGEMENT_ID
@@ -1868,8 +1920,12 @@ az deployment group what-if \
   --parameters \
     automationAccountName=aa-platform-prod-jpe-001 \
     location=japaneast
+```
 
-# 確認後、デプロイ実行
+**デプロイ実行：**
+
+```bash
+# デプロイ実行
 DEPLOYMENT_OUTPUT=$(az deployment group create \
   --name "automation-account-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
