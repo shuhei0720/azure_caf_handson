@@ -2100,7 +2100,7 @@ param policyIdentityPrincipalId = 'YOUR_POLICY_IDENTITY_PRINCIPAL_ID_HERE'
 
 #### デプロイ手順
 
-7.8.4で.envに保存した値を確認して、tenant.bicepparamに設定します：
+7.8.4 で.env に保存した値を確認して、tenant.bicepparam に設定します：
 
 ```bash
 # .envを読み込み
@@ -2111,6 +2111,17 @@ echo $POLICY_IDENTITY_PRINCIPAL_ID
 ```
 
 上記コマンドで出力された値を`tenant.bicepparam`の`policyIdentityPrincipalId`に設定してください。
+
+What-If で事前確認：
+
+```bash
+# What-If実行
+az deployment tenant what-if \
+  --name "tenant-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/tenant.bicep \
+  --parameters infrastructure/bicep/orchestration/tenant.bicepparam
+```
 
 デプロイ実行：
 
