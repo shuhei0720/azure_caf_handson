@@ -806,23 +806,29 @@ az deployment group what-if \
 **デプロイ実行：**
 
 ```bash
-# デプロイ実行してIDを取得
-DCR_VM_INSIGHTS_ID=$(az deployment group create \
-  --name "dcr-vm-insights-$(date +%Y%m%d-%H%M%S)" \
+# デプロイ名を変数に保存
+DEPLOYMENT_NAME="dcr-vm-insights-$(date +%Y%m%d-%H%M%S)"
+
+# デプロイ実行
+az deployment group create \
+  --name "$DEPLOYMENT_NAME" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-vm-insights.bicep \
-  --parameters infrastructure/bicep/parameters/dcr-vm-insights.bicepparam \
+  --parameters infrastructure/bicep/parameters/dcr-vm-insights.bicepparam
+
+# DCR IDを取得
+DCR_VM_INSIGHTS_ID=$(az deployment group show \
+  --name "$DEPLOYMENT_NAME" \
+  --resource-group rg-platform-management-prod-jpe-001 \
   --query properties.outputs.dcrId.value -o tsv)
 
 echo "DCR_VM_INSIGHTS_ID=$DCR_VM_INSIGHTS_ID" >> .env
 echo "VM Insights DCR ID: $DCR_VM_INSIGHTS_ID"
 ```
 
-**注意:** `az monitor` コマンドではなく、デプロイ出力から直接 DCR ID を取得することで、拡張機能のインストール警告を回避できます。
-
 ### 7.4.2 DCR for Windows Event Logs and Syslog
 
-Windows Event ログと Linux Syslog を収集する DCR を作成します。
+Windows Event ログと Linux Syslog を収集する DCR を作成します.
 
 ファイル `infrastructure/bicep/modules/monitoring/dcr-os-logs.bicep` を作成：
 
@@ -962,12 +968,20 @@ az deployment group what-if \
 **デプロイ実行：**
 
 ```bash
-# デプロイ実行してIDを取得
-DCR_OS_LOGS_ID=$(az deployment group create \
-  --name "dcr-os-logs-$(date +%Y%m%d-%H%M%S)" \
+# デプロイ名を変数に保存
+DEPLOYMENT_NAME="dcr-os-logs-$(date +%Y%m%d-%H%M%S)"
+
+# デプロイ実行
+az deployment group create \
+  --name "$DEPLOYMENT_NAME" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-os-logs.bicep \
-  --parameters infrastructure/bicep/parameters/dcr-os-logs.bicepparam \
+  --parameters infrastructure/bicep/parameters/dcr-os-logs.bicepparam
+
+# DCR IDを取得
+DCR_OS_LOGS_ID=$(az deployment group show \
+  --name "$DEPLOYMENT_NAME" \
+  --resource-group rg-platform-management-prod-jpe-001 \
   --query properties.outputs.dcrId.value -o tsv)
 
 echo "DCR_OS_LOGS_ID=$DCR_OS_LOGS_ID" >> .env
