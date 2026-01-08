@@ -99,7 +99,22 @@ resource subIdentity 'Microsoft.Subscription/aliases@2021-10-01' = {
 output subscriptionId string = subIdentity.properties.subscriptionId
 ```
 
-### 8.2.2 Bicep のデプロイ（10-15 分）
+### 8.2.2 パラメーターファイルの作成
+
+パラメーターファイル `infrastructure/bicep/parameters/sub-identity.bicepparam` を作成します：
+
+```bash
+# パラメーターファイルを作成
+cat > infrastructure/bicep/parameters/sub-identity.bicepparam << EOF
+using '../subscriptions/sub-identity.bicep'
+
+param billingScope = '$BILLING_SCOPE'
+EOF
+```
+
+**重要：** `$BILLING_SCOPE` 環境変数が展開されて、実際の billingScope がパラメーターファイルに書き込まれます。
+
+### 8.2.3 Bicep のデプロイ（10-15 分）
 
 ```bash
 echo "Creating Identity Subscription..."

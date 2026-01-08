@@ -104,7 +104,20 @@ resource subConnectivity 'Microsoft.Subscription/aliases@2021-10-01' = {
 output subscriptionId string = subConnectivity.properties.subscriptionId
 ```
 
-### 11.2.2 Bicep のデプロイ（10-15 分）
+### 11.2.2 パラメーターファイルの作成
+
+パラメーターファイル `infrastructure/bicep/parameters/sub-connectivity.bicepparam` を作成します：
+
+```bash
+# パラメーターファイルを作成
+cat > infrastructure/bicep/parameters/sub-connectivity.bicepparam << EOF
+using '../subscriptions/sub-connectivity.bicep'
+
+param billingScope = '$BILLING_SCOPE'
+EOF
+```
+
+### 11.2.3 Bicep のデプロイ（10-15 分）
 
 ```bash
 echo "Creating Connectivity Subscription..."

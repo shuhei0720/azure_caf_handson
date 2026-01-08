@@ -214,14 +214,27 @@ resource subManagement 'Microsoft.Subscription/aliases@2021-10-01' = {
 output subscriptionId string = subManagement.properties.subscriptionId
 ```
 
-**注意：** billingScope は個人の Billing Account に依存するため、パラメーターファイルには含めず、環境変数から直接注入します。
+### 6.3.4 パラメーターファイルの作成
 
-### 6.3.4 Bicep のデプロイ（10-15 分）
+パラメーターファイル `infrastructure/bicep/parameters/sub-management.bicepparam` を作成します：
 
 ```bash
 # パラメーターディレクトリ作成
 mkdir -p infrastructure/bicep/parameters
 
+# パラメーターファイルを作成
+cat > infrastructure/bicep/parameters/sub-management.bicepparam << 'EOF'
+using '../subscriptions/sub-management.bicep'
+
+param billingScope = '/providers/Microsoft.Billing/billingAccounts/your-billing-account-id/enrollmentAccounts/your-enrollment-account-id'
+EOF
+```
+
+**重要：** `billingScope` の値は、第 4 章で取得した `$BILLING_SCOPE` の値に置き換えてください。
+
+### 6.3.5 Bicep のデプロイ（10-15 分）
+
+```bash
 # デプロイ名を変数に保存（重要：タイムスタンプが変わらないように）
 DEPLOYMENT_NAME="deploy-sub-management-$(date +%Y%m%d-%H%M%S)"
 

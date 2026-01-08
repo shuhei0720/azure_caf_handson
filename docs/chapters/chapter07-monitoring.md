@@ -211,9 +211,14 @@ output resourceGroupName string = resourceGroup.name
 output resourceGroupId string = resourceGroup.id
 ```
 
-パラメーターファイル `infrastructure/bicep/parameters/management-resource-group.bicepparam` を作成：
+パラメーターファイル `infrastructure/bicep/parameters/management-resource-group.bicepparam` を作成します：
 
-```bicep
+```bash
+# パラメーターファイルのディレクトリを作成
+mkdir -p infrastructure/bicep/parameters
+
+# パラメーターファイルを作成
+cat > infrastructure/bicep/parameters/management-resource-group.bicepparam << 'EOF'
 using '../modules/resource-group/resource-group.bicep'
 
 param resourceGroupName = 'rg-platform-management-prod-jpe-001'
@@ -223,6 +228,7 @@ param tags = {
   ManagedBy: 'Bicep'
   Component: 'Management'
 }
+EOF
 ```
 
 **重要：** パラメーターファイルを Git 管理下に置くことで、すべてのリソースを消しても一発で復元できます。
@@ -308,9 +314,11 @@ output customerId string = logAnalyticsWorkspace.properties.customerId
 
 **注意：** `totalRetentionInDays` パラメータはワークスペース作成後、Azure Portal で各テーブルのデータ保持ポリシーを設定する際に使用します。Bicep ではワークスペースレベルの `retentionInDays`（Interactive 期間）のみを設定し、Archive 期間は Portal または Azure CLI で個別に設定します。
 
-パラメーターファイル `infrastructure/bicep/parameters/log-analytics.bicepparam` を作成：
+パラメーターファイル `infrastructure/bicep/parameters/log-analytics.bicepparam` を作成します：
 
-```bicep
+```bash
+# パラメーターファイルを作成
+cat > infrastructure/bicep/parameters/log-analytics.bicepparam << 'EOF'
 using '../modules/monitoring/log-analytics.bicep'
 
 param workspaceName = 'log-platform-prod-jpe-001'
@@ -321,6 +329,7 @@ param tags = {
   ManagedBy: 'Bicep'
   Component: 'Monitoring'
 }
+EOF
 ```
 
 デプロイ：
@@ -393,15 +402,18 @@ output retentionInDays int = tableRetention.properties.retentionInDays
 output totalRetentionInDays int = tableRetention.properties.totalRetentionInDays
 ```
 
-パラメーターファイル `infrastructure/bicep/parameters/log-analytics-table-retention.bicepparam` を作成：
+ベースとなるパラメーターファイル `infrastructure/bicep/parameters/log-analytics-table-retention.bicepparam` を作成します：
 
-```bicep
+```bash
+# パラメーターファイルを作成
+cat > infrastructure/bicep/parameters/log-analytics-table-retention.bicepparam << 'EOF'
 using '../modules/monitoring/log-analytics-table-retention.bicep'
 
 param workspaceName = 'log-platform-prod-jpe-001'
-param tableName = 'AzureActivity'  // デプロイ時に上書き
+param tableName = 'AzureActivity'
 param retentionInDays = 90
 param totalRetentionInDays = 730
+EOF
 ```
 
 主要なテーブルに保持期間を設定：
@@ -664,16 +676,25 @@ output dcrId string = dcrVMInsights.id
 output dcrName string = dcrVMInsights.name
 ```
 
-パラメーターファイル `infrastructure/bicep/parameters/dcr-vm-insights.bicepparam` を作成：
+パラメーターファイル `infrastructure/bicep/parameters/dcr-vm-insights.bicepparam` を作成します：
 
-```bicep
+```bash
+# パラメーターファイルを作成
+cat > infrastructure/bicep/parameters/dcr-vm-insights.bicepparam << EOF
 using '../modules/monitoring/dcr-vm-insights.bicep'
 
 param dcrName = 'dcr-vm-insights-prod-jpe-001'
 param location = 'japaneast'
-// workspaceIdは環境変数から注入するため、CLIで上書き
-param workspaceId = ''
+param workspaceId = '$WORKSPACE_ID'
+param tags = {
+  Environment: 'Production'
+  ManagedBy: 'Bicep'
+  Component: 'Monitoring'
+}
+EOF
 ```
+
+**重要：** `$WORKSPACE_ID` 環境変数が展開されて、実際の Workspace ID がパラメーターファイルに書き込まれます。
 
 デプロイ：
 
@@ -803,15 +824,22 @@ output dcrId string = dcrOSLogs.id
 output dcrName string = dcrOSLogs.name
 ```
 
-パラメーターファイル `infrastructure/bicep/parameters/dcr-os-logs.bicepparam` を作成：
+パラメーターファイル `infrastructure/bicep/parameters/dcr-os-logs.bicepparam` を作成します：
 
-```bicep
+```bash
+# パラメーターファイルを作成
+cat > infrastructure/bicep/parameters/dcr-os-logs.bicepparam << EOF
 using '../modules/monitoring/dcr-os-logs.bicep'
 
 param dcrName = 'dcr-os-logs-prod-jpe-001'
 param location = 'japaneast'
-// workspaceIdは環境変数から注入
-param workspaceId = ''
+param workspaceId = '$WORKSPACE_ID'
+param tags = {
+  Environment: 'Production'
+  ManagedBy: 'Bicep'
+  Component: 'Monitoring'
+}
+EOF
 ```
 
 デプロイ：
@@ -1089,13 +1117,16 @@ resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-pre
 
 ### 7.6.2 Management Subscription の診断設定を適用
 
-パラメーターファイル `infrastructure/bicep/parameters/subscription-diagnostics.bicepparam` を作成：
+パラメーターファイル `infrastructure/bicep/parameters/subscription-diagnostics.bicepparam` を作成します：
 
-```bicep
+```bash
+# パラメーターファイルを作成
+cat > infrastructure/bicep/parameters/subscription-diagnostics.bicepparam << EOF
 using '../modules/monitoring/subscription-diagnostic-settings.bicep'
 
-// workspaceIdは環境変数から注入
-param workspaceId = ''
+param workspaceId = '$LOG_WORKSPACE_ID'
+param diagnosticSettingName = 'send-to-log-analytics'
+EOF
 ```
 
 ```bash
@@ -1290,14 +1321,17 @@ resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-pre
 output diagnosticSettingId string = diagnosticSetting.id
 ```
 
-パラメーターファイル `infrastructure/bicep/parameters/log-analytics-diagnostics.bicepparam` を作成：
+パラメーターファイル `infrastructure/bicep/parameters/log-analytics-diagnostics.bicepparam` を作成します：
 
-```bicep
+```bash
+# パラメーターファイルを作成
+cat > infrastructure/bicep/parameters/log-analytics-diagnostics.bicepparam << EOF
 using '../modules/monitoring/log-analytics-diagnostics.bicep'
 
 param workspaceName = 'log-platform-prod-jpe-001'
-// destinationWorkspaceIdは環境変数から注入
-param destinationWorkspaceId = ''
+param destinationWorkspaceId = '$LOG_WORKSPACE_ID'
+param diagnosticSettingName = 'send-to-log-analytics'
+EOF
 ```
 
 ```bash
@@ -1358,24 +1392,30 @@ resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-pre
 output diagnosticSettingId string = diagnosticSetting.id
 ```
 
-パラメーターファイル `infrastructure/bicep/parameters/dcr-diagnostics-vm-insights.bicepparam` を作成：
+パラメーターファイル `infrastructure/bicep/parameters/dcr-diagnostics-vm-insights.bicepparam` を作成します：
 
-```bicep
+```bash
+# パラメーターファイルを作成
+cat > infrastructure/bicep/parameters/dcr-diagnostics-vm-insights.bicepparam << EOF
 using '../modules/monitoring/dcr-diagnostics.bicep'
 
 param dcrName = 'dcr-vm-insights-prod-jpe-001'
-// destinationWorkspaceIdは環境変数から注入
-param destinationWorkspaceId = ''
+param destinationWorkspaceId = '$LOG_WORKSPACE_ID'
+param diagnosticSettingName = 'send-to-log-analytics'
+EOF
 ```
 
-パラメーターファイル `infrastructure/bicep/parameters/dcr-diagnostics-os-logs.bicepparam` を作成：
+パラメーターファイル `infrastructure/bicep/parameters/dcr-diagnostics-os-logs.bicepparam` を作成します：
 
-```bicep
+```bash
+# パラメーターファイルを作成
+cat > infrastructure/bicep/parameters/dcr-diagnostics-os-logs.bicepparam << EOF
 using '../modules/monitoring/dcr-diagnostics.bicep'
 
 param dcrName = 'dcr-os-logs-prod-jpe-001'
-// destinationWorkspaceIdは環境変数から注入
-param destinationWorkspaceId = ''
+param destinationWorkspaceId = '$LOG_WORKSPACE_ID'
+param diagnosticSettingName = 'send-to-log-analytics'
+EOF
 ```
 
 ```bash

@@ -107,7 +107,20 @@ resource subLandingZoneCorp 'Microsoft.Subscription/aliases@2021-10-01' = {
 output subscriptionId string = subLandingZoneCorp.properties.subscriptionId
 ```
 
-### 14.2.2 Bicep のデプロイ（10-15 分）
+### 14.2.2 パラメーターファイルの作成
+
+パラメーターファイル `infrastructure/bicep/parameters/sub-landingzone-corp.bicepparam` を作成します：
+
+```bash
+# パラメーターファイルを作成
+cat > infrastructure/bicep/parameters/sub-landingzone-corp.bicepparam << EOF
+using '../subscriptions/sub-landingzone-corp.bicep'
+
+param billingScope = '$BILLING_SCOPE'
+EOF
+```
+
+### 14.2.3 Bicep のデプロイ（10-15 分）
 
 ```bash
 echo "Creating Landing Zone Corp Subscription..."
