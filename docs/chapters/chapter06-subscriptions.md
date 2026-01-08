@@ -182,8 +182,8 @@ BILLING_SCOPE="/providers/Microsoft.Billing/billingAccounts/$BILLING_ACCOUNT_NAM
 
 echo "Billing Scope: $BILLING_SCOPE"
 
-# .envファイルに保存（後続の章で再利用）
-echo "BILLING_SCOPE=$BILLING_SCOPE" >> .env
+# .envファイルに保存（後続の章で再利用、重複防止）
+grep -q "BILLING_SCOPE=" .env || echo "BILLING_SCOPE=$BILLING_SCOPE" >> .env
 ```
 
 ### 6.3.3 Bicep モジュールの作成
@@ -394,8 +394,8 @@ SUB_MANAGEMENT_ID=$(az deployment tenant show \
 
 echo "Management Subscription ID: $SUB_MANAGEMENT_ID"
 
-# .envファイルに追記
-echo "SUB_MANAGEMENT_ID=$SUB_MANAGEMENT_ID" >> .env
+# .envファイルに追記（重複防止）
+grep -q "SUB_MANAGEMENT_ID=" .env || echo "SUB_MANAGEMENT_ID=$SUB_MANAGEMENT_ID" >> .env
 
 # 確認
 cat .env
@@ -406,7 +406,7 @@ cat .env
 ```bash
 SUB_MANAGEMENT_ID=$(az account list --query "[?name=='sub-platform-management-prod'].id" -o tsv)
 echo "Management Subscription ID: $SUB_MANAGEMENT_ID"
-echo "SUB_MANAGEMENT_ID=$SUB_MANAGEMENT_ID" >> .env
+grep -q "SUB_MANAGEMENT_ID=" .env || echo "SUB_MANAGEMENT_ID=$SUB_MANAGEMENT_ID" >> .env
 ```
 
 ### 6.3.8 Azure ポータルでの確認

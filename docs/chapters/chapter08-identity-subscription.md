@@ -177,8 +177,8 @@ SUB_IDENTITY_ID=$(az deployment tenant show \
 
 echo "Identity Subscription ID: $SUB_IDENTITY_ID"
 
-# .envファイルに追記
-echo "SUB_IDENTITY_ID=$SUB_IDENTITY_ID" >> .env
+# .envファイルに追記（重複防止）
+grep -q "SUB_IDENTITY_ID=" .env || echo "SUB_IDENTITY_ID=$SUB_IDENTITY_ID" >> .env
 
 # 確認
 cat .env
@@ -189,7 +189,7 @@ cat .env
 ```bash
 SUB_IDENTITY_ID=$(az account list --query "[?name=='sub-platform-identity-prod'].id" -o tsv)
 echo "Identity Subscription ID: $SUB_IDENTITY_ID"
-echo "SUB_IDENTITY_ID=$SUB_IDENTITY_ID" >> .env
+grep -q "SUB_IDENTITY_ID=" .env || echo "SUB_IDENTITY_ID=$SUB_IDENTITY_ID" >> .env
 ```
 
 ### 8.2.5 Azure ポータルでの確認

@@ -195,8 +195,8 @@ SUB_LANDINGZONE_CORP_ID=$(az deployment tenant show \
 
 echo "Landing Zone Corp Subscription ID: $SUB_LANDINGZONE_CORP_ID"
 
-# .envファイルに追記
-echo "SUB_LANDINGZONE_CORP_ID=$SUB_LANDINGZONE_CORP_ID" >> .env
+# .envファイルに追記（重複防止）
+grep -q "SUB_LANDINGZONE_CORP_ID=" .env || echo "SUB_LANDINGZONE_CORP_ID=$SUB_LANDINGZONE_CORP_ID" >> .env
 
 # 確認
 cat .env
@@ -207,7 +207,7 @@ cat .env
 ```bash
 SUB_LANDINGZONE_CORP_ID=$(az account list --query "[?name=='sub-landingzone-corp-prod'].id" -o tsv)
 echo "Landing Zone Corp Subscription ID: $SUB_LANDINGZONE_CORP_ID"
-echo "SUB_LANDINGZONE_CORP_ID=$SUB_LANDINGZONE_CORP_ID" >> .env
+grep -q "SUB_LANDINGZONE_CORP_ID=" .env || echo "SUB_LANDINGZONE_CORP_ID=$SUB_LANDINGZONE_CORP_ID" >> .env
 ```
 
 ### 14.2.5 Azure ポータルでの確認

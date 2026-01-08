@@ -187,8 +187,8 @@ SUB_CONNECTIVITY_ID=$(az deployment tenant show \
 
 echo "Connectivity Subscription ID: $SUB_CONNECTIVITY_ID"
 
-# .envファイルに追記
-echo "SUB_CONNECTIVITY_ID=$SUB_CONNECTIVITY_ID" >> .env
+# .envファイルに追記（重複防止）
+grep -q "SUB_CONNECTIVITY_ID=" .env || echo "SUB_CONNECTIVITY_ID=$SUB_CONNECTIVITY_ID" >> .env
 
 # 確認
 cat .env
@@ -199,7 +199,7 @@ cat .env
 ```bash
 SUB_CONNECTIVITY_ID=$(az account list --query "[?name=='sub-platform-connectivity-prod'].id" -o tsv)
 echo "Connectivity Subscription ID: $SUB_CONNECTIVITY_ID"
-echo "SUB_CONNECTIVITY_ID=$SUB_CONNECTIVITY_ID" >> .env
+grep -q "SUB_CONNECTIVITY_ID=" .env || echo "SUB_CONNECTIVITY_ID=$SUB_CONNECTIVITY_ID" >> .env
 ```
 
 ### 11.2.5 Azure ポータルでの確認

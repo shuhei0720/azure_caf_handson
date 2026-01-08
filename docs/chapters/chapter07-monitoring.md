@@ -17,6 +17,9 @@
 作業を開始する前に、必ず適切なサブスクリプションを選択してください：
 
 ```bash
+# 環境変数を読み込み
+source .env
+
 # Management Subscriptionに切り替え
 az account set --subscription $SUB_MANAGEMENT_ID
 
@@ -411,6 +414,15 @@ az deployment sub create \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
+
+# Workspace IDを取得して.envに保存
+WORKSPACE_ID=$(az monitor log-analytics workspace show \
+  --resource-group rg-platform-management-prod-jpe-001 \
+  --workspace-name log-platform-prod-jpe-001 \
+  --query id -o tsv)
+
+grep -q "WORKSPACE_ID=" .env || echo "WORKSPACE_ID=$WORKSPACE_ID" >> .env
+echo "Log Analytics Workspace ID: $WORKSPACE_ID"
 
 echo "✅ Log Analytics Workspace が orchestration 経由でデプロイされました"
 ```
@@ -1013,12 +1025,15 @@ echo "✅ DCR for VM Insights が orchestration 経由でデプロイされま�
 #### DCR ID の取得と保存
 
 ```bash
-# 必要に応じてDCR IDを確認
-az resource show \
+# リソースから直接DCR IDを取得
+DCR_VM_INSIGHTS_ID=$(az resource show \
   --name dcr-vm-insights-prod-jpe-001 \
   --resource-group rg-platform-management-prod-jpe-001 \
   --resource-type "Microsoft.Insights/dataCollectionRules" \
-  --query id -o tsv
+  --query id -o tsv)
+
+grep -q "DCR_VM_INSIGHTS_ID=" .env || echo "DCR_VM_INSIGHTS_ID=$DCR_VM_INSIGHTS_ID" >> .env
+echo "VM Insights DCR ID: $DCR_VM_INSIGHTS_ID"
 ```
 
 ### 7.4.2 DCR for Windows Event Logs and Syslog
@@ -1177,12 +1192,15 @@ echo "✅ DCR for OS Logs が orchestration 経由でデプロイされました
 #### DCR ID の取得と保存
 
 ```bash
-# 必要に応じてDCR IDを確認
-az resource show \
+# リソースから直接DCR IDを取得
+DCR_OS_LOGS_ID=$(az resource show \
   --name dcr-os-logs-prod-jpe-001 \
   --resource-group rg-platform-management-prod-jpe-001 \
   --resource-type "Microsoft.Insights/dataCollectionRules" \
-  --query id -o tsv
+  --query id -o tsv)
+
+grep -q "DCR_OS_LOGS_ID=" .env || echo "DCR_OS_LOGS_ID=$DCR_OS_LOGS_ID" >> .env
+echo "OS Logs DCR ID: $DCR_OS_LOGS_ID"
 ```
 
 ### 7.4.3 DCR の役割と今後の活用
@@ -2009,8 +2027,9 @@ DEPLOYMENT_OUTPUT=$(az deployment group create \
 POLICY_IDENTITY_ID=$(echo $DEPLOYMENT_OUTPUT | jq -r '.identityId.value')
 POLICY_IDENTITY_PRINCIPAL_ID=$(echo $DEPLOYMENT_OUTPUT | jq -r '.principalId.value')
 
-echo "POLICY_IDENTITY_ID=$POLICY_IDENTITY_ID" >> .env
-echo "POLICY_IDENTITY_PRINCIPAL_ID=$POLICY_IDENTITY_PRINCIPAL_ID" >> .env
+# .envファイルに保存（重複防止）
+grep -q "POLICY_IDENTITY_ID=" .env || echo "POLICY_IDENTITY_ID=$POLICY_IDENTITY_ID" >> .env
+grep -q "POLICY_IDENTITY_PRINCIPAL_ID=" .env || echo "POLICY_IDENTITY_PRINCIPAL_ID=$POLICY_IDENTITY_PRINCIPAL_ID" >> .env
 
 echo "Policy用マネージドID: $POLICY_IDENTITY_ID"
 echo "Principal ID: $POLICY_IDENTITY_PRINCIPAL_ID"
@@ -2210,9 +2229,9 @@ DEPLOYMENT_OUTPUT=$(az deployment group create \
     location=japaneast \
   --query 'properties.outputs' -o json)
 
-# Principal ID を環境変数に保存
+# Principal ID を環境変数に保存（重複防止）
 AUTOMATION_PRINCIPAL_ID=$(echo $DEPLOYMENT_OUTPUT | jq -r '.principalId.value')
-echo "AUTOMATION_PRINCIPAL_ID=$AUTOMATION_PRINCIPAL_ID" >> .env
+grep -q "AUTOMATION_PRINCIPAL_ID=" .env || echo "AUTOMATION_PRINCIPAL_ID=$AUTOMATION_PRINCIPAL_ID" >> .env
 echo "Automation Account Principal ID: $AUTOMATION_PRINCIPAL_ID"
 ```
 
