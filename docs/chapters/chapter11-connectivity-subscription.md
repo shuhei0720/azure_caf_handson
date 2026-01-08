@@ -114,14 +114,14 @@ param subscriptions = {
 // 条件を変数で定義
 var hasConnectivitySubscription = contains(subscriptions, 'connectivity')
 
-// Connectivity Subscription作成
-module connectivitySubscription '../modules/subscriptions/subscription.bicep' = if (hasConnectivitySubscription) {
+// Connectivity Subscription作成（モジュールは常にデプロイ、リソース作成は条件付き）
+module connectivitySubscription '../modules/subscriptions/subscription.bicep' = {
   name: 'deploy-subscription-connectivity'
   params: {
-    subscriptionAliasName: subscriptions.connectivity.aliasName
-    subscriptionDisplayName: subscriptions.connectivity.displayName
-    billingScope: billingScope
-    workload: subscriptions.connectivity.workload
+    subscriptionAliasName: hasConnectivitySubscription ? subscriptions.connectivity.aliasName : 'placeholder'
+    subscriptionDisplayName: hasConnectivitySubscription ? subscriptions.connectivity.displayName : 'placeholder'
+    billingScope: hasConnectivitySubscription ? billingScope : ''
+    workload: hasConnectivitySubscription ? subscriptions.connectivity.workload : 'Production'
   }
 }
 
@@ -131,7 +131,7 @@ module connectivitySubscriptionAssociation '../modules/management-groups/subscri
   name: 'deploy-mg-assoc-connectivity'
   params: {
     managementGroupId: '${companyPrefix}-platform-connectivity'
-    subscriptionId: hasConnectivitySubscription ? connectivitySubscription.outputs.subscriptionId : ''
+    subscriptionId: connectivitySubscription.outputs.subscriptionId
   }
   dependsOn: [
     managementGroups

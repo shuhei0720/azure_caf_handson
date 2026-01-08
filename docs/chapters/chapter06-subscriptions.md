@@ -210,14 +210,15 @@ param subscriptionAliasName string
 @description('Subscription display name')
 param subscriptionDisplayName string
 
-@description('Billing Scope')
+@description('Billing Scope (空の場合はスキップ)')
 param billingScope string
 
 @description('Workload type (Production or DevTest)')
 @allowed(['Production', 'DevTest'])
 param workload string = 'Production'
 
-resource subscription 'Microsoft.Subscription/aliases@2021-10-01' = {
+// billingScope が空でない場合のみ作成
+resource subscription 'Microsoft.Subscription/aliases@2021-10-01' = if (!empty(billingScope)) {
   name: subscriptionAliasName
   properties: {
     workload: workload
@@ -226,7 +227,8 @@ resource subscription 'Microsoft.Subscription/aliases@2021-10-01' = {
   }
 }
 
-output subscriptionId string = subscription.properties.subscriptionId
+// 既存のSubscriptionを参照する場合に備えて、条件付き出力
+output subscriptionId string = !empty(billingScope) ? subscription.properties.subscriptionId : ''
 output subscriptionName string = subscriptionDisplayName
 ```
 
@@ -271,14 +273,14 @@ param subscriptions object = {}
 // 条件を変数で定義
 var hasManagementSubscription = contains(subscriptions, 'management')
 
-// Management Subscription作成
-module managementSubscription '../modules/subscriptions/subscription.bicep' = if (hasManagementSubscription) {
+// Management Subscription作成（モジュールは常にデプロイ、リソース作成は条件付き）
+module managementSubscription '../modules/subscriptions/subscription.bicep' = {
   name: 'deploy-subscription-management'
   params: {
-    subscriptionAliasName: subscriptions.management.aliasName
-    subscriptionDisplayName: subscriptions.management.displayName
-    billingScope: billingScope
-    workload: subscriptions.management.workload
+    subscriptionAliasName: hasManagementSubscription ? subscriptions.management.aliasName : 'placeholder'
+    subscriptionDisplayName: hasManagementSubscription ? subscriptions.management.displayName : 'placeholder'
+    billingScope: hasManagementSubscription ? billingScope : ''
+    workload: hasManagementSubscription ? subscriptions.management.workload : 'Production'
   }
 }
 
@@ -288,7 +290,7 @@ module managementSubscriptionAssociation '../modules/management-groups/subscript
   name: 'deploy-mg-assoc-management'
   params: {
     managementGroupId: '${companyPrefix}-platform-management'
-    subscriptionId: hasManagementSubscription ? managementSubscription.outputs.subscriptionId : ''
+    subscriptionId: managementSubscription.outputs.subscriptionId
   }
   dependsOn: [
     managementGroups  // Management Groups作成後に実行

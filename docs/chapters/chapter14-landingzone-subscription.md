@@ -122,14 +122,14 @@ param subscriptions = {
 // 条件を変数で定義
 var hasLandingZoneCorpSubscription = contains(subscriptions, 'landingZoneCorp')
 
-// Landing Zone Corp Subscription作成
-module landingZoneCorpSubscription '../modules/subscriptions/subscription.bicep' = if (hasLandingZoneCorpSubscription) {
+// Landing Zone Corp Subscription作成（モジュールは常にデプロイ、リソース作成は条件付き）
+module landingZoneCorpSubscription '../modules/subscriptions/subscription.bicep' = {
   name: 'deploy-subscription-landingzone-corp'
   params: {
-    subscriptionAliasName: subscriptions.landingZoneCorp.aliasName
-    subscriptionDisplayName: subscriptions.landingZoneCorp.displayName
-    billingScope: billingScope
-    workload: subscriptions.landingZoneCorp.workload
+    subscriptionAliasName: hasLandingZoneCorpSubscription ? subscriptions.landingZoneCorp.aliasName : 'placeholder'
+    subscriptionDisplayName: hasLandingZoneCorpSubscription ? subscriptions.landingZoneCorp.displayName : 'placeholder'
+    billingScope: hasLandingZoneCorpSubscription ? billingScope : ''
+    workload: hasLandingZoneCorpSubscription ? subscriptions.landingZoneCorp.workload : 'Production'
   }
 }
 
@@ -139,7 +139,7 @@ module landingZoneCorpSubscriptionAssociation '../modules/management-groups/subs
   name: 'deploy-mg-assoc-landingzone-corp'
   params: {
     managementGroupId: '${companyPrefix}-landingzones-corp'
-    subscriptionId: hasLandingZoneCorpSubscription ? landingZoneCorpSubscription.outputs.subscriptionId : ''
+    subscriptionId: landingZoneCorpSubscription.outputs.subscriptionId
   }
   dependsOn: [
     managementGroups

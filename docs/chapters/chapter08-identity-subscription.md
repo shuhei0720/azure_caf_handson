@@ -104,14 +104,14 @@ param subscriptions = {
 // 条件を変数で定義
 var hasIdentitySubscription = contains(subscriptions, 'identity')
 
-// Identity Subscription作成
-module identitySubscription '../modules/subscriptions/subscription.bicep' = if (hasIdentitySubscription) {
+// Identity Subscription作成（モジュールは常にデプロイ、リソース作成は条件付き）
+module identitySubscription '../modules/subscriptions/subscription.bicep' = {
   name: 'deploy-subscription-identity'
   params: {
-    subscriptionAliasName: subscriptions.identity.aliasName
-    subscriptionDisplayName: subscriptions.identity.displayName
-    billingScope: billingScope
-    workload: subscriptions.identity.workload
+    subscriptionAliasName: hasIdentitySubscription ? subscriptions.identity.aliasName : 'placeholder'
+    subscriptionDisplayName: hasIdentitySubscription ? subscriptions.identity.displayName : 'placeholder'
+    billingScope: hasIdentitySubscription ? billingScope : ''
+    workload: hasIdentitySubscription ? subscriptions.identity.workload : 'Production'
   }
 }
 
@@ -121,7 +121,7 @@ module identitySubscriptionAssociation '../modules/management-groups/subscriptio
   name: 'deploy-mg-assoc-identity'
   params: {
     managementGroupId: '${companyPrefix}-platform-identity'
-    subscriptionId: hasIdentitySubscription ? identitySubscription.outputs.subscriptionId : ''
+    subscriptionId: identitySubscription.outputs.subscriptionId
   }
   dependsOn: [
     managementGroups
