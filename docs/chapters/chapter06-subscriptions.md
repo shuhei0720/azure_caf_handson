@@ -282,7 +282,7 @@ az account show --subscription $SUB_MANAGEMENT_ID --output table
 
 作成した Management Subscription を、第 5 章で作成した Management Group「contoso-platform-management」に割り当てます。
 
-Bicep モジュール `infrastructure/bicep/modules/management-group/subscription-association.bicep` を作成します：
+Bicep モジュール `infrastructure/bicep/modules/management-groups/subscription-association.bicep` を作成します：
 
 ```bicep
 targetScope = 'managementGroup'
@@ -310,7 +310,7 @@ output subscriptionId string = subscriptionId
 az deployment mg what-if \
   --management-group-id contoso-platform-management \
   --location japaneast \
-  --template-file infrastructure/bicep/modules/management-group/subscription-association.bicep \
+  --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
   --parameters \
     managementGroupName=contoso-platform-management \
     subscriptionId=$SUB_MANAGEMENT_ID
@@ -319,7 +319,7 @@ az deployment mg what-if \
 az deployment mg create \
   --management-group-id contoso-platform-management \
   --location japaneast \
-  --template-file infrastructure/bicep/modules/management-group/subscription-association.bicep \
+  --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
   --parameters \
     managementGroupName=contoso-platform-management \
     subscriptionId=$SUB_MANAGEMENT_ID

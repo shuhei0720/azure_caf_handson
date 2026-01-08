@@ -160,14 +160,14 @@ az account show --subscription $SUB_LANDINGZONE_CORP_ID --output table
 
 作成した Landing Zone Subscription を、第 5 章で作成した Management Group「contoso-landingzones-corp」に割り当てます。
 
-第6章で作成した Bicep モジュールを使用します：
+第 6 章で作成した Bicep モジュールを使用します：
 
 ```bash
 # 事前確認
 az deployment mg what-if \
   --management-group-id contoso-landingzones-corp \
   --location japaneast \
-  --template-file infrastructure/bicep/modules/management-group/subscription-association.bicep \
+  --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
   --parameters \
     managementGroupName=contoso-landingzones-corp \
     subscriptionId=$SUB_LANDINGZONE_CORP_ID
@@ -176,7 +176,7 @@ az deployment mg what-if \
 az deployment mg create \
   --management-group-id contoso-landingzones-corp \
   --location japaneast \
-  --template-file infrastructure/bicep/modules/management-group/subscription-association.bicep \
+  --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
   --parameters \
     managementGroupName=contoso-landingzones-corp \
     subscriptionId=$SUB_LANDINGZONE_CORP_ID
