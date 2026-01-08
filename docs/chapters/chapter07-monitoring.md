@@ -521,10 +521,10 @@ graph TB
         A[データ取り込み] -->|日次| B[Interactive Analytics 層]
         B -->|90日経過後| C[Archive 層]
         C -->|730日経過後| D[自動削除]
-        
+
         B -->|"高速 KQL クエリ<br/>$2.30/GB/月"| E[日常的な分析<br/>・セキュリティ調査<br/>・トラブルシューティング<br/>・パフォーマンス分析]
         C -->|"低速クエリ<br/>$0.10/GB/月<br/>(95%削減)"| F[長期保存<br/>・コンプライアンス<br/>・監査証跡<br/>・トレンド分析]
-        
+
         style B fill:#4CAF50,stroke:#2E7D32,stroke-width:3px,color:#fff
         style C fill:#2196F3,stroke:#1565C0,stroke-width:3px,color:#fff
         style D fill:#757575,stroke:#424242,stroke-width:2px,color:#fff
@@ -588,31 +588,31 @@ graph LR
         style A2 fill:#2196F3,stroke:#1565C0,stroke-width:2px,color:#fff
         style Total1 fill:#66BB6A,stroke:#2E7D32,stroke-width:3px,color:#fff
     end
-    
+
     subgraph "アーカイブなし（非推奨）"
         B1[Interactive 730日<br/>$16,790/月] --> Total2["合計<br/>$16,790/月"]
         style B1 fill:#F44336,stroke:#C62828,stroke-width:2px,color:#fff
         style Total2 fill:#EF5350,stroke:#C62828,stroke-width:3px,color:#fff
     end
-    
+
     Total1 -.->|"84% 削減<br/>$14,080/月 節約"| Total2
 ```
 
 **詳細計算：**
 
-| 項目 | アーカイブ活用 | アーカイブなし | 差額 |
-|------|---------------|---------------|------|
-| **Interactive 層** | 10GB × 90日 × $2.30 = $2,070/月 | 10GB × 730日 × $2.30 = $16,790/月 | -$14,720 |
-| **Archive 層** | 10GB × 640日 × $0.10 = $640/月 | $0/月 | +$640 |
-| **合計コスト** | **$2,710/月** | **$16,790/月** | **-$14,080** |
-| **年間コスト** | **$32,520** | **$201,480** | **-$168,960** |
-| **削減率** | - | - | **84%** |
+| 項目               | アーカイブ活用                   | アーカイブなし                     | 差額          |
+| ------------------ | -------------------------------- | ---------------------------------- | ------------- |
+| **Interactive 層** | 10GB × 90 日 × $2.30 = $2,070/月 | 10GB × 730 日 × $2.30 = $16,790/月 | -$14,720      |
+| **Archive 層**     | 10GB × 640 日 × $0.10 = $640/月  | $0/月                              | +$640         |
+| **合計コスト**     | **$2,710/月**                    | **$16,790/月**                     | **-$14,080**  |
+| **年間コスト**     | **$32,520**                      | **$201,480**                       | **-$168,960** |
+| **削減率**         | -                                | -                                  | **84%**       |
 
 **節約効果の要約：**
 
 - **月額削減**: $14,080（約 84%）
-- **年額削減**: $168,960（約 200万円/年）
-- **2年間**: 約 400万円の削減
+- **年額削減**: $168,960（約 200 万円/年）
+- **2 年間**: 約 400 万円の削減
 
 #### Azure ポータルでの確認
 
@@ -624,20 +624,6 @@ graph LR
    - **Retention (days)**: 対話型分析期間（90 日）
    - **Total retention (days)**: 総保持期間（730 日）
    - **Archive (days)**: アーカイブ期間（640 日 = 730 - 90）
-
-### 7.3.5 Workspace のクエリと監視
-
-Log Analytics Workspace にデータが収集されているか確認します。
-
-Azure ポータルから、Log Analytics Workspace を開き、**ログ** を選択して KQL クエリを実行できます。
-
-```kql
-// 過去24時間のログエントリ数をテーブル別に集計
-search *
-| where TimeGenerated > ago(24h)
-| summarize Count = count() by Type
-| order by Count desc
-```
 
 ---
 
