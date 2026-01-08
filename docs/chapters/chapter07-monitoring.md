@@ -2036,9 +2036,6 @@ targetScope = 'managementGroup'
 @description('マネージドIDのPrincipal ID')
 param principalId string
 
-@description('管理グループID')
-param managementGroupId string
-
 @description('ロール定義ID（Owner）')
 param roleDefinitionId string = '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' // Owner
 
@@ -2079,7 +2076,6 @@ module policyIdentityOwnerRole '../modules/identity/role-assignment-owner.bicep'
   scope: managementGroup(companyPrefix)
   params: {
     principalId: policyIdentityPrincipalId
-    managementGroupId: companyPrefix
   }
 }
 
