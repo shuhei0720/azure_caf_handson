@@ -458,6 +458,7 @@ echo "OS Logs DCR ID: $DCR_OS_LOGS_ID"
 作成した DCR は、後の章で **Azure Policy** と組み合わせることで、環境全体の VM に自動的に適用されます。
 
 **組み込みポリシー例：**
+
 - `Configure Windows machines to run Azure Monitor Agent and associate them to a Data Collection Rule`
 - `Configure Linux machines to run Azure Monitor Agent and associate them to a Data Collection Rule`
 
@@ -521,15 +522,15 @@ az deployment sub create \
 
 ---
 
-## 7.5 Azure Policy 用ユーザー割り当てマネージドID
+## 7.5 Azure Policy 用ユーザー割り当てマネージド ID
 
-第10章で Azure Policy の DeployIfNotExists/Modify 効果を使う際に必要となるマネージドIDを事前に作成します。
+第 10 章で Azure Policy の DeployIfNotExists/Modify 効果を使う際に必要となるマネージド ID を事前に作成します。
 
-### 7.5.1 マネージドIDの配置場所
+### 7.5.1 マネージド ID の配置場所
 
-CAF のベストプラクティスに従い、ポリシー実行用のマネージドIDは **Management Subscription** に配置します。これにより、複数のサブスクリプションにまたがるポリシー割り当てを一元管理できます。
+CAF のベストプラクティスに従い、ポリシー実行用のマネージド ID は **Management Subscription** に配置します。これにより、複数のサブスクリプションにまたがるポリシー割り当てを一元管理できます。
 
-### 7.5.2 マネージドID Bicep モジュール
+### 7.5.2 マネージド ID Bicep モジュール
 
 ファイル `infrastructure/bicep/modules/identity/managed-identity.bicep` を作成します：
 
@@ -555,7 +556,7 @@ output principalId string = managedIdentity.properties.principalId
 output clientId string = managedIdentity.properties.clientId
 ```
 
-### 7.5.3 マネージドIDの作成
+### 7.5.3 マネージド ID の作成
 
 ```bash
 # Management Subscription で実行
@@ -581,7 +582,7 @@ echo "Policy用マネージドID: $POLICY_IDENTITY_ID"
 echo "Principal ID: $POLICY_IDENTITY_PRINCIPAL_ID"
 ```
 
-### 7.5.4 マネージドIDへの権限付与
+### 7.5.4 マネージド ID への権限付与
 
 Azure Policy の DeployIfNotExists/Modify 効果（特に Defender for Cloud の適用）には **Owner** 権限が必要です。Management Subscription に対して Owner ロールを付与します。
 
@@ -742,7 +743,7 @@ az deployment group create \
 
 **今後のリソース作成ルール：**
 
-今後、新しいリソースを作成する際は、診断設定が利用可能なリソース（Azure Firewall、Key Vault、Bastion、Storage Account等）については、リソース作成と同じ Bicep ファイル内で診断設定も一緒に定義します。
+今後、新しいリソースを作成する際は、診断設定が利用可能なリソース（Azure Firewall、Key Vault、Bastion、Storage Account 等）については、リソース作成と同じ Bicep ファイル内で診断設定も一緒に定義します。
 
 ---
 
