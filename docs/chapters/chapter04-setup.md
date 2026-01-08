@@ -626,9 +626,181 @@ az deployment sub what-if \
 
 ---
 
-## 4.8 Git へのコミット
+## 4.8 オーケストレーションの準備
 
-### 4.8.1 変更の確認
+### 4.8.1 オーケストレーションとは
+
+本教科書では、各章で個別にリソースを構築しながら、最終的に全体を統合デプロイできる仕組みを作ります。
+
+```mermaid
+graph TB
+    A[Chapter 4-16:<br/>個別モジュール作成] --> B[orchestration/main.bicep:<br/>段階的に構築]
+    B --> C[Chapter 17:<br/>CI/CD統合]
+    
+    A --> D[modules/monitoring/]
+    A --> E[modules/networking/]
+    A --> F[modules/security/]
+    
+    D --> B
+    E --> B
+    F --> B
+    
+    style A fill:#e8f5e9
+    style B fill:#fff9c4
+    style C fill:#e1f5fe
+```
+
+**アプローチ：**
+- ✅ 各章でモジュールを作成（学習しながら理解）
+- ✅ パラメータを`main.bicepparam`に追記（一元管理）
+- ✅ `main.bicep`にモジュールを追加（段階的構築）
+- ✅ 各章で`main.bicep`経由でデプロイ（動作確認）
+
+**メリット：**
+- Single Source of Truth（パラメータの一元管理）
+- 段階的に学習しながら全体を構築
+- Chapter 17で即座にCI/CD化可能
+- 本番運用でそのまま使える
+
+### 4.8.2 オーケストレーションの骨格作成
+
+```bash
+# orchestrationディレクトリを作成
+mkdir -p infrastructure/bicep/orchestration
+```
+
+ファイル `infrastructure/bicep/orchestration/main.bicep` を作成：
+
+```bicep
+// =============================================================================
+// CAF Landing Zone - Orchestration Main Template
+// =============================================================================
+// このファイルは各章で段階的に構築していきます
+// 各章でモジュールとパラメータを追加することで、最終的に全体を統合します
+
+targetScope = 'subscription'
+
+// =============================================================================
+// パラメータ定義
+// =============================================================================
+
+@description('デプロイ先のリージョン')
+param location string
+
+@description('環境名（prod/dev/test）')
+param environment string
+
+@description('共通タグ')
+param tags object
+
+// 以降、各章でパラメータを追加予定:
+// - Chapter 5: Management Groups (managementGroups object)
+// - Chapter 6: Subscriptions (subscriptions object)
+// - Chapter 7: Monitoring (monitoring object)
+// - Chapter 12: Security (security object)
+// - Chapter 13: Networking (networking object)
+// - Chapter 15-16: Landing Zones (landingZones object)
+
+// =============================================================================
+// モジュールデプロイ
+// =============================================================================
+// 各章でモジュールを追加していきます
+
+// =============================================================================
+// Outputs
+// =============================================================================
+
+output deploymentInfo object = {
+  location: location
+  environment: environment
+  deployedAt: utcNow()
+}
+```
+
+ファイル `infrastructure/bicep/orchestration/main.bicepparam` を作成：
+
+```bicep
+// =============================================================================
+// CAF Landing Zone - Orchestration Parameters
+// =============================================================================
+// このファイルは各章で段階的に構築していきます
+// 各章で設定を追記することで、パラメータを一元管理します
+
+using './main.bicep'
+
+// =============================================================================
+// 共通設定
+// =============================================================================
+
+@description('デプロイ先のリージョン')
+param location = 'japaneast'
+
+@description('環境名（プラットフォームは常にprod）')
+param environment = 'prod'
+
+@description('共通タグ')
+param tags = {
+  Environment: 'Production'
+  ManagedBy: 'Bicep'
+  CostCenter: 'IT-Platform'
+  Project: 'CAF-LandingZone'
+  CreatedBy: 'Orchestration'
+}
+
+// =============================================================================
+// 各章で追記予定のセクション
+// =============================================================================
+
+// Chapter 5: Management Groups
+// param managementGroups = { ... }
+
+// Chapter 6: Subscriptions  
+// param subscriptions = { ... }
+
+// Chapter 7: Monitoring
+// param monitoring = { ... }
+
+// Chapter 12: Security
+// param security = { ... }
+
+// Chapter 13: Networking
+// param networking = { ... }
+
+// Chapter 15-16: Landing Zones
+// param landingZones = { ... }
+```
+
+### 4.8.3 オーケストレーションのテスト
+
+現時点では骨格のみですが、構文確認します：
+
+```bash
+# Bicepのビルド確認
+az bicep build \
+  --file infrastructure/bicep/orchestration/main.bicep
+
+echo "✅ Orchestration template is valid"
+```
+
+### 4.8.4 今後の流れ
+
+各章（Chapter 5以降）で以下を実施します：
+
+1. **モジュール作成**：`modules/` 配下にリソース定義作成
+2. **パラメータ追記**：`orchestration/main.bicepparam` に設定追加
+3. **main.bicep更新**：`orchestration/main.bicep` にモジュール追加
+4. **デプロイ確認**：`main.bicep` + `main.bicepparam` でデプロイ
+
+**重要**：各章でのデプロイは **orchestration経由** で実行します。これにより：
+- パラメータが正しく動作することを確認
+- 段階的にオーケストレーションを構築
+- Chapter 17で即座に全体デプロイ可能
+
+---
+
+## 4.9 Git へのコミット
+
+### 4.9.1 変更の確認
 
 ```bash
 # 変更されたファイルを確認
@@ -686,7 +858,7 @@ git push origin main
 
 ---
 
-## 4.10 トラブルシューティング
+## 4.11 トラブルシューティング
 
 ### Q1: Bicep のビルドに失敗する
 
@@ -795,7 +967,8 @@ git push origin main
 10. ✅ Azure ポータルでの確認
 11. ✅ 命名規則モジュールの作成
 12. ✅ 共通パラメータファイルの作成
-13. ✅ Git へのコミット・プッシュ
+13. ✅ オーケストレーション構造の作成
+14. ✅ Git へのコミット・プッシュ
 
 ### 学んだ重要な概念
 
