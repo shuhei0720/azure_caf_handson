@@ -240,10 +240,11 @@ targetScope = 'tenant'
 @description('Management Group ID')
 param managementGroupId string
 
-@description('Subscription ID')
+@description('Subscription ID (空文字列の場合はスキップ)')
 param subscriptionId string
 
-resource subscriptionAssociation 'Microsoft.Management/managementGroups/subscriptions@2021-04-01' = {
+// subscriptionIdが空でない場合のみリソースを作成
+resource subscriptionAssociation 'Microsoft.Management/managementGroups/subscriptions@2021-04-01' = if (!empty(subscriptionId)) {
   scope: tenant()
   name: '${managementGroupId}/${subscriptionId}'
 }
@@ -282,7 +283,8 @@ module managementSubscription '../modules/subscriptions/subscription.bicep' = if
 }
 
 // Management SubscriptionをManagement Groupに紐づけ
-module managementSubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = if (hasManagementSubscription) {
+// モジュール自体は常にデプロイ、リソース作成は条件付き
+module managementSubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = {
   name: 'deploy-mg-assoc-management'
   params: {
     managementGroupId: '${companyPrefix}-platform-management'

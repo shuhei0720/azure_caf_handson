@@ -116,7 +116,8 @@ module identitySubscription '../modules/subscriptions/subscription.bicep' = if (
 }
 
 // Identity SubscriptionをManagement Groupに紐づけ
-module identitySubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = if (hasIdentitySubscription) {
+// モジュール自体は常にデプロイ、リソース作成は条件付き
+module identitySubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = {
   name: 'deploy-mg-assoc-identity'
   params: {
     managementGroupId: '${companyPrefix}-platform-identity'

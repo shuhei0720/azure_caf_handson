@@ -134,7 +134,8 @@ module landingZoneCorpSubscription '../modules/subscriptions/subscription.bicep'
 }
 
 // Landing Zone Corp SubscriptionをManagement Groupに紐づけ
-module landingZoneCorpSubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = if (hasLandingZoneCorpSubscription) {
+// モジュール自体は常にデプロイ、リソース作成は条件付き
+module landingZoneCorpSubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = {
   name: 'deploy-mg-assoc-landingzone-corp'
   params: {
     managementGroupId: '${companyPrefix}-landingzones-corp'

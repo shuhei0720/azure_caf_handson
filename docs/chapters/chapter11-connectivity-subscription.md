@@ -126,7 +126,8 @@ module connectivitySubscription '../modules/subscriptions/subscription.bicep' = 
 }
 
 // Connectivity SubscriptionをManagement Groupに紐づけ
-module connectivitySubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = if (hasConnectivitySubscription) {
+// モジュール自体は常にデプロイ、リソース作成は条件付き
+module connectivitySubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = {
   name: 'deploy-mg-assoc-connectivity'
   params: {
     managementGroupId: '${companyPrefix}-platform-connectivity'
