@@ -262,7 +262,7 @@ module managementRG '../modules/resource-group/resource-group.bicep' = {
 }
 ```
 
-#### デプロイ実行
+#### What-If 実行
 
 ```bash
 # Management Subscription に切り替え（念のため確認）
@@ -274,7 +274,11 @@ az deployment sub what-if \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
+```
 
+#### デプロイ実行
+
+```bash
 # デプロイ実行
 az deployment sub create \
   --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
@@ -398,7 +402,7 @@ module logAnalytics '../modules/monitoring/log-analytics.bicep' = {
 }
 ```
 
-#### デプロイ実行
+#### What-If 実行
 
 ```bash
 # What-If実行
@@ -407,7 +411,11 @@ az deployment sub what-if \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
+```
 
+#### デプロイ実行
+
+```bash
 # デプロイ実行
 az deployment sub create \
   --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
