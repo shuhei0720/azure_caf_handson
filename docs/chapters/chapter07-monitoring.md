@@ -407,7 +407,7 @@ param totalRetentionInDays = 730
 主要なテーブルに保持期間を設定：
 
 ```bash
-# 主要テーブルのリスト
+# 主要テーブルのリストと個別パラメーターファイル作成
 TABLES=(
   "AzureActivity"           # Activity Log
   "AzureDiagnostics"        # 診断設定
@@ -420,6 +420,18 @@ TABLES=(
   "Event"                   # Windows Event
 )
 
+# 各テーブル用のパラメーターファイルを作成
+for TABLE in "${TABLES[@]}"; do
+  cat > "infrastructure/bicep/parameters/log-analytics-table-retention-${TABLE}.bicepparam" << EOF
+using '../modules/monitoring/log-analytics-table-retention.bicep'
+
+param workspaceName = 'log-platform-prod-jpe-001'
+param tableName = '${TABLE}'
+param retentionInDays = 90
+param totalRetentionInDays = 730
+EOF
+done
+
 # 各テーブルに保持期間を設定
 for TABLE in "${TABLES[@]}"; do
   echo "Setting retention for table: $TABLE"
@@ -429,16 +441,14 @@ for TABLE in "${TABLES[@]}"; do
     --name "table-retention-${TABLE}-$(date +%Y%m%d-%H%M%S)" \
     --resource-group rg-platform-management-prod-jpe-001 \
     --template-file infrastructure/bicep/modules/monitoring/log-analytics-table-retention.bicep \
-    --parameters infrastructure/bicep/parameters/log-analytics-table-retention.bicepparam \
-    --parameters tableName=$TABLE
+    --parameters "infrastructure/bicep/parameters/log-analytics-table-retention-${TABLE}.bicepparam"
 
   # 確認後、デプロイ実行
   az deployment group create \
     --name "table-retention-${TABLE}-$(date +%Y%m%d-%H%M%S)" \
     --resource-group rg-platform-management-prod-jpe-001 \
     --template-file infrastructure/bicep/modules/monitoring/log-analytics-table-retention.bicep \
-    --parameters infrastructure/bicep/parameters/log-analytics-table-retention.bicepparam \
-    --parameters tableName=$TABLE
+    --parameters "infrastructure/bicep/parameters/log-analytics-table-retention-${TABLE}.bicepparam"
 done
 
 echo "すべてのテーブルに保持期間が設定されました"
@@ -673,16 +683,14 @@ az deployment group what-if \
   --name "dcr-vm-insights-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-vm-insights.bicep \
-  --parameters infrastructure/bicep/parameters/dcr-vm-insights.bicepparam \
-  --parameters workspaceId="$WORKSPACE_ID"
+  --parameters infrastructure/bicep/parameters/dcr-vm-insights.bicepparam
 
 # 確認後、デプロイ実行
 az deployment group create \
   --name "dcr-vm-insights-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-vm-insights.bicep \
-  --parameters infrastructure/bicep/parameters/dcr-vm-insights.bicepparam \
-  --parameters workspaceId="$WORKSPACE_ID"
+  --parameters infrastructure/bicep/parameters/dcr-vm-insights.bicepparam
 
 # DCR IDを取得して保存
 DCR_VM_INSIGHTS_ID=$(az monitor data-collection rule show \
@@ -814,16 +822,14 @@ az deployment group what-if \
   --name "dcr-os-logs-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-os-logs.bicep \
-  --parameters infrastructure/bicep/parameters/dcr-os-logs.bicepparam \
-  --parameters workspaceId="$WORKSPACE_ID"
+  --parameters infrastructure/bicep/parameters/dcr-os-logs.bicepparam
 
 # 確認後、デプロイ実行
 az deployment group create \
   --name "dcr-os-logs-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-os-logs.bicep \
-  --parameters infrastructure/bicep/parameters/dcr-os-logs.bicepparam \
-  --parameters workspaceId="$WORKSPACE_ID"
+  --parameters infrastructure/bicep/parameters/dcr-os-logs.bicepparam
 
 # DCR IDを取得して保存
 DCR_OS_LOGS_ID=$(az monitor data-collection rule show \
@@ -1101,16 +1107,14 @@ az deployment sub what-if \
   --name "sub-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/modules/monitoring/subscription-diagnostic-settings.bicep \
-  --parameters infrastructure/bicep/parameters/subscription-diagnostics.bicepparam \
-  --parameters workspaceId=$LOG_WORKSPACE_ID
+  --parameters infrastructure/bicep/parameters/subscription-diagnostics.bicepparam
 
 # 確認後、デプロイ実行
 az deployment sub create \
   --name "sub-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/modules/monitoring/subscription-diagnostic-settings.bicep \
-  --parameters infrastructure/bicep/parameters/subscription-diagnostics.bicepparam \
-  --parameters workspaceId=$LOG_WORKSPACE_ID
+  --parameters infrastructure/bicep/parameters/subscription-diagnostics.bicepparam
 ```
 
 ### 7.6.3 Azure Portal での確認
@@ -1303,16 +1307,14 @@ az deployment group what-if \
   --name "log-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/log-analytics-diagnostics.bicep \
-  --parameters infrastructure/bicep/parameters/log-analytics-diagnostics.bicepparam \
-  --parameters destinationWorkspaceId=$LOG_WORKSPACE_ID
+  --parameters infrastructure/bicep/parameters/log-analytics-diagnostics.bicepparam
 
 # 確認後、デプロイ実行
 az deployment group create \
   --name "log-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/log-analytics-diagnostics.bicep \
-  --parameters infrastructure/bicep/parameters/log-analytics-diagnostics.bicepparam \
-  --parameters destinationWorkspaceId=$LOG_WORKSPACE_ID
+  --parameters infrastructure/bicep/parameters/log-analytics-diagnostics.bicepparam
 ```
 
 ### 7.7.2 Data Collection Rule の診断設定
@@ -1391,8 +1393,7 @@ az deployment group create \
   --name "dcr-vm-insights-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep \
-  --parameters infrastructure/bicep/parameters/dcr-diagnostics-vm-insights.bicepparam \
-  --parameters destinationWorkspaceId=$LOG_WORKSPACE_ID
+  --parameters infrastructure/bicep/parameters/dcr-diagnostics-vm-insights.bicepparam
 
 # OS Logs DCR の診断設定
 # 事前確認
@@ -1400,16 +1401,14 @@ az deployment group what-if \
   --name "dcr-os-logs-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep \
-  --parameters infrastructure/bicep/parameters/dcr-diagnostics-os-logs.bicepparam \
-  --parameters destinationWorkspaceId=$LOG_WORKSPACE_ID
+  --parameters infrastructure/bicep/parameters/dcr-diagnostics-os-logs.bicepparam
 
 # 確認後、デプロイ実行
 az deployment group create \
   --name "dcr-os-logs-diagnostics-$(date +%Y%m%d-%H%M%S)" \
   --resource-group rg-platform-management-prod-jpe-001 \
   --template-file infrastructure/bicep/modules/monitoring/dcr-diagnostics.bicep \
-  --parameters infrastructure/bicep/parameters/dcr-diagnostics-os-logs.bicepparam \
-  --parameters destinationWorkspaceId=$LOG_WORKSPACE_ID
+  --parameters infrastructure/bicep/parameters/dcr-diagnostics-os-logs.bicepparam
 ```
 
 **今後のリソース作成ルール：**

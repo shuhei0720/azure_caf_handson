@@ -232,14 +232,14 @@ az deployment tenant what-if \
   --name "$DEPLOYMENT_NAME" \
   --location japaneast \
   --template-file infrastructure/bicep/subscriptions/sub-management.bicep \
-  --parameters billingScope="$BILLING_SCOPE"
+  --parameters infrastructure/bicep/parameters/sub-management.bicepparam
 
 # 確認後、デプロイ実行
 az deployment tenant create \
   --name "$DEPLOYMENT_NAME" \
   --location japaneast \
   --template-file infrastructure/bicep/subscriptions/sub-management.bicep \
-  --parameters billingScope="$BILLING_SCOPE"
+  --parameters infrastructure/bicep/parameters/sub-management.bicepparam
 
 # デプロイ結果から Subscription ID を取得
 SUB_MANAGEMENT_ID=$(az deployment tenant show \

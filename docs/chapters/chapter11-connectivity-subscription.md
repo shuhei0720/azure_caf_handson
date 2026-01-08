@@ -104,8 +104,6 @@ resource subConnectivity 'Microsoft.Subscription/aliases@2021-10-01' = {
 output subscriptionId string = subConnectivity.properties.subscriptionId
 ```
 
-**注意：** billingScope は個人の Billing Account に依存するため、パラメーターファイルには含めず、環境変数から直接注入します。
-
 ### 11.2.2 Bicep のデプロイ（10-15 分）
 
 ```bash
@@ -116,14 +114,14 @@ az deployment tenant what-if \
   --name "deploy-sub-connectivity-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/subscriptions/sub-connectivity.bicep \
-  --parameters billingScope="$BILLING_SCOPE"
+  --parameters infrastructure/bicep/parameters/sub-connectivity.bicepparam
 
 # 確認後、デプロイ実行
 az deployment tenant create \
   --name "deploy-sub-connectivity-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/subscriptions/sub-connectivity.bicep \
-  --parameters billingScope="$BILLING_SCOPE"
+  --parameters infrastructure/bicep/parameters/sub-connectivity.bicepparam
 ```
 
 **デプロイには 10〜15 分程度かかります。**

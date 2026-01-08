@@ -266,18 +266,28 @@ infrastructure/bicep/
 ├── modules/          # Bicep テンプレート（再利用可能）
 │   ├── resource-group/
 │   │   └── resource-group.bicep
+│   ├── subscriptions/
+│   │   ├── sub-management.bicep
+│   │   └── sub-identity.bicep
 │   ├── monitoring/
 │   │   ├── log-analytics.bicep
 │   │   └── dcr-vm-insights.bicep
 │   └── identity/
 │       └── managed-identity.bicep
 └── parameters/       # パラメーターファイル（環境固有の値）
+    ├── sub-management.bicepparam        # billingScope含む
+    ├── sub-identity.bicepparam          # billingScope含む
     ├── management-resource-group.bicepparam
     ├── log-analytics.bicepparam
     └── dcr-vm-insights.bicepparam
 ```
 
-**重要:** すべての `.bicepparam` ファイルは Git 管理下に置き、本番環境の完全なバックアップとして機能させます。
+**重要原則:**
+
+1. **すべてのパラメーターをファイルで管理**: billingScope、workspaceId、tableName など、すべてのパラメーターは `.bicepparam` ファイルに記述します
+2. **CLI でのパラメーター注入は禁止**: `--parameters param=value` 形式でのパラメーター指定は使用しません
+3. **Git 管理**: すべての `.bicepparam` ファイルは Git 管理下に置き、本番環境の完全なバックアップとして機能させます
+4. **環境固有の値**: 開発者ごとに異なる値（billingScope、subscription ID など）は、各自がパラメーターファイルを編集して使用します
 
 ### 4.5.3 テスト用のリソースグループ作成
 
