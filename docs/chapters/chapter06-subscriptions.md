@@ -282,15 +282,49 @@ az account show --subscription $SUB_MANAGEMENT_ID --output table
 
 作成した Management Subscription を、第 5 章で作成した Management Group「contoso-platform-management」に割り当てます。
 
-```bash
-az account management-group subscription add \
-  --name contoso-platform-management \
-  --subscription $SUB_MANAGEMENT_ID
+Bicep モジュール `infrastructure/bicep/modules/management-group/subscription-association.bicep` を作成します：
 
-# 確認
-az account management-group subscription show \
-  --name contoso-platform-management \
-  --subscription $SUB_MANAGEMENT_ID
+```bicep
+targetScope = 'managementGroup'
+
+@description('Management Group 名')
+param managementGroupName string
+
+@description('割り当てる Subscription ID')
+param subscriptionId string
+
+// Management Group への Subscription 割り当て
+resource subscriptionAssociation 'Microsoft.Management/managementGroups/subscriptions@2021-04-01' = {
+  scope: tenant()
+  name: '${managementGroupName}/${subscriptionId}'
+}
+
+output managementGroupName string = managementGroupName
+output subscriptionId string = subscriptionId
+```
+
+デプロイ：
+
+```bash
+# 事前確認
+az deployment mg what-if \
+  --management-group-id contoso-platform-management \
+  --location japaneast \
+  --template-file infrastructure/bicep/modules/management-group/subscription-association.bicep \
+  --parameters \
+    managementGroupName=contoso-platform-management \
+    subscriptionId=$SUB_MANAGEMENT_ID
+
+# 確認後、デプロイ実行
+az deployment mg create \
+  --management-group-id contoso-platform-management \
+  --location japaneast \
+  --template-file infrastructure/bicep/modules/management-group/subscription-association.bicep \
+  --parameters \
+    managementGroupName=contoso-platform-management \
+    subscriptionId=$SUB_MANAGEMENT_ID
+
+echo "Management Subscription が Management Group に割り当てられました"
 ```
 
 ### Azure ポータルでの確認
