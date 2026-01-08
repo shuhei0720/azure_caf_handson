@@ -253,7 +253,6 @@ az deployment sub create \
 echo "Resource Group が Bicep で作成されました"
 ```
 
-
 ### 7.3.2 Log Analytics Workspace の作成
 
 すべてのログとメトリクスを集約する中央ログストアとして、Log Analytics Workspace を作成します。
@@ -352,6 +351,21 @@ WORKSPACE_ID=$(az monitor log-analytics workspace show \
 echo "WORKSPACE_ID=$WORKSPACE_ID" >> .env
 echo "Log Analytics Workspace ID: $WORKSPACE_ID"
 ```
+
+**Azure ポータルでの確認：**
+
+1. [Azure ポータル](https://portal.azure.com) にサインイン
+2. **リソースグループ** > **rg-platform-management-prod-jpe-001** を選択
+3. **log-platform-prod-jpe-001** をクリック
+4. **概要** タブで以下を確認：
+   - **場所**: Japan East
+   - **価格レベル**: 従量課金制 (PerGB2018)
+   - **ワークスペース ID**: `WORKSPACE_ID` と一致するか確認
+5. **設定** > **使用量と推定コスト** を選択：
+   - **データ保持**: 90 日（Interactive 期間）が設定されていることを確認
+   - 日次データ取り込み量とコスト試算を確認
+6. **設定** > **エージェント** を選択：
+   - **ワークスペース ID** と**プライマリキー**をメモ（後続の診断設定で使用）
 
 ### 7.3.3 テーブルレベルの保持期間設定
 
@@ -457,6 +471,25 @@ az deployment group create \
 
 echo "すべてのテーブルに保持期間が設定されました"
 ```
+
+**Azure ポータルでの確認：**
+
+1. [Azure ポータル](https://portal.azure.com) で **log-platform-prod-jpe-001** を開く
+2. **設定** > **テーブル** を選択
+3. 各テーブルの保持期間設定を確認：
+   - **Table**: テーブル名（例：AzureActivity, AzureDiagnostics, SigninLogs など）
+   - **Retention (days)**: **90 日**（Interactive 期間）
+   - **Total retention (days)**: **730 日**（総保持期間）
+   - **Archive (days)**: **640 日**（= 730 - 90、アーカイブ期間）
+4. 主要なテーブルで確認（クリックして詳細表示）：
+   - **AzureActivity**: Activity Log のテーブル
+   - **AzureDiagnostics**: 診断設定のテーブル
+   - **SigninLogs**: Entra ID サインインログ
+   - **AuditLogs**: Entra ID 監査ログ
+5. **使用量と推定コスト** > **データ保持** タブで全体のコスト試算を確認：
+   - Interactive 層（90 日）のコスト
+   - Archive 層（640 日）のコスト
+   - 合計コストとアーカイブによる節約額
 
 **重要な注意事項：**
 
