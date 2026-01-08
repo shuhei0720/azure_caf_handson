@@ -485,9 +485,43 @@ output configuredTables array = [for (tableName, i) in tableNames: {
 }]
 ```
 
+#### オーケストレーションへのパラメータ追記
+
+ファイル `infrastructure/bicep/orchestration/main.bicepparam` を開き、`monitoring` セクションに追記：
+
+```bicep
+param monitoring = {
+  resourceGroup: {
+    name: 'rg-platform-management-prod-jpe-001'
+    tags: {
+      Environment: 'Production'
+      ManagedBy: 'Bicep'
+      Component: 'Management'
+    }
+  }
+  logAnalytics: {
+    workspaceName: 'log-platform-prod-jpe-001'
+    retentionInDays: 90
+    tags: {
+      Environment: 'Production'
+      ManagedBy: 'Bicep'
+      Component: 'Monitoring'
+    }
+  }
+  // 👇 7.3.3で追記（テーブル名は以下のスクリプトで自動生成）
+  tableRetention: {
+    retentionInDays: 90
+    totalRetentionInDays: 730
+    tableNames: [
+      // ここにテーブル名が自動追記されます
+    ]
+  }
+}
+```
+
 **テーブル名の自動取得と main.bicepparam への追加：**
 
-Workspace に存在するすべてのテーブルを自動取得し、`main.bicepparam` に追記します：
+Workspace に存在するすべてのテーブルを自動取得し、`orchestration/main.bicepparam` に追記します：
 
 ```bash
 # Log Analytics Workspaceのすべてのテーブルを取得
@@ -498,51 +532,66 @@ TABLES=$(az monitor log-analytics workspace table list \
 
 echo "取得されたテーブル数: $(echo "$TABLES" | wc -l)"
 
-# main.bicepparamにテーブル名配列を追加
-cat >> infrastructure/bicep/parameters/main.bicepparam << 'EOF'
+# main.bicepparamのtableNames配列を更新
+# まず、既存のtableNames配列を探して、その部分を置換します
+sed -i '/tableNames: \[/,/\]/c\
+    tableNames: [' infrastructure/bicep/orchestration/main.bicepparam
 
-// ===== 7章: Log Analytics テーブル保持期間設定 =====
-param workspaceName = 'log-platform-prod-jpe-001'
-param retentionInDays = 90
-param totalRetentionInDays = 730
-
-param tableNames = [
-EOF
-
-# すべてのテーブル名を配列形式で追加
+# テーブル名を1つずつ追加
 for TABLE in $TABLES; do
-  echo "  '$TABLE'" >> infrastructure/bicep/parameters/main.bicepparam
+  sed -i "/tableNames: \[/a\      '$TABLE'" infrastructure/bicep/orchestration/main.bicepparam
 done
 
-# 配列の閉じ括弧を追加
-echo "]" >> infrastructure/bicep/parameters/main.bicepparam
+# 最後の行にカンマを削除（最終要素にはカンマ不要）
+sed -i "s/\('.*'\)$/\1/g" infrastructure/bicep/orchestration/main.bicepparam
 
-echo "main.bicepparamにテーブル名が追加されました"
-tail -n 20 infrastructure/bicep/parameters/main.bicepparam
+echo "orchestration/main.bicepparamにテーブル名が追加されました"
+grep -A 50 'tableNames:' infrastructure/bicep/orchestration/main.bicepparam | head -n 55
+```
+
+#### オーケストレーションへのモジュール追加
+
+ファイル `infrastructure/bicep/orchestration/main.bicep` を開き、以下を追記：
+
+```bicep
+// Chapter 7: Log Analytics Table Retention
+module tableRetention '../modules/monitoring/log-analytics-table-retention.bicep' = {
+  name: 'deploy-table-retention'
+  scope: resourceGroup(monitoring.resourceGroup.name)
+  params: {
+    workspaceName: monitoring.logAnalytics.workspaceName
+    tableNames: monitoring.tableRetention.tableNames
+    retentionInDays: monitoring.tableRetention.retentionInDays
+    totalRetentionInDays: monitoring.tableRetention.totalRetentionInDays
+  }
+  dependsOn: [
+    logAnalytics
+  ]
+}
 ```
 
 **What-If による事前確認：**
 
 ```bash
-# 事前確認（main.bicepparamを使用）
-az deployment group what-if \
-  --name "table-retention-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/monitoring/log-analytics-table-retention.bicep \
-  --parameters infrastructure/bicep/parameters/main.bicepparam
+# What-If実行（orchestration経由）
+az deployment sub what-if \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
 ```
 
 **デプロイ実行：**
 
 ```bash
-# デプロイ実行（main.bicepparamを使用）
-az deployment group create \
-  --name "table-retention-$(date +%Y%m%d-%H%M%S)" \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --template-file infrastructure/bicep/modules/monitoring/log-analytics-table-retention.bicep \
-  --parameters infrastructure/bicep/parameters/main.bicepparam
+# デプロイ実行（orchestration経由）
+az deployment sub create \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
 
-echo "すべてのテーブルに保持期間が設定されました"
+echo "✅ すべてのテーブルに保持期間が orchestration 経由で設定されました"
 ```
 
 **Azure ポータルでの確認：**
