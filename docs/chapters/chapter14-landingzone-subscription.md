@@ -107,14 +107,7 @@ resource subLandingZoneCorp 'Microsoft.Subscription/aliases@2021-10-01' = {
 output subscriptionId string = subLandingZoneCorp.properties.subscriptionId
 ```
 
-パラメーターファイル `infrastructure/bicep/parameters/sub-landingzone-corp.bicepparam` を作成：
-
-```bicep
-using '../subscriptions/sub-landingzone-corp.bicep'
-
-// billingScopeは環境変数からCLIで注入
-param billingScope = ''
-```
+**注意：** billingScope は個人の Billing Account に依存するため、パラメーターファイルには含めず、環境変数から直接注入します。
 
 ### 14.2.2 Bicep のデプロイ（10-15 分）
 
@@ -126,7 +119,6 @@ az deployment tenant what-if \
   --name "deploy-sub-landingzone-corp-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/subscriptions/sub-landingzone-corp.bicep \
-  --parameters infrastructure/bicep/parameters/sub-landingzone-corp.bicepparam \
   --parameters billingScope="$BILLING_SCOPE"
 
 # 確認後、デプロイ実行
@@ -134,7 +126,6 @@ az deployment tenant create \
   --name "deploy-sub-landingzone-corp-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/subscriptions/sub-landingzone-corp.bicep \
-  --parameters infrastructure/bicep/parameters/sub-landingzone-corp.bicepparam \
   --parameters billingScope="$BILLING_SCOPE"
 ```
 

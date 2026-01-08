@@ -214,14 +214,7 @@ resource subManagement 'Microsoft.Subscription/aliases@2021-10-01' = {
 output subscriptionId string = subManagement.properties.subscriptionId
 ```
 
-パラメーターファイル `infrastructure/bicep/parameters/sub-management.bicepparam` を作成：
-
-```bicep
-using '../subscriptions/sub-management.bicep'
-
-// billingScopeは環境変数からCLIで注入
-param billingScope = ''
-```
+**注意：** billingScope は個人の Billing Account に依存するため、パラメーターファイルには含めず、環境変数から直接注入します。
 
 ### 6.3.4 Bicep のデプロイ（10-15 分）
 
@@ -239,7 +232,6 @@ az deployment tenant what-if \
   --name "$DEPLOYMENT_NAME" \
   --location japaneast \
   --template-file infrastructure/bicep/subscriptions/sub-management.bicep \
-  --parameters infrastructure/bicep/parameters/sub-management.bicepparam \
   --parameters billingScope="$BILLING_SCOPE"
 
 # 確認後、デプロイ実行
@@ -247,7 +239,6 @@ az deployment tenant create \
   --name "$DEPLOYMENT_NAME" \
   --location japaneast \
   --template-file infrastructure/bicep/subscriptions/sub-management.bicep \
-  --parameters infrastructure/bicep/parameters/sub-management.bicepparam \
   --parameters billingScope="$BILLING_SCOPE"
 
 # デプロイ結果から Subscription ID を取得
