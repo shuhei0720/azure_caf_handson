@@ -423,6 +423,10 @@ using './tenant.bicep'
 param companyPrefix = 'contoso'
 
 param managementGroupMetadata = {
+  intermediateRoot: {
+    displayName: 'Contoso'
+    description: 'Contoso組織の中間ルート管理グループ'
+  }
   platform: {
     displayName: 'Platform'
     description: 'プラットフォーム基盤全体を管理'
