@@ -975,7 +975,7 @@ EOF
 
 ```bash
 git add .
-git commit -m "Chapter 14: Application development and deployment
+git commit -m "Chapter 16: Application development and deployment
 
 - Created Next.js 14 app with TypeScript and Tailwind CSS
 - Implemented Task Manager with CRUD operations

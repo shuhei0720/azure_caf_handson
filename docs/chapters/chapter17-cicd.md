@@ -646,7 +646,7 @@ EOF
 
 ```bash
 git add .
-git commit -m "Chapter 12: CI/CD pipeline implementation
+git commit -m "Chapter 17: CI/CD pipeline implementation
 
 - Created Bicep validation workflow for PR checks
 - Created infrastructure deployment workflow for main branch

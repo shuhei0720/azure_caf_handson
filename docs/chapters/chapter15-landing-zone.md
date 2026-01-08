@@ -1060,7 +1060,7 @@ curl -I https://www.microsoft.com
 
 ```bash
 git add .
-git commit -m "Chapter 13: Landing Zone (Spoke) implementation
+git commit -m "Chapter 15: Landing Zone (Spoke) implementation
 
 - Created Spoke VNet with Hub-Spoke peering
 - Deployed Container Apps Environment with VNet integration

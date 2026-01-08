@@ -726,7 +726,7 @@ EOF
 
 ```bash
 git add .
-git commit -m "Chapter 15: Conclusion and next steps
+git commit -m "Chapter 18: Conclusion and next steps
 
 - Created comprehensive production checklist
 - Documented operations runbook
