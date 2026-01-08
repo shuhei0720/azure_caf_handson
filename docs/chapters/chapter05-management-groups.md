@@ -398,9 +398,6 @@ using './tenant.bicep'
 // Management Groups設定
 // =============================================================================
 
-@description('ルートManagement Groupの表示名')
-param rootManagementGroupDisplayName = 'Contoso'
-
 // 👇 Chapter 5で追記
 @description('会社のプレフィックス')
 param companyPrefix = 'contoso'
@@ -461,8 +458,8 @@ targetScope = 'tenant'
 // パラメータ定義
 // =============================================================================
 
-@description('ルートManagement Groupの表示名')
-param rootManagementGroupDisplayName string = 'Contoso'
+@description('デプロイ日時（自動生成）')
+param deployedAt string = utcNow()
 
 // 👇 Chapter 5で追記
 @description('会社のプレフィックス')
@@ -490,7 +487,7 @@ module managementGroups '../modules/management-groups/main.bicep' = {
 
 output deploymentInfo object = {
   scope: 'tenant'
-  deployedAt: utcNow()
+  deployedAt: deployedAt
 }
 
 // 👇 Chapter 5で追記
