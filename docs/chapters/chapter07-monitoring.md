@@ -2389,6 +2389,17 @@ echo $AUTOMATION_PRINCIPAL_ID
 
 上記コマンドで出力された値を`tenant.bicepparam`の`automationPrincipalId`に設定してください。
 
+What-If で事前確認：
+
+```bash
+# What-If実行
+az deployment tenant what-if \
+  --name "tenant-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/tenant.bicep \
+  --parameters infrastructure/bicep/orchestration/tenant.bicepparam
+```
+
 デプロイ実行：
 
 ```bash
