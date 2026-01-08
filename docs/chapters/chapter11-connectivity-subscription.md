@@ -127,7 +127,7 @@ module connectivitySubscriptionAssociation '../modules/management-groups/subscri
   name: 'deploy-mg-assoc-connectivity'
   params: {
     managementGroupId: '${companyPrefix}-platform-connectivity'
-    subscriptionId: connectivitySubscription.outputs.subscriptionId!
+    subscriptionId: connectivitySubscription.?outputs.?subscriptionId ?? ''
   }
   dependsOn: [
     managementGroups
