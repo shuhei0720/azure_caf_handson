@@ -135,11 +135,10 @@ module landingZoneCorpSubscriptionAssociation '../modules/management-groups/subs
   name: 'deploy-mg-assoc-landingzone-corp'
   params: {
     managementGroupId: '${companyPrefix}-landingzones-corp'
-    subscriptionId: contains(subscriptions, 'landingZoneCorp') ? landingZoneCorpSubscription.outputs.subscriptionId : ''
+    subscriptionId: landingZoneCorpSubscription.outputs.subscriptionId!
   }
   dependsOn: [
     managementGroups
-    landingZoneCorpSubscription
   ]
 }
 ```
