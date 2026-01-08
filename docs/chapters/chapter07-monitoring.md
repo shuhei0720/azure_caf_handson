@@ -2026,24 +2026,27 @@ echo "Principal ID: $POLICY_IDENTITY_PRINCIPAL_ID"
 
 ### 7.8.5 マネージド ID への権限付与
 
-Azure Policy の DeployIfNotExists/Modify 効果（特に Defender for Cloud の適用）には **Owner** 権限が必要です。Management Subscription に対して Owner ロールを付与します。
+Azure Policy の DeployIfNotExists/Modify 効果（特に Defender for Cloud の適用）には **Owner** 権限が必要です。**中間ルート管理グループ** (contoso) に対して Owner ロールを付与します。これにより、その下位のすべての管理グループとサブスクリプションに対してポリシーを実行できます。
 
 ファイル `infrastructure/bicep/modules/identity/role-assignment-owner.bicep` を作成します：
 
 ```bicep
-targetScope = 'subscription'
+targetScope = 'managementGroup'
 
 @description('マネージドIDのPrincipal ID')
 param principalId string
+
+@description('管理グループID')
+param managementGroupId string
 
 @description('ロール定義ID（Owner）')
 param roleDefinitionId string = '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' // Owner
 
 // Owner権限の付与
 resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(subscription().id, principalId, roleDefinitionId)
+  name: guid(managementGroup().id, principalId, roleDefinitionId)
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionId)
+    roleDefinitionId: tenantResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionId)
     principalId: principalId
     principalType: 'ServicePrincipal'
   }
@@ -2055,14 +2058,18 @@ output roleAssignmentId string = roleAssignment.id
 `infrastructure/bicep/orchestration/main.bicep` にロール割り当てモジュールを追加します：
 
 ```bicep
-// Chapter 7: Policy Identity Owner Role Assignment
+// Chapter 7: Policy Identity Owner Role Assignment (中間ルート管理グループに割り当て)
 module policyIdentityOwnerRole '../modules/identity/role-assignment-owner.bicep' = {
   name: 'deploy-policy-identity-owner'
+  scope: managementGroup(companyPrefix)
   params: {
     principalId: policyIdentity.outputs.principalId
+    managementGroupId: companyPrefix
   }
 }
 ```
+
+**注意:** `companyPrefix` (例: 'contoso') が中間ルート管理グループの ID として使用されます。
 
 **What-If による事前確認：**
 
@@ -2081,7 +2088,7 @@ az deployment sub what-if \
 Diagnostics (1): [roleAssignment] (Unsupported) Changes to the resource...cannot be analyzed because its resource ID or API version cannot be calculated until the deployment is under way.
 ```
 
-これは、マネージドIDの `principalId` が動的に参照されるため、What-If 段階では正確なリソースIDを計算できないことを示す警告です。**実際のデプロイ時には問題なく動作します**ので、この警告は無視して問題ありません。
+これは、マネージド ID の `principalId` が動的に参照されるため、What-If 段階では正確なリソース ID を計算できないことを示す警告です。**実際のデプロイ時には問題なく動作します**ので、この警告は無視して問題ありません。
 
 **デプロイ実行：**
 

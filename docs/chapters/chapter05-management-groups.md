@@ -78,10 +78,12 @@ Microsoft CAF では、以下の Management Groups 階層を推奨していま�
 graph TB
     Root["Tenant Root Group<br/>(contoso.onmicrosoft.com)"]
 
-    Root --> Platform["Platform<br/>プラットフォーム基盤"]
-    Root --> LandingZones["Landing Zones<br/>アプリケーション環境"]
-    Root --> Sandbox["Sandbox<br/>検証・実験環境"]
-    Root --> Decommissioned["Decommissioned<br/>廃止予定"]
+    Root --> IntermediateRoot["Contoso<br/>中間ルートグループ"]
+
+    IntermediateRoot --> Platform["Platform<br/>プラットフォーム基盤"]
+    IntermediateRoot --> LandingZones["Landing Zones<br/>アプリケーション環境"]
+    IntermediateRoot --> Sandbox["Sandbox<br/>検証・実験環境"]
+    IntermediateRoot --> Decommissioned["Decommissioned<br/>廃止予定"]
 
     Platform --> PlatformMgmt["Management<br/>監視・ログ"]
     Platform --> PlatformConn["Connectivity<br/>ネットワークHub"]
@@ -91,6 +93,7 @@ graph TB
     LandingZones --> LZOnline["Online<br/>外部向けアプリ"]
 
     style Root fill:#e1f5ff,stroke:#333,stroke-width:3px
+    style IntermediateRoot fill:#fff9e6,stroke:#333,stroke-width:2px
     style Platform fill:#fff4e1
     style LandingZones fill:#e8f5e9
     style Sandbox fill:#ffe8e8
@@ -212,6 +215,10 @@ param companyPrefix string
 
 @description('Management Groupsの説明を含むメタデータ')
 param managementGroupMetadata object = {
+  intermediateRoot: {
+    displayName: 'Contoso'
+    description: '中間ルート管理グループ'
+  }
   platform: {
     displayName: 'Platform'
     description: 'プラットフォーム基盤全体を管理'
@@ -253,6 +260,19 @@ param managementGroupMetadata object = {
 // Tenant Root Management Group ID
 var tenantRootGroupId = '/providers/Microsoft.Management/managementGroups/${tenant().tenantId}'
 
+// 中間ルート管理グループ
+resource intermediateRootMG 'Microsoft.Management/managementGroups@2021-04-01' = {
+  name: companyPrefix
+  properties: {
+    displayName: managementGroupMetadata.intermediateRoot.displayName
+    details: {
+      parent: {
+        id: tenantRootGroupId
+      }
+    }
+  }
+}
+
 // ルートレベルのManagement Groups
 // Platform
 resource platformMG 'Microsoft.Management/managementGroups@2021-04-01' = {
@@ -261,7 +281,7 @@ resource platformMG 'Microsoft.Management/managementGroups@2021-04-01' = {
     displayName: managementGroupMetadata.platform.displayName
     details: {
       parent: {
-        id: tenantRootGroupId
+        id: intermediateRootMG.id
       }
     }
   }
@@ -311,7 +331,7 @@ resource landingZonesMG 'Microsoft.Management/managementGroups@2021-04-01' = {
     displayName: managementGroupMetadata.landingZones.displayName
     details: {
       parent: {
-        id: tenantRootGroupId
+        id: intermediateRootMG.id
       }
     }
   }
@@ -349,7 +369,7 @@ resource sandboxMG 'Microsoft.Management/managementGroups@2021-04-01' = {
     displayName: managementGroupMetadata.sandbox.displayName
     details: {
       parent: {
-        id: tenantRootGroupId
+        id: intermediateRootMG.id
       }
     }
   }
@@ -362,13 +382,14 @@ resource decommissionedMG 'Microsoft.Management/managementGroups@2021-04-01' = {
     displayName: managementGroupMetadata.decommissioned.displayName
     details: {
       parent: {
-        id: tenantRootGroupId
+        id: intermediateRootMG.id
       }
     }
   }
 }
 
 // 出力
+output intermediateRootMGId string = intermediateRootMG.id
 output platformMGId string = platformMG.id
 output platformManagementMGId string = platformManagementMG.id
 output platformConnectivityMGId string = platformConnectivityMG.id
