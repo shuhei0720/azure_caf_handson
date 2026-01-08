@@ -267,8 +267,11 @@ param billingScope string = ''
 @description('Subscriptions設定')
 param subscriptions object = {}
 
+// 条件を変数で定義
+var hasManagementSubscription = contains(subscriptions, 'management')
+
 // Management Subscription作成
-module managementSubscription '../modules/subscriptions/subscription.bicep' = if (contains(subscriptions, 'management')) {
+module managementSubscription '../modules/subscriptions/subscription.bicep' = if (hasManagementSubscription) {
   name: 'deploy-subscription-management'
   params: {
     subscriptionAliasName: subscriptions.management.aliasName
@@ -279,7 +282,7 @@ module managementSubscription '../modules/subscriptions/subscription.bicep' = if
 }
 
 // Management SubscriptionをManagement Groupに紐づけ
-module managementSubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = if (contains(subscriptions, 'management')) {
+module managementSubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = if (hasManagementSubscription) {
   name: 'deploy-mg-assoc-management'
   params: {
     managementGroupId: '${companyPrefix}-platform-management'

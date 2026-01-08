@@ -101,8 +101,11 @@ param subscriptions = {
 **orchestration/tenant.bicep を開き**、Identity Subscription モジュールを追記：
 
 ```bicep
+// 条件を変数で定義
+var hasIdentitySubscription = contains(subscriptions, 'identity')
+
 // Identity Subscription作成
-module identitySubscription '../modules/subscriptions/subscription.bicep' = if (contains(subscriptions, 'identity')) {
+module identitySubscription '../modules/subscriptions/subscription.bicep' = if (hasIdentitySubscription) {
   name: 'deploy-subscription-identity'
   params: {
     subscriptionAliasName: subscriptions.identity.aliasName
@@ -113,7 +116,7 @@ module identitySubscription '../modules/subscriptions/subscription.bicep' = if (
 }
 
 // Identity SubscriptionをManagement Groupに紐づけ
-module identitySubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = if (contains(subscriptions, 'identity')) {
+module identitySubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = if (hasIdentitySubscription) {
   name: 'deploy-mg-assoc-identity'
   params: {
     managementGroupId: '${companyPrefix}-platform-identity'

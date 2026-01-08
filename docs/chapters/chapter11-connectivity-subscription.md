@@ -111,8 +111,11 @@ param subscriptions = {
 **orchestration/tenant.bicep を開き**、Connectivity Subscription モジュールを追記：
 
 ```bicep
+// 条件を変数で定義
+var hasConnectivitySubscription = contains(subscriptions, 'connectivity')
+
 // Connectivity Subscription作成
-module connectivitySubscription '../modules/subscriptions/subscription.bicep' = if (contains(subscriptions, 'connectivity')) {
+module connectivitySubscription '../modules/subscriptions/subscription.bicep' = if (hasConnectivitySubscription) {
   name: 'deploy-subscription-connectivity'
   params: {
     subscriptionAliasName: subscriptions.connectivity.aliasName
@@ -123,7 +126,7 @@ module connectivitySubscription '../modules/subscriptions/subscription.bicep' = 
 }
 
 // Connectivity SubscriptionをManagement Groupに紐づけ
-module connectivitySubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = if (contains(subscriptions, 'connectivity')) {
+module connectivitySubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = if (hasConnectivitySubscription) {
   name: 'deploy-mg-assoc-connectivity'
   params: {
     managementGroupId: '${companyPrefix}-platform-connectivity'

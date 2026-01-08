@@ -119,8 +119,11 @@ param subscriptions = {
 **orchestration/tenant.bicep を開き**、Landing Zone Subscription モジュールを追記：
 
 ```bicep
+// 条件を変数で定義
+var hasLandingZoneCorpSubscription = contains(subscriptions, 'landingZoneCorp')
+
 // Landing Zone Corp Subscription作成
-module landingZoneCorpSubscription '../modules/subscriptions/subscription.bicep' = if (contains(subscriptions, 'landingZoneCorp')) {
+module landingZoneCorpSubscription '../modules/subscriptions/subscription.bicep' = if (hasLandingZoneCorpSubscription) {
   name: 'deploy-subscription-landingzone-corp'
   params: {
     subscriptionAliasName: subscriptions.landingZoneCorp.aliasName
@@ -131,7 +134,7 @@ module landingZoneCorpSubscription '../modules/subscriptions/subscription.bicep'
 }
 
 // Landing Zone Corp SubscriptionをManagement Groupに紐づけ
-module landingZoneCorpSubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = if (contains(subscriptions, 'landingZoneCorp')) {
+module landingZoneCorpSubscriptionAssociation '../modules/management-groups/subscription-association.bicep' = if (hasLandingZoneCorpSubscription) {
   name: 'deploy-mg-assoc-landingzone-corp'
   params: {
     managementGroupId: '${companyPrefix}-landingzones-corp'
