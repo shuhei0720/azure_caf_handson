@@ -207,6 +207,8 @@ echo $SUB_LANDINGZONE_CORP_ID
 
 この値をパラメーターファイルの `subscriptionId` に設定します。
 
+### 14.3.2 What-If による事前確認
+
 第 6 章で作成した Bicep モジュールを使用します：
 
 ```bash
@@ -216,8 +218,12 @@ az deployment mg what-if \
   --location japaneast \
   --template-file infrastructure/bicep/modules/management-groups/subscription-association.bicep \
   --parameters infrastructure/bicep/parameters/mg-assoc-landingzone-corp.bicepparam
+```
 
-# 確認後、デプロイ実行
+### 14.3.3 デプロイ実行
+
+```bash
+# デプロイ実行
 az deployment mg create \
   --management-group-id contoso-landingzones-corp \
   --location japaneast \
@@ -227,7 +233,7 @@ az deployment mg create \
 echo "Landing Zone Subscription が Management Group に割り当てられました"
 ```
 
-### Azure ポータルでの確認
+### 14.3.4 Azure ポータルでの確認
 
 1. Azure ポータルで「Management groups」を開く
 
