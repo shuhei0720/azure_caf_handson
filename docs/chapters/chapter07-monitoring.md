@@ -2371,10 +2371,12 @@ echo "Key Vault Name: $KEY_VAULT_NAME"
 ```
 
 **デプロイされるリソース**:
-- Key Vault（RBAC認証、Soft Delete、Purge Protection有効）
+
+- Key Vault（RBAC 認証、Soft Delete、Purge Protection 有効）
 - Key Vault Secrets Officer ロール割り当て（自分のユーザーに付与）
 
 **権限の説明**:
+
 - **Key Vault Secrets Officer**: シークレットの読み書きが可能
 - Automation Account には後でシークレット読み取り権限を付与
 
