@@ -80,17 +80,16 @@
 #### [第 7 章：監視・ログ基盤構築（1 日目）](chapters/chapter07-monitoring.md)
 
 - Log Analytics Workspace の構築
-- Azure Monitor の設定
-  - 診断設定の一括適用
-  - メトリクスとログの収集
-- アラートの設定
-  - アクショングループの作成
-  - アラートルールの作成
-- Workbook の作成（ダッシュボード）
-- Application Insights の設定
-- Azure Automation アカウントの構築
-  - 自動化 Runbook の作成
-- Update Management の設定
+  - テーブルレベルの保持期間設定
+  - ログ保存期間とアーカイブ戦略
+- Data Collection Rules (DCR) の構築
+  - VM Insights 用 DCR
+  - Windows Event Logs と Syslog 収集用 DCR
+- Entra ID の監査ログ収集
+- サブスクリプションのアクティビティログ収集
+- 既存リソースの診断設定
+- Azure Policy 用ユーザー割り当てマネージド ID
+  - Management Group レベルでの権限付与
 
 ---
 

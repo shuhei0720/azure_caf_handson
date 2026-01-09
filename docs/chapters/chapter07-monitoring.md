@@ -1217,7 +1217,7 @@ echo "OS Logs DCR ID: $DCR_OS_LOGS_ID"
 
 これにより、新しく作成される VM にも自動的に Azure Monitor Agent がインストールされ、ログ収集が開始されます。
 
-### 7.4.3 Azure Portal での確認
+### 7.4.4 Azure Portal での確認
 
 デプロイ後、Azure Portal で以下を確認します:
 
@@ -2180,4 +2180,4 @@ Management Subscription の作成と監視・ログ基盤の構築が完了し�
 
 ---
 
-**最終更新**: 2026 年 1 月 7 日
+**最終更新**: 2026 年 1 月 9 日
