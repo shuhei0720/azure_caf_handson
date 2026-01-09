@@ -2350,9 +2350,7 @@ module keyVaultRoleAssignment '../modules/security/key-vault-role-assignment.bic
 
 **ポイント**: `keyVault.outputs.keyVaultId` を参照しているため、暗黙的な依存関係により Key Vault が先にデプロイされます。
 
-#### 出力の追加
-
-同じファイルの末尾（既存の output の後）に以下を追加：
+同じファイルに続けて、出力を追加：
 
 ```bicep
 // Chapter 7: Key Vault Outputs
