@@ -2512,10 +2512,12 @@ resource existingAutomationAccount 'Microsoft.Automation/automationAccounts@2023
 }
 
 // 出力（条件に応じて切り替え）
-output automationAccountId string = isInitialDeploy ? automationAccount.id : existingAutomationAccount.id
+output automationAccountId string = isInitialDeploy ? automationAccount!.id : existingAutomationAccount!.id
 output automationAccountName string = automationAccountName
-output principalId string = isInitialDeploy ? automationAccount.identity.principalId : existingAutomationAccount.identity.principalId
+output principalId string = isInitialDeploy ? automationAccount!.identity.principalId : existingAutomationAccount!.identity.principalId
 ```
+
+**注意**: `!` はnon-null assertionオペレーターで、条件付きリソースがnullにならないことをBicepに明示します（警告BCP318の回避）。
 
 #### isInitialDeploy パラメータの仕組み
 
@@ -2982,7 +2984,7 @@ resource runbook 'Microsoft.Automation/automationAccounts/runbooks@2023-11-01' =
 
 // 出力
 output runbookName string = runbook.name
-output runbookId string = runbook.id
+output runbookId string = runbook!.id
 ```
 
 **重要**:
@@ -3061,7 +3063,7 @@ resource sourceControl 'Microsoft.Automation/automationAccounts/sourceControls@2
 
 // 出力
 output sourceControlName string = sourceControl.name
-output sourceControlId string = sourceControl.id
+output sourceControlId string = sourceControl!.id
 ```
 
 **重要**:
