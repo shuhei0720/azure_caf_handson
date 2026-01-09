@@ -2957,10 +2957,12 @@ output sourceControlId string = sourceControl!.id
 
 ### 7.10.9 オーケストレーションへの統合
 
+7.10.3で追加した Automation Account モジュールに、Runbook と Source Control モジュールを追加します。
+
 `infrastructure/bicep/orchestration/main.bicep` の Automation Account セクションを更新します：
 
 ```bicep
-// Chapter 7: Automation Account
+// Chapter 7: Automation Account（7.10.3で既に追加済み、isInitialDeployをfalseに変更）
 module automationAccount '../modules/automation/automation-account.bicep' = {
   name: 'deploy-automation-account'
   scope: resourceGroup(monitoring.resourceGroup.name)
@@ -2970,11 +2972,11 @@ module automationAccount '../modules/automation/automation-account.bicep' = {
     tags: union(tags, {
       Purpose: 'Automation and Runbooks'
     })
-    isInitialDeploy: true  // 【初回デプロイ用】完了後すぐにfalseに変更してください
+    isInitialDeploy: false  // 7.10.5のデプロイ完了後、既にfalseに変更済み
   }
 }
 
-// Chapter 7: Runbook
+// Chapter 7: Runbook（新規追加）
 module runbook '../modules/automation/runbook.bicep' = {
   name: 'deploy-runbook-stop-sandbox-vms'
   scope: resourceGroup(monitoring.resourceGroup.name)
@@ -2988,7 +2990,7 @@ module runbook '../modules/automation/runbook.bicep' = {
   }
 }
 
-// Chapter 7: Source Control Integration
+// Chapter 7: Source Control Integration（新規追加）
 module sourceControl '../modules/automation/source-control.bicep' = {
   name: 'deploy-source-control-github'
   scope: resourceGroup(monitoring.resourceGroup.name)
@@ -3004,7 +3006,7 @@ module sourceControl '../modules/automation/source-control.bicep' = {
   }
 }
 
-// Chapter 7: Automation Account Outputs
+// Chapter 7: Automation Account Outputs（runbookNameを追加）
 output automationAccountId string = automationAccount.outputs.automationAccountId
 output automationPrincipalId string = automationAccount.outputs.principalId
 output runbookName string = runbook.outputs.runbookName
@@ -3012,26 +3014,16 @@ output runbookName string = runbook.outputs.runbookName
 
 #### 統合時の重要ポイント
 
-**1. モジュールの役割分担**
+**1. Automation Account本体は既にデプロイ済み**
+- 7.10.5で既にAutomation Accountは作成済みです
+- `isInitialDeploy: false`に変更済みの状態で、Runbookモジュールを追加します
 
-- `automation-account.bicep`: Automation Account 本体のみを管理（isInitialDeploy で制御）
-- `runbook.bicep`: Runbook 子リソースのみを管理（existing で親を参照）
-- `source-control.bicep`: Source Control 子リソースのみを管理（existing で親を参照）
-
-**2. 初回デプロイ完了後の作業**
-
-```bash
-# 1. デプロイが成功したら、automation-accountモジュールのisInitialDeployをfalseに変更
-# main.bicep の automation-account モジュールのみ false に変更
-
-# 2. 変更をコミット
-git add infrastructure/bicep/orchestration/main.bicep
-git commit -m "Automation: isInitialDeploy を false に変更（初回デプロイ完了）"
-git push
-```
+**2. モジュールの役割分担**
+- `automation-account.bicep`: Automation Account本体（既存リソース参照モード）
+- `runbook.bicep`: Runbook子リソースのみを管理（existingで親を参照）
+- `source-control.bicep`: Source Control子リソースのみを管理（existingで親を参照）
 
 **3. dependsOn が不要な理由**
-
 - 既存リソース参照（`existing`）の場合、Bicep が自動的に依存関係を解決します
 - 明示的な `dependsOn` は不要で、コードがシンプルになります
 
