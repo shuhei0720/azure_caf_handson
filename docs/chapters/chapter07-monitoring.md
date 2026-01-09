@@ -2386,12 +2386,13 @@ az deployment sub create \
 
 echo "✅ Key Vaultをデプロイしました"
 
-# Key Vault名を取得
+# Key Vault名を取得して環境変数に保存
 KEY_VAULT_NAME=$(az deployment sub show \
   --name "$DEPLOYMENT_NAME" \
   --query 'properties.outputs.keyVaultName.value' \
   --output tsv)
 
+grep -q "KEY_VAULT_NAME=" .env 2>/dev/null || echo "KEY_VAULT_NAME=$KEY_VAULT_NAME" >> .env
 echo "Key Vault Name: $KEY_VAULT_NAME"
 ```
 
