@@ -2187,6 +2187,9 @@ param tenantId string = subscription().tenantId
 @maxValue(90)
 param softDeleteRetentionInDays int = 90
 
+@description('Key Vault管理者のオブジェクトID')
+param administratorObjectId string
+
 @description('タグ')
 param tags object = {}
 
@@ -2216,6 +2219,17 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   }
 }
 
+// Key Vault Secrets Officer ロールの割り当て
+resource kvSecretsOfficerRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(keyVault.id, administratorObjectId, 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7')
+  scope: keyVault
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7') // Key Vault Secrets Officer
+    principalId: administratorObjectId
+    principalType: 'User'
+  }
+}
+
 // 出力
 output keyVaultId string = keyVault.id
 output keyVaultName string = keyVault.name
@@ -2224,31 +2238,30 @@ output keyVaultUri string = keyVault.properties.vaultUri
 
 ### 7.9.2 オーケストレーションへの統合
 
-`infrastructure/bicep/orchestration/main.bicep` に Key Vault モジュールを追加：
+#### 自分のオブジェクト ID を取得
 
-```bicep
-// Chapter 7: Key Vault
-module keyVault '../modules/security/key-vault.bicep' = {
-  name: 'deploy-key-vault'
-  scope: resourceGroup(monitoring.resourceGroup.name)
-  params: {
-    keyVaultName: 'kv-mgmt-prod-jpe-001'  // グローバルで一意な名前に変更
-    location: location
-    softDeleteRetentionInDays: 90
-    tags: union(tags, {
-      Purpose: 'Secrets Management'
-    })
-  }
-}
-
-// Chapter 7: Key Vault Outputs
-output keyVaultId string = keyVault.outputs.keyVaultId
-output keyVaultName string = keyVault.outputs.keyVaultName
+```bash
+# 自分のオブジェクトIDを取得
+MY_OBJECT_ID=$(az ad signed-in-user show --query id -o tsv)
+echo "My Object ID: $MY_OBJECT_ID"
 ```
 
-**注意**: Key Vault 名（`kv-mgmt-prod-jpe-001`）はグローバルで一意である必要があります。既に使用されている場合は別の名前に変更してください。
+#### main.bicepparam にパラメータを追加
 
-### 7.9.2 オーケストレーションへの統合
+`infrastructure/bicep/orchestration/main.bicepparam` の `monitoring` セクションに Key Vault パラメータを追加：
+
+```bicep
+param monitoring = {
+  // ... 既存の設定 ...
+  keyVault: {
+    name: 'kv-mgmt-prod-jpe-001'  // グローバルで一意な名前に変更
+    administratorObjectId: 'YOUR_OBJECT_ID'  // 👆上記コマンドで取得したIDに置き換え
+    softDeleteRetentionInDays: 90
+  }
+}
+```
+
+#### main.bicep にモジュールを追加
 
 `infrastructure/bicep/orchestration/main.bicep` に Key Vault モジュールを追加：
 
@@ -2258,9 +2271,10 @@ module keyVault '../modules/security/key-vault.bicep' = {
   name: 'deploy-key-vault'
   scope: resourceGroup(monitoring.resourceGroup.name)
   params: {
-    keyVaultName: 'kv-mgmt-prod-jpe-001'  // グローバルで一意な名前に変更
+    keyVaultName: monitoring.keyVault.name
     location: location
-    softDeleteRetentionInDays: 90
+    administratorObjectId: monitoring.keyVault.administratorObjectId
+    softDeleteRetentionInDays: monitoring.keyVault.softDeleteRetentionInDays
     tags: union(tags, {
       Purpose: 'Secrets Management'
     })
@@ -2311,24 +2325,11 @@ KEY_VAULT_NAME=$(az deployment sub show \
 echo "Key Vault Name: $KEY_VAULT_NAME"
 ```
 
-### 7.9.5 Key Vault Secrets Officer ロールの付与
-
-```bash
-# 自分のオブジェクトIDを取得
-MY_OBJECT_ID=$(az ad signed-in-user show --query id -o tsv)
-echo "My Object ID: $MY_OBJECT_ID"
-
-# Key Vault Secrets Officerロールを付与
-az role assignment create \
-  --assignee $MY_OBJECT_ID \
-  --role "Key Vault Secrets Officer" \
-  --scope "/subscriptions/$SUB_MANAGEMENT_ID/resourceGroups/rg-platform-management-prod-jpe-001/providers/Microsoft.KeyVault/vaults/$KEY_VAULT_NAME"
-
-echo "✅ Key Vault Secrets Officer権限を付与しました"
-```
+**デプロイされるリソース**:
+- Key Vault（RBAC認証、Soft Delete、Purge Protection有効）
+- Key Vault Secrets Officer ロール割り当て（自分のユーザーに付与）
 
 **権限の説明**:
-
 - **Key Vault Secrets Officer**: シークレットの読み書きが可能
 - Automation Account には後でシークレット読み取り権限を付与
 
