@@ -270,9 +270,9 @@ echo "✅ Defender for Cloud が orchestration 経由でデプロイされまし
 
 ## 12.3 Azure Key Vault
 
-**Azure Key Vault** は第 7 章で作成済みです。GitHub Personal Access Token などの機密情報を安全に保管しています。
+**Azure Key Vault** は、シークレット、暗号化キー、証明書を安全に保管・管理するサービスです。
 
-Key Vault の詳細と構築手順については、**第 7 章 7.9 Key Vault の構築** を参照してください。
+本ハンズオンでは、Key Vault は必要に応じて各章で個別に作成します（例：アプリケーションの機密情報保管用など）。
 
 ---
 

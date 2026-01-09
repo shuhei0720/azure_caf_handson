@@ -1627,7 +1627,6 @@ graph LR
 診断設定が利用可能なリソース：
 
 - Azure Firewall
-- Key Vault
 - Azure Bastion
 - Storage Account
 - Virtual Network Gateway
@@ -1797,7 +1796,7 @@ echo "✅ Log Analytics Workspace の診断設定が orchestration 経由でデ�
 
 **今後のリソース作成ルール：**
 
-今後、新しいリソースを作成する際は、診断設定が利用可能なリソース（Azure Firewall、Key Vault、Bastion、Storage Account 等）については、リソース作成と同じ Bicep ファイル内で診断設定も一緒に定義します。
+今後、新しいリソースを作成する際は、診断設定が利用可能なリソース（Azure Firewall、Bastion、Storage Account 等）については、リソース作成と同じ Bicep ファイル内で診断設定も一緒に定義します。
 
 ### 7.7.5 Azure Portal での確認
 
@@ -1857,21 +1856,6 @@ AzureDiagnostics
 | project TimeGenerated, msg_s, Resource
 | order by TimeGenerated desc
 
-// Key Vault - シークレットアクセス（第12章で作成後に使用可能）
-AzureDiagnostics
-| where ResourceType == "VAULTS"
-| where OperationName == "SecretGet"
-| project TimeGenerated, CallerIPAddress, identity_claim_http_schemas_xmlsoap_org_ws_2005_05_identity_claims_upn_s,
-          Resource, ResultSignature
-| order by TimeGenerated desc
-
-// Key Vault - 失敗したアクセス試行
-AzureDiagnostics
-| where ResourceType == "VAULTS"
-| where ResultSignature != "OK"
-| project TimeGenerated, CallerIPAddress, OperationName, ResultSignature, Resource
-| order by TimeGenerated desc
-
 // すべてのリソースの診断設定概要
 AzureDiagnostics
 | summarize count() by ResourceType, Category
@@ -1881,11 +1865,10 @@ AzureDiagnostics
 **診断設定ログの活用シーン：**
 
 - **セキュリティ分析**: Firewall でブロックされた不審なトラフィック
-- **コンプライアンス**: Key Vault のシークレットアクセス履歴
 - **トラブルシューティング**: 接続失敗の原因調査
 - **キャパシティプランニング**: リソース使用状況の傾向分析
 
-**注意：** 上記の Azure Firewall と Key Vault のクエリは、それぞれ第 13 章（Networking Hub）と第 12 章（Security）でリソース作成後に実行可能になります。
+**注意：** 上記の Azure Firewall のクエリは、第 13 章（Networking Hub）でリソース作成後に実行可能になります。
 
 ---
 
@@ -2173,7 +2156,6 @@ echo "✅ マネージドIDにOwner権限を付与しました"
 
    - アクショングループ（メール通知）
    - メトリクスベースアラート（Firewall CPU）
-   - ログベースアラート（Key Vault 失敗）
 
 ### 重要なポイント
 
@@ -2199,4 +2181,3 @@ Management Subscription の作成と監視・ログ基盤の構築が完了し�
 ---
 
 **最終更新**: 2026 年 1 月 7 日
-
