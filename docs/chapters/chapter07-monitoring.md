@@ -2304,9 +2304,10 @@ param monitoring = {
 }
 ```
 
-**⚠️ 重要**: 
-- Key Vault名はグローバルで一意である必要があります
-- `administratorObjectId` には必ず自分のオブジェクトIDを設定してください
+**⚠️ 重要**:
+
+- Key Vault 名はグローバルで一意である必要があります
+- `administratorObjectId` には必ず自分のオブジェクト ID を設定してください
 
 ### 7.9.4 オーケストレーションファイルの編集
 
@@ -2351,7 +2352,7 @@ module keyVaultRoleAssignment '../modules/security/key-vault-role-assignment.bic
 
 #### 出力の追加
 
-同じファイルのoutputセクションに以下を追加：
+同じファイルの末尾（既存の output の後）に以下を追加：
 
 ```bicep
 // Chapter 7: Key Vault Outputs
