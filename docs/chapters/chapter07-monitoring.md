@@ -2187,9 +2187,6 @@ param tenantId string = subscription().tenantId
 @maxValue(90)
 param softDeleteRetentionInDays int = 90
 
-@description('Key Vault管理者のオブジェクトID')
-param administratorObjectId string
-
 @description('タグ')
 param tags object = {}
 
@@ -2219,24 +2216,59 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   }
 }
 
-// Key Vault Secrets Officer ロールの割り当て
-resource kvSecretsOfficerRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyVault.id, administratorObjectId, 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7')
-  scope: keyVault
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7') // Key Vault Secrets Officer
-    principalId: administratorObjectId
-    principalType: 'User'
-  }
-}
-
 // 出力
 output keyVaultId string = keyVault.id
 output keyVaultName string = keyVault.name
 output keyVaultUri string = keyVault.properties.vaultUri
 ```
 
-### 7.9.2 オーケストレーションへの統合
+### 7.9.2 Key Vault ロール割り当てモジュールの作成
+
+**CAF ベストプラクティス**: リソース定義とロール割り当ては分離して管理します。これにより、再利用性が向上し、権限管理が明確になります。
+
+ファイル `infrastructure/bicep/modules/security/key-vault-role-assignment.bicep` を作成：
+
+```bicep
+targetScope = 'resourceGroup'
+
+@description('Key VaultのリソースID')
+param keyVaultId string
+
+@description('ロールを割り当てるプリンシパルのオブジェクトID')
+param principalId string
+
+@description('プリンシパルのタイプ')
+@allowed([
+  'User'
+  'ServicePrincipal'
+  'Group'
+])
+param principalType string = 'User'
+
+@description('ロール定義ID（Key Vault Secrets Officer）')
+param roleDefinitionId string = 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
+
+// 既存のKey Vaultを参照
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
+  name: split(keyVaultId, '/')[8]
+}
+
+// Key Vault Secrets Officer ロールの割り当て
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(keyVaultId, principalId, roleDefinitionId)
+  scope: keyVault
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionId)
+    principalId: principalId
+    principalType: principalType
+  }
+}
+
+// 出力
+output roleAssignmentId string = roleAssignment.id
+```
+
+### 7.9.3 オーケストレーションへの統合
 
 #### 自分のオブジェクト ID を取得
 
@@ -2263,7 +2295,7 @@ param monitoring = {
 
 #### main.bicep にモジュールを追加
 
-`infrastructure/bicep/orchestration/main.bicep` に Key Vault モジュールを追加：
+`infrastructure/bicep/orchestration/main.bicep` に Key Vault モジュールとロール割り当てモジュールを追加：
 
 ```bicep
 // Chapter 7: Key Vault
@@ -2273,12 +2305,25 @@ module keyVault '../modules/security/key-vault.bicep' = {
   params: {
     keyVaultName: monitoring.keyVault.name
     location: location
-    administratorObjectId: monitoring.keyVault.administratorObjectId
     softDeleteRetentionInDays: monitoring.keyVault.softDeleteRetentionInDays
     tags: union(tags, {
       Purpose: 'Secrets Management'
     })
   }
+}
+
+// Chapter 7: Key Vault Role Assignment
+module keyVaultRoleAssignment '../modules/security/key-vault-role-assignment.bicep' = {
+  name: 'deploy-key-vault-role-assignment'
+  scope: resourceGroup(monitoring.resourceGroup.name)
+  params: {
+    keyVaultId: keyVault.outputs.keyVaultId
+    principalId: monitoring.keyVault.administratorObjectId
+    principalType: 'User'
+  }
+  dependsOn: [
+    keyVault
+  ]
 }
 
 // Chapter 7: Key Vault Outputs
@@ -2288,7 +2333,7 @@ output keyVaultName string = keyVault.outputs.keyVaultName
 
 **注意**: Key Vault 名（`kv-mgmt-prod-jpe-001`）はグローバルで一意である必要があります。既に使用されている場合は別の名前に変更してください。
 
-### 7.9.3 What-If による事前確認
+### 7.9.4 What-If による事前確認
 
 ```bash
 # Management Subscription に切り替え
@@ -2302,7 +2347,7 @@ az deployment sub what-if \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
 ```
 
-### 7.9.4 デプロイ実行
+### 7.9.5 デプロイ実行
 
 ```bash
 # デプロイ実行
