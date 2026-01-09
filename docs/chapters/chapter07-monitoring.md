@@ -2222,7 +2222,7 @@ output keyVaultName string = keyVault.name
 output keyVaultUri string = keyVault.properties.vaultUri
 ```
 
-#### オーケストレーションへの統合
+### 7.9.2 オーケストレーションへの統合
 
 `infrastructure/bicep/orchestration/main.bicep` に Key Vault モジュールを追加：
 
@@ -2248,19 +2248,49 @@ output keyVaultName string = keyVault.outputs.keyVaultName
 
 **注意**: Key Vault 名（`kv-mgmt-prod-jpe-001`）はグローバルで一意である必要があります。既に使用されている場合は別の名前に変更してください。
 
-### 7.9.2 Key Vault のデプロイ
+### 7.9.2 オーケストレーションへの統合
+
+`infrastructure/bicep/orchestration/main.bicep` に Key Vault モジュールを追加：
+
+```bicep
+// Chapter 7: Key Vault
+module keyVault '../modules/security/key-vault.bicep' = {
+  name: 'deploy-key-vault'
+  scope: resourceGroup(monitoring.resourceGroup.name)
+  params: {
+    keyVaultName: 'kv-mgmt-prod-jpe-001'  // グローバルで一意な名前に変更
+    location: location
+    softDeleteRetentionInDays: 90
+    tags: union(tags, {
+      Purpose: 'Secrets Management'
+    })
+  }
+}
+
+// Chapter 7: Key Vault Outputs
+output keyVaultId string = keyVault.outputs.keyVaultId
+output keyVaultName string = keyVault.outputs.keyVaultName
+```
+
+**注意**: Key Vault 名（`kv-mgmt-prod-jpe-001`）はグローバルで一意である必要があります。既に使用されている場合は別の名前に変更してください。
+
+### 7.9.3 What-If による事前確認
 
 ```bash
-# Management Subscription にデプロイ
+# Management Subscription に切り替え
 az account set --subscription $SUB_MANAGEMENT_ID
 
-# What-If で確認
+# What-If で事前確認
 az deployment sub what-if \
   --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
+```
 
+### 7.9.4 デプロイ実行
+
+```bash
 # デプロイ実行
 DEPLOYMENT_NAME="main-deployment-$(date +%Y%m%d-%H%M%S)"
 
@@ -2281,7 +2311,7 @@ KEY_VAULT_NAME=$(az deployment sub show \
 echo "Key Vault Name: $KEY_VAULT_NAME"
 ```
 
-### 7.9.3 Key Vault Secrets Officer ロールの付与
+### 7.9.5 Key Vault Secrets Officer ロールの付与
 
 ```bash
 # 自分のオブジェクトIDを取得
