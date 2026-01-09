@@ -2594,8 +2594,8 @@ echo "Automation Account Principal ID: $AUTOMATION_PRINCIPAL_ID"
 
 **デプロイ完了後の作業**:
 
-infrastructure/bicep/orchestration/main.bicep の該当箇所を編集
-isInitialDeploy: true → false に変更
+- infrastructure/bicep/orchestration/main.bicep の該当箇所を編集
+- isInitialDeploy: true → false に変更
 
 ```bash
 
