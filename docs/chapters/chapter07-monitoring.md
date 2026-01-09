@@ -2268,7 +2268,7 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 output roleAssignmentId string = roleAssignment.id
 ```
 
-### 7.9.3 オーケストレーションへの統合
+### 7.9.3 パラメータファイルの設定
 
 #### 自分のオブジェクト ID を取得
 
@@ -2278,24 +2278,41 @@ MY_OBJECT_ID=$(az ad signed-in-user show --query id -o tsv)
 echo "My Object ID: $MY_OBJECT_ID"
 ```
 
-#### main.bicepparam にパラメータを追加
+#### main.bicepparam の編集
 
-`infrastructure/bicep/orchestration/main.bicepparam` の `monitoring` セクションに Key Vault パラメータを追加：
+`infrastructure/bicep/orchestration/main.bicepparam` を開き、`monitoring` セクションに以下を追加：
 
 ```bicep
 param monitoring = {
-  // ... 既存の設定 ...
+  resourceGroup: {
+    name: 'rg-platform-management-prod-jpe-001'
+    tags: {
+      Environment: 'Production'
+      ManagedBy: 'Bicep'
+      Component: 'Monitoring'
+    }
+  }
+  logAnalytics: {
+    // ... 既存のLog Analytics設定 ...
+  }
+  // 👇 Key Vault設定を追加
   keyVault: {
-    name: 'kv-mgmt-prod-jpe-001'  // グローバルで一意な名前に変更
-    administratorObjectId: 'YOUR_OBJECT_ID'  // 👆上記コマンドで取得したIDに置き換え
+    name: 'kv-mgmt-prod-jpe-001'  // ⚠️ グローバルで一意な名前に変更
+    administratorObjectId: 'YOUR_OBJECT_ID'  // 👆上記で取得したオブジェクトIDに置き換え
     softDeleteRetentionInDays: 90
   }
 }
 ```
 
-#### main.bicep にモジュールを追加
+**⚠️ 重要**: 
+- Key Vault名はグローバルで一意である必要があります
+- `administratorObjectId` には必ず自分のオブジェクトIDを設定してください
 
-`infrastructure/bicep/orchestration/main.bicep` に Key Vault モジュールとロール割り当てモジュールを追加：
+### 7.9.4 オーケストレーションファイルの編集
+
+#### Key Vault モジュールの追加
+
+`infrastructure/bicep/orchestration/main.bicep` を開き、以下を追加：
 
 ```bicep
 // Chapter 7: Key Vault
@@ -2311,7 +2328,13 @@ module keyVault '../modules/security/key-vault.bicep' = {
     })
   }
 }
+```
 
+#### ロール割り当てモジュールの追加
+
+同じファイルに続けて、ロール割り当てモジュールを追加：
+
+```bicep
 // Chapter 7: Key Vault Role Assignment
 module keyVaultRoleAssignment '../modules/security/key-vault-role-assignment.bicep' = {
   name: 'deploy-key-vault-role-assignment'
@@ -2321,19 +2344,22 @@ module keyVaultRoleAssignment '../modules/security/key-vault-role-assignment.bic
     principalId: monitoring.keyVault.administratorObjectId
     principalType: 'User'
   }
-  dependsOn: [
-    keyVault
-  ]
 }
+```
 
+**ポイント**: `keyVault.outputs.keyVaultId` を参照しているため、暗黙的な依存関係により Key Vault が先にデプロイされます。
+
+#### 出力の追加
+
+同じファイルのoutputセクションに以下を追加：
+
+```bicep
 // Chapter 7: Key Vault Outputs
 output keyVaultId string = keyVault.outputs.keyVaultId
 output keyVaultName string = keyVault.outputs.keyVaultName
 ```
 
-**注意**: Key Vault 名（`kv-mgmt-prod-jpe-001`）はグローバルで一意である必要があります。既に使用されている場合は別の名前に変更してください。
-
-### 7.9.4 What-If による事前確認
+### 7.9.5 What-If による事前確認
 
 ```bash
 # Management Subscription に切り替え
@@ -2347,7 +2373,7 @@ az deployment sub what-if \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
 ```
 
-### 7.9.5 デプロイ実行
+### 7.9.6 デプロイ実行
 
 ```bash
 # デプロイ実行
