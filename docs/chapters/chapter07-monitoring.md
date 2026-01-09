@@ -2456,18 +2456,6 @@ graph LR
 
 Automation Account を Management Subscription に作成します。集中管理の観点から、監視・運用ツールは Management Subscription に配置します。
 
-#### What-If 差異問題とその解決策
-
-**問題**: Automation Account をデプロイすると、What-If で毎回 `RuntimeConfiguration` の削除が表示されます。これは Azure が自動管理する読み取り専用プロパティのため、Bicep では定義できません。
-
-**解決策**: `isInitialDeploy` パラメータを使用して、初回デプロイ後は Automation Account 本体をスキップし、既存リソースを参照します。
-
-**メリット**:
-
-- 2 回目以降のデプロイで不要な差異が表示されない
-- Runbook や子リソースの変更を安心して What-If で確認可能
-- 日常運用がクリーンな状態を保てる
-
 ```bash
 mkdir -p infrastructure/bicep/modules/automation
 ```
@@ -2564,46 +2552,7 @@ output automationAccountId string = automationAccount.outputs.automationAccountI
 output automationPrincipalId string = automationAccount.outputs.principalId
 ```
 
-#### パラメータの具体的な使い方
-
-**ステップ 1: 初回デプロイ**
-
-```bicep
-isInitialDeploy: true  // ← この状態でデプロイ
-```
-
-→ Automation Account が作成されます
-
-**ステップ 2: 初回デプロイ完了後すぐに変更**
-
-```bicep
-isInitialDeploy: false  // ← false に変更してコミット
-```
-
-→ 以降の What-If で RuntimeConfiguration の差異が表示されなくなります
-
-```bash
-# main.bicep の isInitialDeploy を false に変更後、すぐにコミット
-git add infrastructure/bicep/orchestration/main.bicep
-git commit -m "Automation: isInitialDeploy を false に変更（初回デプロイ完了）"
-git push
-```
-
-**ステップ 3: 日常運用**
-
-```bicep
-isInitialDeploy: false  // ← このまま維持
-```
-
-→ Runbook の更新などは問題なくデプロイできます
-
-**例外: 削除後の復元**
-
-```bicep
-isInitialDeploy: true  // ← 環境削除後は true に戻す
-```
-
-→ 再度 Automation Account を作成し、完了後は false に戻します
+````
 
 ### 7.10.4 What-If による事前確認
 
@@ -2617,33 +2566,7 @@ az deployment sub what-if \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
-```
-
-#### What-If の見方
-
-**初回デプロイ時** (`isInitialDeploy: true`):
-
-```
-Resource changes: 2 to create, 1 to modify.
-
-+ Microsoft.Automation/automationAccounts/aa-platform-prod-jpe-001
-  ✓ これは期待通り（新規作成）
-
-~ Microsoft.Automation/automationAccounts/aa-platform-prod-jpe-001
-  - properties.runtimeConfiguration
-  ⚠️ この差異は無視してOK（Azure読み取り専用プロパティ、実際には削除されない）
-```
-
-**2 回目以降** (`isInitialDeploy: false`):
-
-```
-Resource changes: 1 to create.
-
-+ Microsoft.Automation/automationAccounts/runbooks/Stop-SandboxVMs
-  ✓ Runbook の変更のみ表示される（クリーンな状態）
-```
-
-→ RuntimeConfiguration の差異が表示されなくなり、実際の変更だけが確認できます
+````
 
 ### 7.10.5 デプロイ実行
 
@@ -2671,12 +2594,12 @@ grep -q "AUTOMATION_PRINCIPAL_ID=" .env || echo "AUTOMATION_PRINCIPAL_ID=$AUTOMA
 echo "Automation Account Principal ID: $AUTOMATION_PRINCIPAL_ID"
 ```
 
-**デプロイ完了後の重要な作業**:
+**デプロイ完了後の作業**:
+
+infrastructure/bicep/orchestration/main.bicep の該当箇所を編集
+isInitialDeploy: true → false に変更
 
 ```bash
-# isInitialDeploy を false に変更
-# infrastructure/bicep/orchestration/main.bicep の該当箇所を編集
-# isInitialDeploy: true → false に変更
 
 git add infrastructure/bicep/orchestration/main.bicep
 git commit -m "Automation: isInitialDeploy を false に変更（初回デプロイ完了）"
