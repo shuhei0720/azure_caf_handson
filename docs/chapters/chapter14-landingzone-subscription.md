@@ -250,13 +250,13 @@ az account management-group subscription show \
 
 ---
 
-## 14.4 Git へのコミット
+## 14.4 Azure Portal での確認
 
 4. **sub-landingzone-corp-prod** が表示されていることを確認
 
 ---
 
-## 14.4 Git へのコミット
+## 14.5 Git へのコミット
 
 ```bash
 # 変更の確認
@@ -277,7 +277,7 @@ git push origin main
 
 ---
 
-## 14.5 章のまとめ
+## 14.6 章のまとめ
 
 本章で行ったこと：
 
