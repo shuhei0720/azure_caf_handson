@@ -3022,9 +3022,47 @@ output sourceControlName string = sourceControl.outputs.sourceControlName
 param automationPrincipalId = '' // デプロイ後に設定
 ```
 
-### 7.10.10 GitHub Personal Access Token の Key Vault 保管
+### 7.10.10 What-If による事前確認
 
-**CAF ベストプラクティス**: GitHub Personal Access Token のような機密情報は Key Vault に保管し、Automation Account から安全にアクセスします。
+```bash
+# Management Subscription にデプロイ
+az account set --subscription $SUB_MANAGEMENT_ID
+
+# 事前確認
+az deployment sub what-if \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+```
+
+**確認ポイント**:
+- Runbook リソースの作成が表示される
+- Source Control リソースの作成が表示される
+- Automation Account 本体は変更なし（isInitialDeploy: false のため）
+
+### 7.10.11 デプロイ実行
+
+```bash
+# Management Subscription で実行
+az account set --subscription $SUB_MANAGEMENT_ID
+
+# デプロイ実行
+DEPLOYMENT_NAME="main-deployment-$(date +%Y%m%d-%H%M%S)"
+az deployment sub create \
+  --name $DEPLOYMENT_NAME \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+
+echo "✅ RunbookとSource Controlリソースをデプロイしました"
+```
+
+**注意**: この時点では Source Control リソースは作成されますが、GitHub Personal Access Token はまだ設定されていません。次の手順で設定します。
+
+### 7.10.12 GitHub Personal Access Token の Key Vault 保管と設定
+
+**CAF ベストプラクティス**: GitHub Personal Access Token のような機密情報は Key Vault に保管し、CLI で Source Control に設定します。Bicep では機密情報を設定できないため、この手順が必要です。
 
 #### Personal Access Token の生成
 
@@ -3092,50 +3130,184 @@ echo "✅ GitHubからRunbookを同期しました"
 以降、GitHub リポジトリの Runbook を更新すると、自動的に Azure Automation に同期されます。
 
 **セキュリティのポイント**：
-
 - GitHub Personal Access Token は Key Vault で安全に管理
-- Automation Account は Managed Identity で Key Vault にアクセス
-- トークンは環境変数から即座に削除（unset）
+- トークンは環境変数から即座に削除（unset でクリア）
 
-### 7.10.11 スケジュールの作成
+### 7.10.13 スケジュールモジュールの作成
 
-毎日夜 8 時（20:00 JST）に Runbook を実行するスケジュールを作成します。
+毎日夜 8 時（20:00 JST）に Runbook を実行するスケジュールを Bicep で管理します。
+
+ファイル `infrastructure/bicep/modules/automation/schedule.bicep` を作成：
+
+```bicep
+@description('Automation Account名')
+param automationAccountName string
+
+@description('スケジュール名')
+param scheduleName string
+
+@description('説明')
+param description string = ''
+
+@description('頻度')
+@allowed([
+  'Day'
+  'Hour'
+  'Week'
+  'Month'
+])
+param frequency string = 'Day'
+
+@description('間隔')
+param interval int = 1
+
+@description('開始時刻（ISO 8601形式）')
+param startTime string
+
+@description('タイムゾーン')
+param timeZone string = 'Tokyo Standard Time'
+
+// 既存のAutomation Accountを参照
+resource automationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' existing = {
+  name: automationAccountName
+}
+
+// スケジュール
+resource schedule 'Microsoft.Automation/automationAccounts/schedules@2023-11-01' = {
+  parent: automationAccount
+  name: scheduleName
+  properties: {
+    description: description
+    frequency: frequency
+    interval: interval
+    startTime: startTime
+    timeZone: timeZone
+  }
+}
+
+output scheduleName string = schedule.name
+output scheduleId string = schedule!.id
+```
+
+ファイル `infrastructure/bicep/modules/automation/job-schedule.bicep` を作成：
+
+```bicep
+@description('Automation Account名')
+param automationAccountName string
+
+@description('Runbook名')
+param runbookName string
+
+@description('スケジュール名')
+param scheduleName string
+
+@description('Runbookパラメータ')
+param parameters object = {}
+
+// 既存のAutomation Accountを参照
+resource automationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' existing = {
+  name: automationAccountName
+}
+
+// Job Schedule（RunbookとScheduleの紐付け）
+resource jobSchedule 'Microsoft.Automation/automationAccounts/jobSchedules@2023-11-01' = {
+  parent: automationAccount
+  name: guid(automationAccountName, runbookName, scheduleName)
+  properties: {
+    runbook: {
+      name: runbookName
+    }
+    schedule: {
+      name: scheduleName
+    }
+    parameters: parameters
+  }
+}
+
+output jobScheduleId string = jobSchedule!.id
+```
+
+### 7.10.14 オーケストレーションへの統合
+
+`infrastructure/bicep/orchestration/main.bicep` にスケジュールモジュールを追加します：
+
+```bicep
+// Chapter 7: Schedule
+module schedule '../modules/automation/schedule.bicep' = {
+  name: 'deploy-schedule-daily-shutdown'
+  scope: resourceGroup(monitoring.resourceGroup.name)
+  params: {
+    automationAccountName: automationAccount.outputs.automationAccountName
+    scheduleName: 'Daily-Evening-Shutdown'
+    description: 'Sandbox VM を毎晩 20:00 に自動停止'
+    frequency: 'Day'
+    interval: 1
+    startTime: '2026-01-10T20:00:00+09:00'  // 翌日から開始
+    timeZone: 'Tokyo Standard Time'
+  }
+}
+
+output scheduleName string = schedule.outputs.scheduleName
+
+// Chapter 7: Job Schedule（RunbookとScheduleの紐付け）
+module jobSchedule '../modules/automation/job-schedule.bicep' = {
+  name: 'deploy-job-schedule-stop-vms'
+  scope: resourceGroup(monitoring.resourceGroup.name)
+  params: {
+    automationAccountName: automationAccount.outputs.automationAccountName
+    runbookName: runbook.outputs.runbookName
+    scheduleName: schedule.outputs.scheduleName
+    parameters: {
+      SubscriptionId: subscriptionId()  // Sandbox Subscription IDを指定
+    }
+  }
+}
+```
+
+**注意**: `startTime`は未来の日時を指定してください。過去の日時を指定するとエラーになります。
+
+### 7.10.15 What-If による事前確認
+
+```bash
+# Management Subscription にデプロイ
+az account set --subscription $SUB_MANAGEMENT_ID
+
+# 事前確認
+az deployment sub what-if \
+  --name "main-deployment-$(date +%Y%m%d-%H%M%S)" \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
+```
+
+**確認ポイント**:
+- Schedule リソースの作成が表示される
+- Job Schedule リソースの作成が表示される
+
+### 7.10.16 デプロイ実行
 
 ```bash
 # Management Subscription で実行
 az account set --subscription $SUB_MANAGEMENT_ID
 
-# 毎日 20:00 のスケジュールを作成
-az automation schedule create \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --automation-account-name aa-platform-prod-jpe-001 \
-  --name "Daily-Evening-Shutdown" \
-  --frequency "Day" \
-  --interval 1 \
-  --start-time "2026-01-09T20:00:00+09:00" \
-  --time-zone "Tokyo Standard Time" \
-  --description "Sandbox VM を毎晩 20:00 に自動停止"
+# デプロイ実行
+DEPLOYMENT_NAME="main-deployment-$(date +%Y%m%d-%H%M%S)"
+az deployment sub create \
+  --name $DEPLOYMENT_NAME \
+  --location japaneast \
+  --template-file infrastructure/bicep/orchestration/main.bicep \
+  --parameters infrastructure/bicep/orchestration/main.bicepparam
 
-# Runbook とスケジュールをリンク
-az automation job-schedule create \
-  --resource-group rg-platform-management-prod-jpe-001 \
-  --automation-account-name aa-platform-prod-jpe-001 \
-  --runbook-name "Stop-SandboxVMs" \
-  --schedule-name "Daily-Evening-Shutdown" \
-  --parameters "{\"SubscriptionId\":\"$SUB_SANDBOX_ID\"}"
-
-echo "スケジュール設定が完了しました"
-echo "次回実行予定: 2026-01-09 20:00 (JST)"
+echo "✅ スケジュールとJob Scheduleをデプロイしました"
 ```
 
 **スケジュールの詳細：**
-
 - **頻度**: 毎日
 - **実行時刻**: 20:00 (JST)
 - **対象**: Sandbox Subscription のすべての VM
 - **コスト削減**: 約 12 時間/日 × VM 台数 分のコスト削減
 
-### 7.10.12 Azure Portal での確認
+### 7.10.17 Azure Portal での確認
 
 デプロイ後、Azure Portal で以下を確認します:
 
