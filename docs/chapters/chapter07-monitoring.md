@@ -2843,7 +2843,7 @@ param automationAccountName string
 param runbookName string
 
 @description('Runbookの説明')
-param description string = ''
+param runbookDescription string = ''
 
 @description('Runbookのタイプ')
 @allowed([
@@ -2874,7 +2874,7 @@ resource runbook 'Microsoft.Automation/automationAccounts/runbooks@2023-11-01' =
     runbookType: runbookType
     logProgress: true
     logVerbose: false
-    description: description
+    description: runbookDescription
     publishContentLink: {
       uri: 'https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/quickstarts/microsoft.automation/101-automation/scripts/AzureAutomationTutorial.ps1'
       version: '1.0.0.0'
@@ -2922,7 +2922,7 @@ param autoSync bool = true
 param publishRunbook bool = true
 
 @description('説明')
-param description string = 'GitHub Source Control Integration'
+param sourceControlDescription string = 'GitHub Source Control Integration'
 
 // 既存のAutomation Accountを参照
 resource automationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' existing = {
@@ -2940,7 +2940,7 @@ resource sourceControl 'Microsoft.Automation/automationAccounts/sourceControls@2
     autoSync: autoSync
     publishRunbook: publishRunbook
     sourceType: 'GitHub'
-    description: description
+    description: sourceControlDescription
   }
 }
 
@@ -2968,7 +2968,7 @@ module runbook '../modules/automation/runbook.bicep' = {
   params: {
     automationAccountName: automationAccount.outputs.automationAccountName
     runbookName: 'Stop-SandboxVMs'
-    description: 'Sandbox Subscriptionのすべての VM を停止します'
+    runbookDescription: 'Sandbox Subscriptionのすべての VM を停止します'
     runbookType: 'PowerShell72'
     location: location
     tags: tags
@@ -2989,7 +2989,7 @@ module sourceControl '../modules/automation/source-control.bicep' = {
     folderPath: '/infrastructure/automation/runbooks'
     autoSync: true
     publishRunbook: true
-    description: 'Runbook source control integration with GitHub'
+    sourceControlDescription: 'Runbook source control integration with GitHub'
   }
 }
 
@@ -3037,6 +3037,7 @@ az deployment sub what-if \
 ```
 
 **確認ポイント**:
+
 - Runbook リソースの作成が表示される
 - Source Control リソースの作成が表示される
 - Automation Account 本体は変更なし（isInitialDeploy: false のため）
@@ -3130,6 +3131,7 @@ echo "✅ GitHubからRunbookを同期しました"
 以降、GitHub リポジトリの Runbook を更新すると、自動的に Azure Automation に同期されます。
 
 **セキュリティのポイント**：
+
 - GitHub Personal Access Token は Key Vault で安全に管理
 - トークンは環境変数から即座に削除（unset でクリア）
 
@@ -3281,6 +3283,7 @@ az deployment sub what-if \
 ```
 
 **確認ポイント**:
+
 - Schedule リソースの作成が表示される
 - Job Schedule リソースの作成が表示される
 
@@ -3302,6 +3305,7 @@ echo "✅ スケジュールとJob Scheduleをデプロイしました"
 ```
 
 **スケジュールの詳細：**
+
 - **頻度**: 毎日
 - **実行時刻**: 20:00 (JST)
 - **対象**: Sandbox Subscription のすべての VM
