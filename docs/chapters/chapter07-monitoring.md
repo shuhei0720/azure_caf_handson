@@ -2142,27 +2142,40 @@ echo "✅ マネージドIDにOwner権限を付与しました"
 1. ✅ Log Analytics 基盤
 
    - Management Subscription に Log Analytics Workspace を構築
-   - **VM Insights 用 Data Collection Rule (DCR)**
-   - **Windows Event Logs と Syslog 収集用 DCR**
-   - **Entra ID 監査ログとサインインログの収集**
+   - テーブルレベルの保持期間設定とアーカイブ戦略
+
+2. ✅ Data Collection Rules (DCR)
+
+   - **VM Insights 用 DCR**: パフォーマンスカウンターとプロセス情報収集
+   - **Windows Event Logs と Syslog 収集用 DCR**: OS レベルのイベント収集
    - 後続の章でポリシーによる自動適用の準備完了
 
-2. ✅ Log Analytics クエリ
+3. ✅ Entra ID 監査ログ収集
 
-   - KQL クエリの基礎
-   - よく使うクエリ集の作成
+   - 監査ログとサインインログの診断設定
+   - テナントレベルのアクティビティ追跡
 
-3. ✅ アラートルール
+4. ✅ サブスクリプションのアクティビティログ収集
 
-   - アクショングループ（メール通知）
-   - メトリクスベースアラート（Firewall CPU）
+   - 全サブスクリプションのアクティビティログを Log Analytics に送信
+   - リソース変更履歴の中央管理
+
+5. ✅ 既存リソースの診断設定
+
+   - Log Analytics Workspace と Recovery Services Vault の診断設定
+   - 今後作成するリソース（Azure Firewall 等）での診断設定パターンの確立
+
+6. ✅ Azure Policy 用マネージド ID
+
+   - ポリシーによる自動修復用のマネージド ID 作成
+   - Log Analytics Contributor 権限付与
 
 ### 重要なポイント
 
 - **可観測性の確保**: メトリクス、ログ、トレースの 3 つの柱
 - **DCR による統一的なログ収集**: VM Insights と OS ログを自動収集
 - **ポリシーとの連携準備**: 後の章で組み込みポリシーを使って VM 全体に自動適用
-- **プロアクティブな監視**: 問題が起きる前にアラート
+- **診断設定の標準化**: 今後作成する全リソースで診断設定を含める
 
 ### 1 日目の作業完了
 
