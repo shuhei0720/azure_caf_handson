@@ -2860,32 +2860,14 @@ param location string
 @description('タグ')
 param tags object = {}
 
-@description('初回デプロイかどうか（親モジュールから渡される）')
-param isInitialDeploy bool = false
-
-// 初回デプロイ時のみAutomation Accountを作成
-resource automationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' = if (isInitialDeploy) {
-  name: automationAccountName
-  location: location
-  tags: tags
-  identity: {
-    type: 'SystemAssigned'
-  }
-  properties: {
-    sku: { name: 'Basic' }
-    encryption: { keySource: 'Microsoft.Automation' }
-    publicNetworkAccess: true
-  }
-}
-
-// 2回目以降は既存のAutomation Accountを参照
-resource existingAutomationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' existing = if (!isInitialDeploy) {
+// 既存のAutomation Accountを参照
+resource automationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' existing = {
   name: automationAccountName
 }
 
-// Runbook（条件に応じて親を切り替え）
+// Runbook
 resource runbook 'Microsoft.Automation/automationAccounts/runbooks@2023-11-01' = {
-  parent: isInitialDeploy ? automationAccount : existingAutomationAccount
+  parent: automationAccount
   name: runbookName
   location: location
   tags: tags
@@ -2943,31 +2925,14 @@ param publishRunbook bool = true
 @description('説明')
 param description string = 'GitHub Source Control Integration'
 
-@description('初回デプロイかどうか（親モジュールから渡される）')
-param isInitialDeploy bool = false
-
-// 初回デプロイ時のみAutomation Accountを作成
-resource automationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' = if (isInitialDeploy) {
-  name: automationAccountName
-  location: 'japaneast'
-  identity: {
-    type: 'SystemAssigned'
-  }
-  properties: {
-    sku: { name: 'Basic' }
-    encryption: { keySource: 'Microsoft.Automation' }
-    publicNetworkAccess: true
-  }
-}
-
-// 2回目以降は既存のAutomation Accountを参照
-resource existingAutomationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' existing = if (!isInitialDeploy) {
+// 既存のAutomation Accountを参照
+resource automationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' existing = {
   name: automationAccountName
 }
 
-// Source Control 統合（条件に応じて親を切り替え）
+// Source Control 統合
 resource sourceControl 'Microsoft.Automation/automationAccounts/sourceControls@2023-11-01' = {
-  parent: isInitialDeploy ? automationAccount : existingAutomationAccount
+  parent: automationAccount
   name: sourceControlName
   properties: {
     repoUrl: repositoryUrl
@@ -2986,8 +2951,7 @@ output sourceControlId string = sourceControl!.id
 ```
 
 **重要**:
-
-- Runbook モジュールと同様に、`isInitialDeploy`パラメータで条件分岐します
+- 既存のAutomation Accountを`existing`で参照し、Source Control子リソースのみを作成します
 - Source Control には GitHub Personal Access Token が必要ですが、Bicep では機密情報として設定できないため、デプロイ後に AZ CLI で設定します
 
 ### 7.10.9 オーケストレーションへの統合
@@ -3020,7 +2984,6 @@ module runbook '../modules/automation/runbook.bicep' = {
     runbookType: 'PowerShell72'
     location: location
     tags: tags
-    isInitialDeploy: true  // 親モジュールと同じ値を渡す
   }
 }
 
@@ -3037,7 +3000,6 @@ module sourceControl '../modules/automation/source-control.bicep' = {
     autoSync: true
     publishRunbook: true
     description: 'Runbook source control integration with GitHub'
-    isInitialDeploy: true  // 親モジュールと同じ値を渡す
   }
 }
 
@@ -3049,16 +3011,15 @@ output runbookName string = runbook.outputs.runbookName
 
 #### 統合時の重要ポイント
 
-**1. パラメータの一貫性**
-
-- すべての Automation 関連モジュール（automationAccount、runbook、sourceControl）に同じ `isInitialDeploy` 値を渡す必要があります
-- バラバラにすると依存関係エラーが発生します
+**1. モジュールの役割分担**
+- `automation-account.bicep`: Automation Account本体のみを管理（isInitialDeployで制御）
+- `runbook.bicep`: Runbook子リソースのみを管理（existingで親を参照）
+- `source-control.bicep`: Source Control子リソースのみを管理（existingで親を参照）
 
 **2. 初回デプロイ完了後の作業**
-
 ```bash
-# 1. デプロイが成功したら、すぐに false に変更
-# main.bicep の isInitialDeploy を全て false に変更
+# 1. デプロイが成功したら、automation-accountモジュールのisInitialDeployをfalseに変更
+# main.bicep の automation-account モジュールのみ false に変更
 
 # 2. 変更をコミット
 git add infrastructure/bicep/orchestration/main.bicep
@@ -3067,7 +3028,6 @@ git push
 ```
 
 **3. dependsOn が不要な理由**
-
 - 既存リソース参照（`existing`）の場合、Bicep が自動的に依存関係を解決します
 - 明示的な `dependsOn` は不要で、コードがシンプルになります
 
