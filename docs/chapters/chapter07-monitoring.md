@@ -2552,8 +2552,6 @@ output automationAccountId string = automationAccount.outputs.automationAccountI
 output automationPrincipalId string = automationAccount.outputs.principalId
 ```
 
-````
-
 ### 7.10.4 What-If による事前確認
 
 ```bash
@@ -2566,7 +2564,7 @@ az deployment sub what-if \
   --location japaneast \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
-````
+```
 
 ### 7.10.5 デプロイ実行
 
