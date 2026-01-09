@@ -2456,6 +2456,18 @@ graph LR
 
 Automation Account を Management Subscription に作成します。集中管理の観点から、監視・運用ツールは Management Subscription に配置します。
 
+#### What-If 差異問題とその解決策
+
+**問題**: Automation Account をデプロイすると、What-If で毎回 `RuntimeConfiguration` の削除が表示されます。これは Azure が自動管理する読み取り専用プロパティのため、Bicep では定義できません。
+
+**解決策**: `isInitialDeploy` パラメータを使用して、初回デプロイ後は Automation Account 本体をスキップし、既存リソースを参照します。
+
+**メリット**:
+
+- 2 回目以降のデプロイで不要な差異が表示されない
+- Runbook や子リソースの変更を安心して What-If で確認可能
+- 日常運用がクリーンな状態を保てる
+
 ```bash
 mkdir -p infrastructure/bicep/modules/automation
 ```
@@ -2472,8 +2484,11 @@ param location string
 @description('タグ')
 param tags object = {}
 
-// Automation Account
-resource automationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' = {
+@description('初回デプロイかどうか（初回のみtrue、2回目以降false）')
+param isInitialDeploy bool = false
+
+// 初回デプロイ時のみAutomation Account本体を作成
+resource automationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' = if (isInitialDeploy) {
   name: automationAccountName
   location: location
   tags: tags
@@ -2491,11 +2506,39 @@ resource automationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' 
   }
 }
 
-// 出力
-output automationAccountId string = automationAccount.id
-output automationAccountName string = automationAccount.name
-output principalId string = automationAccount.identity.principalId
+// 2回目以降は既存のAutomation Accountを参照
+resource existingAutomationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' existing = if (!isInitialDeploy) {
+  name: automationAccountName
+}
+
+// 出力（条件に応じて切り替え）
+output automationAccountId string = isInitialDeploy ? automationAccount.id : existingAutomationAccount.id
+output automationAccountName string = automationAccountName
+output principalId string = isInitialDeploy ? automationAccount.identity.principalId : existingAutomationAccount.identity.principalId
 ```
+
+#### isInitialDeploy パラメータの仕組み
+
+このパラメータは「初回デプロイかどうか」を制御するスイッチです：
+
+| 状況             | isInitialDeploy | 動作                                     | What-If の表示                                       |
+| ---------------- | --------------- | ---------------------------------------- | ---------------------------------------------------- |
+| **初回デプロイ** | `true`          | Automation Account 本体を新規作成        | RuntimeConfiguration 削除が表示される（無視して OK） |
+| **2 回目以降**   | `false`         | 既存リソースを参照のみ（本体はスキップ） | RuntimeConfiguration の差異なし ✅                   |
+| **削除後の復元** | `true` に戻す   | 再度 Automation Account を新規作成       | 初回と同じ                                           |
+
+**重要な運用ルール**:
+
+1. 初回デプロイ完了後、必ず `isInitialDeploy: false` に変更してコミット
+2. 日常の Runbook 更新時は `false` のまま運用
+3. 環境を削除して再構築する場合のみ `true` に戻す
+
+**なぜこの仕組みが必要か**:
+
+- Automation Account の `RuntimeConfiguration` は Azure が自動管理する読み取り専用プロパティ
+- Bicep では定義できないため、毎回 What-If で「削除される」と表示される
+- しかし実際のデプロイでは何も変更されない（ノイズになる）
+- 既存リソース参照に切り替えることで、このノイズを完全に排除できる
 
 ### 7.10.3 オーケストレーションへのモジュール追加
 
@@ -2512,6 +2555,7 @@ module automationAccount '../modules/automation/automation-account.bicep' = {
     tags: union(tags, {
       Purpose: 'Automation and Runbooks'
     })
+    isInitialDeploy: true  // 【初回デプロイ用】完了後すぐにfalseに変更してください
   }
 }
 
@@ -2519,6 +2563,47 @@ module automationAccount '../modules/automation/automation-account.bicep' = {
 output automationAccountId string = automationAccount.outputs.automationAccountId
 output automationPrincipalId string = automationAccount.outputs.principalId
 ```
+
+#### パラメータの具体的な使い方
+
+**ステップ 1: 初回デプロイ**
+
+```bicep
+isInitialDeploy: true  // ← この状態でデプロイ
+```
+
+→ Automation Account が作成されます
+
+**ステップ 2: 初回デプロイ完了後すぐに変更**
+
+```bicep
+isInitialDeploy: false  // ← false に変更してコミット
+```
+
+→ 以降の What-If で RuntimeConfiguration の差異が表示されなくなります
+
+```bash
+# main.bicep の isInitialDeploy を false に変更後、すぐにコミット
+git add infrastructure/bicep/orchestration/main.bicep
+git commit -m "Automation: isInitialDeploy を false に変更（初回デプロイ完了）"
+git push
+```
+
+**ステップ 3: 日常運用**
+
+```bicep
+isInitialDeploy: false  // ← このまま維持
+```
+
+→ Runbook の更新などは問題なくデプロイできます
+
+**例外: 削除後の復元**
+
+```bicep
+isInitialDeploy: true  // ← 環境削除後は true に戻す
+```
+
+→ 再度 Automation Account を作成し、完了後は false に戻します
 
 ### 7.10.4 What-If による事前確認
 
@@ -2533,6 +2618,32 @@ az deployment sub what-if \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
 ```
+
+#### What-If の見方
+
+**初回デプロイ時** (`isInitialDeploy: true`):
+
+```
+Resource changes: 2 to create, 1 to modify.
+
++ Microsoft.Automation/automationAccounts/aa-platform-prod-jpe-001
+  ✓ これは期待通り（新規作成）
+
+~ Microsoft.Automation/automationAccounts/aa-platform-prod-jpe-001
+  - properties.runtimeConfiguration
+  ⚠️ この差異は無視してOK（Azure読み取り専用プロパティ、実際には削除されない）
+```
+
+**2 回目以降** (`isInitialDeploy: false`):
+
+```
+Resource changes: 1 to create.
+
++ Microsoft.Automation/automationAccounts/runbooks/Stop-SandboxVMs
+  ✓ Runbook の変更のみ表示される（クリーンな状態）
+```
+
+→ RuntimeConfiguration の差異が表示されなくなり、実際の変更だけが確認できます
 
 ### 7.10.5 デプロイ実行
 
@@ -2560,7 +2671,19 @@ grep -q "AUTOMATION_PRINCIPAL_ID=" .env || echo "AUTOMATION_PRINCIPAL_ID=$AUTOMA
 echo "Automation Account Principal ID: $AUTOMATION_PRINCIPAL_ID"
 ```
 
-### 7.10.5 デプロイ実行
+**デプロイ完了後の重要な作業**:
+
+```bash
+# isInitialDeploy を false に変更
+# infrastructure/bicep/orchestration/main.bicep の該当箇所を編集
+# isInitialDeploy: true → false に変更
+
+git add infrastructure/bicep/orchestration/main.bicep
+git commit -m "Automation: isInitialDeploy を false に変更（初回デプロイ完了）"
+git push
+```
+
+この変更により、次回以降の What-If で RuntimeConfiguration の差異が表示されなくなります。
 
 ### 7.10.6 Sandbox 管理グループへの権限付与
 
@@ -2816,13 +2939,32 @@ param location string
 @description('タグ')
 param tags object = {}
 
-// Runbook リソース
-resource automationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' existing = {
+@description('初回デプロイかどうか（親モジュールから渡される）')
+param isInitialDeploy bool = false
+
+// 初回デプロイ時のみAutomation Accountを作成
+resource automationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' = if (isInitialDeploy) {
+  name: automationAccountName
+  location: location
+  tags: tags
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    sku: { name: 'Basic' }
+    encryption: { keySource: 'Microsoft.Automation' }
+    publicNetworkAccess: true
+  }
+}
+
+// 2回目以降は既存のAutomation Accountを参照
+resource existingAutomationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' existing = if (!isInitialDeploy) {
   name: automationAccountName
 }
 
+// Runbook（条件に応じて親を切り替え）
 resource runbook 'Microsoft.Automation/automationAccounts/runbooks@2023-11-01' = {
-  parent: automationAccount
+  parent: isInitialDeploy ? automationAccount : existingAutomationAccount
   name: runbookName
   location: location
   tags: tags
@@ -2843,7 +2985,11 @@ output runbookName string = runbook.name
 output runbookId string = runbook.id
 ```
 
-**注意**: `publishContentLink` はダミーの URL です。実際の Runbook スクリプトは Source Control 統合で GitHub から自動同期されます。
+**重要**:
+
+- `isInitialDeploy`パラメータを親モジュールから受け取り、条件に応じてリソース参照を切り替えます
+- 初回デプロイ時は Automation Account 本体を作成し、2 回目以降は既存リソースを参照します
+- `publishContentLink`はダミーの URL です。実際の Runbook スクリプトは Source Control 統合で GitHub から自動同期されます
 
 ### 7.10.8 Source Control モジュールの作成
 
@@ -2876,13 +3022,31 @@ param publishRunbook bool = true
 @description('説明')
 param description string = 'GitHub Source Control Integration'
 
-// Source Control 統合
-resource automationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' existing = {
+@description('初回デプロイかどうか（親モジュールから渡される）')
+param isInitialDeploy bool = false
+
+// 初回デプロイ時のみAutomation Accountを作成
+resource automationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' = if (isInitialDeploy) {
+  name: automationAccountName
+  location: 'japaneast'
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    sku: { name: 'Basic' }
+    encryption: { keySource: 'Microsoft.Automation' }
+    publicNetworkAccess: true
+  }
+}
+
+// 2回目以降は既存のAutomation Accountを参照
+resource existingAutomationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' existing = if (!isInitialDeploy) {
   name: automationAccountName
 }
 
+// Source Control 統合（条件に応じて親を切り替え）
 resource sourceControl 'Microsoft.Automation/automationAccounts/sourceControls@2023-11-01' = {
-  parent: automationAccount
+  parent: isInitialDeploy ? automationAccount : existingAutomationAccount
   name: sourceControlName
   properties: {
     repoUrl: repositoryUrl
@@ -2900,7 +3064,10 @@ output sourceControlName string = sourceControl.name
 output sourceControlId string = sourceControl.id
 ```
 
-**注意**: Source Control には GitHub Personal Access Token が必要ですが、Bicep では機密情報として設定できないため、デプロイ後に AZ CLI で設定します。
+**重要**:
+
+- Runbook モジュールと同様に、`isInitialDeploy`パラメータで条件分岐します
+- Source Control には GitHub Personal Access Token が必要ですが、Bicep では機密情報として設定できないため、デプロイ後に AZ CLI で設定します
 
 ### 7.10.9 オーケストレーションへの統合
 
@@ -2917,6 +3084,7 @@ module automationAccount '../modules/automation/automation-account.bicep' = {
     tags: union(tags, {
       Purpose: 'Automation and Runbooks'
     })
+    isInitialDeploy: true  // 【初回デプロイ用】完了後すぐにfalseに変更してください
   }
 }
 
@@ -2931,10 +3099,8 @@ module runbook '../modules/automation/runbook.bicep' = {
     runbookType: 'PowerShell72'
     location: location
     tags: tags
+    isInitialDeploy: true  // 親モジュールと同じ値を渡す
   }
-  dependsOn: [
-    automationAccount
-  ]
 }
 
 // Chapter 7: Source Control Integration
@@ -2950,10 +3116,8 @@ module sourceControl '../modules/automation/source-control.bicep' = {
     autoSync: true
     publishRunbook: true
     description: 'Runbook source control integration with GitHub'
+    isInitialDeploy: true  // 親モジュールと同じ値を渡す
   }
-  dependsOn: [
-    runbook
-  ]
 }
 
 // Chapter 7: Automation Account Outputs
@@ -2961,6 +3125,30 @@ output automationAccountId string = automationAccount.outputs.automationAccountI
 output automationPrincipalId string = automationAccount.outputs.principalId
 output runbookName string = runbook.outputs.runbookName
 ```
+
+#### 統合時の重要ポイント
+
+**1. パラメータの一貫性**
+
+- すべての Automation 関連モジュール（automationAccount、runbook、sourceControl）に同じ `isInitialDeploy` 値を渡す必要があります
+- バラバラにすると依存関係エラーが発生します
+
+**2. 初回デプロイ完了後の作業**
+
+```bash
+# 1. デプロイが成功したら、すぐに false に変更
+# main.bicep の isInitialDeploy を全て false に変更
+
+# 2. 変更をコミット
+git add infrastructure/bicep/orchestration/main.bicep
+git commit -m "Automation: isInitialDeploy を false に変更（初回デプロイ完了）"
+git push
+```
+
+**3. dependsOn が不要な理由**
+
+- 既存リソース参照（`existing`）の場合、Bicep が自動的に依存関係を解決します
+- 明示的な `dependsOn` は不要で、コードがシンプルになります
 
 **重要**: `repositoryUrl` を各自の GitHub リポジトリ URL に変更してください。
 
