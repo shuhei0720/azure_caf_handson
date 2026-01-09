@@ -2517,8 +2517,6 @@ output automationAccountName string = automationAccountName
 output principalId string = isInitialDeploy ? automationAccount!.identity.principalId : existingAutomationAccount!.identity.principalId
 ```
 
-**注意**: `!` はnon-null assertionオペレーターで、条件付きリソースがnullにならないことをBicepに明示します（警告BCP318の回避）。
-
 #### isInitialDeploy パラメータの仕組み
 
 このパラメータは「初回デプロイかどうか」を制御するスイッチです：
