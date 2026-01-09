@@ -2547,7 +2547,6 @@ module automationAccount '../modules/automation/automation-account.bicep' = {
   }
 }
 
-// Chapter 7: Automation Account Outputs
 output automationAccountId string = automationAccount.outputs.automationAccountId
 output automationPrincipalId string = automationAccount.outputs.principalId
 ```
@@ -2957,26 +2956,12 @@ output sourceControlId string = sourceControl!.id
 
 ### 7.10.9 オーケストレーションへの統合
 
-7.10.3で追加した Automation Account モジュールに、Runbook と Source Control モジュールを追加します。
+7.10.3 で追加した Automation Account モジュールに、Runbook と Source Control モジュールを追加します。
 
-`infrastructure/bicep/orchestration/main.bicep` の Automation Account セクションを更新します：
+`infrastructure/bicep/orchestration/main.bicep` に以下のモジュールを追加します：
 
 ```bicep
-// Chapter 7: Automation Account（7.10.3で既に追加済み、isInitialDeployをfalseに変更）
-module automationAccount '../modules/automation/automation-account.bicep' = {
-  name: 'deploy-automation-account'
-  scope: resourceGroup(monitoring.resourceGroup.name)
-  params: {
-    automationAccountName: 'aa-platform-prod-jpe-001'
-    location: location
-    tags: union(tags, {
-      Purpose: 'Automation and Runbooks'
-    })
-    isInitialDeploy: false  // 7.10.5のデプロイ完了後、既にfalseに変更済み
-  }
-}
-
-// Chapter 7: Runbook（新規追加）
+// Chapter 7: Runbook
 module runbook '../modules/automation/runbook.bicep' = {
   name: 'deploy-runbook-stop-sandbox-vms'
   scope: resourceGroup(monitoring.resourceGroup.name)
@@ -2990,7 +2975,9 @@ module runbook '../modules/automation/runbook.bicep' = {
   }
 }
 
-// Chapter 7: Source Control Integration（新規追加）
+output runbookName string = runbook.outputs.runbookName
+
+// Chapter 7: Source Control Integration
 module sourceControl '../modules/automation/source-control.bicep' = {
   name: 'deploy-source-control-github'
   scope: resourceGroup(monitoring.resourceGroup.name)
@@ -3006,28 +2993,27 @@ module sourceControl '../modules/automation/source-control.bicep' = {
   }
 }
 
-// Chapter 7: Automation Account Outputs（runbookNameを追加）
-output automationAccountId string = automationAccount.outputs.automationAccountId
-output automationPrincipalId string = automationAccount.outputs.principalId
-output runbookName string = runbook.outputs.runbookName
+output sourceControlName string = sourceControl.outputs.sourceControlName
 ```
+
+**重要**: `repositoryUrl` を各自の GitHub リポジトリ URL に変更してください。
 
 #### 統合時の重要ポイント
 
-**1. Automation Account本体は既にデプロイ済み**
-- 7.10.5で既にAutomation Accountは作成済みです
-- `isInitialDeploy: false`に変更済みの状態で、Runbookモジュールを追加します
+**1. Automation Account 本体は既にデプロイ済み**
+
+- 7.10.5 で既に Automation Account は作成済み、`isInitialDeploy: false`に変更済みです
+- この手順では Runbook と Source Control の子リソースのみを追加します
 
 **2. モジュールの役割分担**
-- `automation-account.bicep`: Automation Account本体（既存リソース参照モード）
-- `runbook.bicep`: Runbook子リソースのみを管理（existingで親を参照）
-- `source-control.bicep`: Source Control子リソースのみを管理（existingで親を参照）
+
+- `runbook.bicep`: Runbook 子リソースのみを管理（existing で親を参照）
+- `source-control.bicep`: Source Control 子リソースのみを管理（existing で親を参照）
 
 **3. dependsOn が不要な理由**
+
 - 既存リソース参照（`existing`）の場合、Bicep が自動的に依存関係を解決します
 - 明示的な `dependsOn` は不要で、コードがシンプルになります
-
-**重要**: `repositoryUrl` を各自の GitHub リポジトリ URL に変更してください。
 
 `infrastructure/bicep/orchestration/tenant.bicepparam` に Runbook 関連のパラメータを追加します（既に追加済みの場合はスキップ）：
 
