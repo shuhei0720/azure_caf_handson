@@ -2488,7 +2488,6 @@ resource automationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' 
     sku: {
       name: 'Basic'
     }
-    disableLocalAuth: false
     encryption: {
       keySource: 'Microsoft.Automation'
     }
@@ -2538,10 +2537,6 @@ az deployment sub what-if \
   --template-file infrastructure/bicep/orchestration/main.bicep \
   --parameters infrastructure/bicep/orchestration/main.bicepparam
 ```
-
-**What-If の注意点**:
-- Automation Account の `RuntimeConfiguration` が削除と表示されますが、これは Azure が自動追加する読み取り専用プロパティです。実際には削除されず、デプロイ後に自動で再追加されます。
-- 既にデプロイ済みのリソースは `No change` と表示されることを確認してください。
 
 ### 7.10.5 デプロイ実行
 
