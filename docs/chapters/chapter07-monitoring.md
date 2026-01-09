@@ -2951,7 +2951,8 @@ output sourceControlId string = sourceControl!.id
 ```
 
 **重要**:
-- 既存のAutomation Accountを`existing`で参照し、Source Control子リソースのみを作成します
+
+- 既存の Automation Account を`existing`で参照し、Source Control 子リソースのみを作成します
 - Source Control には GitHub Personal Access Token が必要ですが、Bicep では機密情報として設定できないため、デプロイ後に AZ CLI で設定します
 
 ### 7.10.9 オーケストレーションへの統合
@@ -3012,11 +3013,13 @@ output runbookName string = runbook.outputs.runbookName
 #### 統合時の重要ポイント
 
 **1. モジュールの役割分担**
-- `automation-account.bicep`: Automation Account本体のみを管理（isInitialDeployで制御）
-- `runbook.bicep`: Runbook子リソースのみを管理（existingで親を参照）
-- `source-control.bicep`: Source Control子リソースのみを管理（existingで親を参照）
+
+- `automation-account.bicep`: Automation Account 本体のみを管理（isInitialDeploy で制御）
+- `runbook.bicep`: Runbook 子リソースのみを管理（existing で親を参照）
+- `source-control.bicep`: Source Control 子リソースのみを管理（existing で親を参照）
 
 **2. 初回デプロイ完了後の作業**
+
 ```bash
 # 1. デプロイが成功したら、automation-accountモジュールのisInitialDeployをfalseに変更
 # main.bicep の automation-account モジュールのみ false に変更
@@ -3028,6 +3031,7 @@ git push
 ```
 
 **3. dependsOn が不要な理由**
+
 - 既存リソース参照（`existing`）の場合、Bicep が自動的に依存関係を解決します
 - 明示的な `dependsOn` は不要で、コードがシンプルになります
 
